@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const Employee = require('./models/Employee');
 const PlantPerformance = require('./models/PlantPerformance');
 
-const rosterData = require('../qipp-frontend/apps/web/data/roster.json');
-const plantData = require('../qipp-frontend/apps/web/data/plant_data.json');
+const AdminUser = require('./models/AdminUser');
+const bcrypt = require('bcryptjs');
+
+const rosterData = require('./data/roster.json');
+const plantData = require('./data/plant_data.json');
 
 async function seed() {
   try {
@@ -14,9 +17,19 @@ async function seed() {
     // 1. Clear existing data
     await Employee.deleteMany({});
     await PlantPerformance.deleteMany({});
+    await AdminUser.deleteMany({});
     console.log('🧹 Cleared existing data');
 
-    // 2. Seed Roster
+    // 2. Seed Admin User
+    const passwordHash = await bcrypt.hash('acwa123', 10);
+    const admin = new AdminUser({
+       email: 'admin@acwa.com',
+       passwordHash
+    });
+    await admin.save();
+    console.log('👑 Default Admin created: admin@acwa.com / acwa123');
+
+    // 3. Seed Roster
     const formattedRoster = rosterData.map(p => ({
       name: p.name,
       empId: p.empId,

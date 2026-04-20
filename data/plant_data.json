@@ -1,0 +1,122 @@
+[
+  {
+    "Date": "15.04.2026",
+    "Generation": 580.5,
+    "NetGen": 542.1,
+    "Load": 3500,
+    "Efficiency": 55.4,
+    "HeatRate": 7.42,
+    "Fuel": 120500,
+    "Emissions": {
+      "NOx": 32.4,
+      "SOx": 1.2,
+      "CO": 0.5,
+      "Particulate": 0.1,
+      "StackTemp": 114
+    },
+    "Water": {
+      "ROProduction": 12.4
+    },
+    "AirIntakeDP": 25.1
+  },
+  {
+    "Date": "16.04.2026",
+    "Generation": 590.2,
+    "NetGen": 550.8,
+    "Load": 3600,
+    "Efficiency": 56.1,
+    "HeatRate": 7.38,
+    "Fuel": 122000,
+    "Emissions": {
+      "NOx": 31.8,
+      "SOx": 1.1,
+      "CO": 0.4,
+      "Particulate": 0.1,
+      "StackTemp": 115
+    },
+    "Water": {
+      "ROProduction": 12.6
+    },
+    "AirIntakeDP": 25.4
+  },
+  {
+    "Date": "17.04.2026",
+    "Generation": 575.4,
+    "NetGen": 535.2,
+    "Load": 3450,
+    "Efficiency": 54.8,
+    "HeatRate": 7.45,
+    "Fuel": 119800,
+    "Emissions": {
+      "NOx": 33.1,
+      "SOx": 1.3,
+      "CO": 0.6,
+      "Particulate": 0.1,
+      "StackTemp": 113
+    },
+    "Water": {
+      "ROProduction": 12.2
+    },
+    "AirIntakeDP": 24.8
+  },
+  {
+    "Date": "18.04.2026",
+    "Generation": 605.1,
+    "NetGen": 565.4,
+    "Load": 3700,
+    "Efficiency": 56.5,
+    "HeatRate": 7.32,
+    "Fuel": 125000,
+    "Emissions": {
+      "NOx": 30.5,
+      "SOx": 1.0,
+      "CO": 0.3,
+      "Particulate": 0.1,
+      "StackTemp": 116
+    },
+    "Water": {
+      "ROProduction": 12.8
+    },
+    "AirIntakeDP": 26.0
+  },
+  {
+    "Date": "19.04.2026",
+    "Generation": 588.4,
+    "NetGen": 549.2,
+    "Load": 3580,
+    "Efficiency": 55.7,
+    "HeatRate": 7.40,
+    "Fuel": 121500,
+    "Emissions": {
+      "NOx": 32.0,
+      "SOx": 1.2,
+      "CO": 0.5,
+      "Particulate": 0.1,
+      "StackTemp": 114
+    },
+    "Water": {
+      "ROProduction": 12.5
+    },
+    "AirIntakeDP": 25.2
+  },
+  {
+    "Date": "20.04.2026",
+    "Generation": 592.1,
+    "NetGen": 553.4,
+    "Load": 3620,
+    "Efficiency": 55.9,
+    "HeatRate": 7.39,
+    "Fuel": 122200,
+    "Emissions": {
+      "NOx": 31.5,
+      "SOx": 1.1,
+      "CO": 0.4,
+      "Particulate": 0.1,
+      "StackTemp": 115
+    },
+    "Water": {
+      "ROProduction": 12.7
+    },
+    "AirIntakeDP": 25.5
+  }
+]

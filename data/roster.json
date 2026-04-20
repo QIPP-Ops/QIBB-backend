@@ -1,0 +1,12 @@
+[
+  { "id": 1, "name": "Izhar Ali", "empId": "500440", "crew": "C", "role": "Local Operator", "color": "crew-lightviolet", "leaves": [{ "start": "2026-04-21", "end": "2026-05-02", "type": "Applied on SAP" }] },
+  { "id": 2, "name": "Purushothaman", "empId": "500438", "crew": "A", "role": "Local Operator", "color": "crew-lightviolet", "leaves": [{ "start": "2026-04-27", "end": "2026-05-07", "type": "Applied on SAP" }] },
+  { "id": 3, "name": "Juma Khan", "empId": "2028", "crew": "C", "role": "CCR Operator", "color": "crew-green", "leaves": [{ "start": "2026-04-29", "end": "2026-05-14", "type": "Applied on SAP" }] },
+  { "id": 4, "name": "Mustafa Salem", "empId": "2024", "crew": "D", "role": "Shift in Charge Engineer", "color": "crew-red", "leaves": [{ "start": "2026-05-19", "end": "2026-06-19", "type": "Applied on SAP" }] },
+  { "id": 5, "name": "Ahmed Alsaqoor", "empId": "3973", "crew": "D", "role": "Local Operator", "color": "crew-lightviolet", "leaves": [{ "start": "2026-05-19", "end": "2026-06-11", "type": "Applied on SAP" }] },
+  { "id": 6, "name": "Syed Shahnawaz Ahmed", "empId": "2025", "crew": "A", "role": "Supervisor", "color": "crew-red", "leaves": [{ "start": "2026-05-20", "end": "2026-06-04", "type": "Applied on SAP" }] },
+  { "id": 7, "name": "Abdul Hameed", "empId": "1119", "crew": "General", "role": "Supervisor", "color": "crew-grey", "leaves": [{ "start": "2026-05-20", "end": "2026-06-10", "type": "Applied on SAP" }] },
+  { "id": 8, "name": "Waleed Fayad", "empId": "501388", "crew": "C", "role": "CCR Operator", "color": "crew-green", "leaves": [{ "start": "2026-05-31", "end": "2026-06-23", "type": "Applied on SAP" }] },
+  { "id": 9, "name": "Mark Ramirez", "empId": "2237", "crew": "D", "role": "Local Operator", "color": "crew-lightviolet", "leaves": [{ "start": "2026-05-31", "end": "2026-06-15", "type": "Applied on SAP" }] },
+  { "id": 10, "name": "Ahmed Fathy", "empId": "2726", "crew": "A", "role": "CCR Operator", "color": "crew-lightblue", "leaves": [{ "start": "2026-06-06", "end": "2026-06-14", "type": "Applied on SAP" }] }
+]
