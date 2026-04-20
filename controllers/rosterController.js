@@ -12,12 +12,15 @@ exports.getRoster = async (req, res) => {
 exports.addLeave = async (req, res) => {
   const { employeeId, leave } = req.body;
   try {
+    console.log(`[ROSTER API] Adding leave for employee ${employeeId}:`, leave);
     const employee = await Employee.findOne({ empId: employeeId });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
     employee.leaves.push(leave);
     await employee.save();
+    console.log(`[ROSTER API] Successfully added leave for ${employeeId}`);
     res.status(201).json(employee);
   } catch (error) {
+    console.error(`[ROSTER API] Error adding leave for ${employeeId}:`, error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -59,13 +62,16 @@ exports.deleteEmployee = async (req, res) => {
 exports.removeLeave = async (req, res) => {
   const { employeeId, leaveId } = req.params;
   try {
+    console.log(`[ROSTER API] Removing leave ${leaveId} for employee ${employeeId}`);
     const employee = await Employee.findOne({ empId: employeeId });
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
     
     employee.leaves = employee.leaves.filter(l => l._id.toString() !== leaveId);
     await employee.save();
+    console.log(`[ROSTER API] Successfully removed leave for ${employeeId}`);
     res.json(employee);
   } catch (error) {
+    console.error(`[ROSTER API] Error removing leave for ${employeeId}:`, error);
     res.status(400).json({ message: error.message });
   }
 };
