@@ -40,9 +40,17 @@ app.use('/api/safety', safetyRoutes);
 const connectDB = require('./config/db');
 connectDB();
 
-// Health Check
+// Health Check Endpoints
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    status: 'UP', 
+    message: 'QIPP Backend Operational',
+    timestamp: new Date() 
+  });
+});
+
 app.get('/health', (req, res) => {
-  res.json({ status: 'UP', timestamp: new Date() });
+  res.status(200).json({ status: 'UP', timestamp: new Date() });
 });
 
 // Start Server
