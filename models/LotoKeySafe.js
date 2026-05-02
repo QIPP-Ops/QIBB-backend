@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const lotoKeySafeSchema = new mongoose.Schema({
+const lotoKeySafeSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   keySafeNo: { type: String, required: true },
   status: String,
   description: String,

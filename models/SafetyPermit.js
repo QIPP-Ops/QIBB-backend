@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const SafetyPermitSchema = new mongoose.Schema({
+const SafetyPermitSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   permitId: { type: String, required: true, unique: true }, // "Doc No"
   status: { 
     type: String, 

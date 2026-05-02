@@ -6,7 +6,7 @@ const LeaveSchema = new mongoose.Schema({
   type: { type: String, enum: ['Applied on SAP', 'Planned'], default: 'Planned' }
 });
 
-const AdminUserSchema = new mongoose.Schema({
+const AdminUserSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   name: { type: String, required: true },

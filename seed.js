@@ -431,7 +431,11 @@ async function main() {
       ptwReal = ptwChoice === '1';
     }
 
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.COSMOS_CONNECTION_STRING, {
+      ssl: true,
+      retrywrites: false,
+      maxIdleTimeMS: 120000,
+    });
     console.log('🔌 Connected to MongoDB');
 
     await clearDatabase();

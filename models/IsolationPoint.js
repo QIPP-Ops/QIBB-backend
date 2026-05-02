@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const isolationPointSchema = new mongoose.Schema({
+const isolationPointSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   isolationPointNo: { type: String, required: true },
   equipmentNo: String,
   method: String,

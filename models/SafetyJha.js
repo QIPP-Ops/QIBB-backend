@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const safetyJhaSchema = new mongoose.Schema({
+const safetyJhaSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   jhaNo: { type: String, required: true, unique: true },
   status: { type: String, required: true },
   jhaType: String,

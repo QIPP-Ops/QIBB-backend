@@ -8,7 +8,7 @@ The workflow deploys to app name `QIPP-Backend` (fixed in `.github/workflows/dep
 
 ## Required Azure App Settings
 
-- `MONGODB_URI`
+- `COSMOS_CONNECTION_STRING`
 - `JWT_SECRET`
 
 Optional:
@@ -21,4 +21,4 @@ Optional:
    - `https://<your-backend-domain>/health`
 2. Seed demo users/data when needed:
    - SSH into app and run `node /home/site/wwwroot/seed-demo.js`
-   - or run locally with the same `MONGODB_URI`
+   - or run locally with the same `COSMOS_CONNECTION_STRING`

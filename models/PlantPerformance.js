@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const PlantPerformanceSchema = new mongoose.Schema({
+const PlantPerformanceSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   date: { type: Date, required: true, unique: true },
   generation: Number,
   netGen: Number,

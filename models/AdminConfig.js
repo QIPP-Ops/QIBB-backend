@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const AdminConfigSchema = new mongoose.Schema({
+const AdminConfigSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   pinHash: { type: String, default: "" },
   editingLocked: { type: Boolean, default: false },
   availableCrews: { 

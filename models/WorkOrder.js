@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const workOrderSchema = new mongoose.Schema({
+const workOrderSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   woNo: { type: String, required: true, unique: true },
   status: { type: String, required: true },
   equipmentNo: String,

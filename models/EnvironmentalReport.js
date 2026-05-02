@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const EnvironmentalReportSchema = new mongoose.Schema({
+const EnvironmentalReportSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   date: { type: Date, required: true, unique: true },
   so2: Number,
   nox: Number,

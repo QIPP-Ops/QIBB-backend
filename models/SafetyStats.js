@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const safetyStatsSchema = new mongoose.Schema({
+const safetyStatsSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   permitStatus: mongoose.Schema.Types.Mixed,
   permitType: mongoose.Schema.Types.Mixed,
   suppType: mongoose.Schema.Types.Mixed,
