@@ -2,14 +2,12 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.COSMOS_CONNECTION_STRING, {
-      ssl: true,
-      retrywrites: false,
-      maxIdleTimeMS: 120000,
-    });
-    console.log('✅ Connected to MongoDB');
+
+    // Mongoose will automatically read your Cosmos DB string from Azure!
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('✅ Connected to Azure Cosmos DB');
   } catch (err) {
-    console.error('❌ MongoDB Connection Error:', err);
+    console.error('❌ Database Connection Error:', err);
     process.exit(1);
   }
 };
