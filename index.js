@@ -12,7 +12,6 @@ const PORT = process.env.PORT || 5000;
 const requestLogger = require('./middleware/requestLogger');
 
 // Routers
-const environmentalReportRoutes = require('./routes/environmentalReportRoutes');
 const rosterRoutes = require('./routes/rosterRoutes');
 const kpiRoutes = require('./routes/kpiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -29,7 +28,6 @@ app.use(express.json());
 app.use(requestLogger);
 
 // API Routes
-app.use('/api/environmental-reports', environmentalReportRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);

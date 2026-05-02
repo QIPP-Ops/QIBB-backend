@@ -5,7 +5,6 @@ const readline = require('readline');
 
 // Models
 const PlantPerformance = require('./models/PlantPerformance');
-const EnvironmentalReport = require('./models/EnvironmentalReport');
 const SafetyPermit = require('./models/SafetyPermit');
 const SafetyJha = require('./models/SafetyJha');
 const WorkOrder = require('./models/WorkOrder');
@@ -35,7 +34,6 @@ function randomChoice(arr) {
 
 async function clearDatabase() {
   await PlantPerformance.deleteMany({});
-  await EnvironmentalReport.deleteMany({});
   await SafetyPermit.deleteMany({});
   await SafetyJha.deleteMany({});
   await WorkOrder.deleteMany({});
@@ -374,9 +372,8 @@ async function seedDemo(ptwReal) {
   }
   await AdminUser.insertMany(userDocs);
 
-  // 3. Performance & Env Data (2 Years)
+  // 3. Performance Data (2 Years)
   const kpis = [];
-  const envReports = [];
   const startDate = new Date('2024-01-01');
   for (let i = 0; i < 850; i++) {
     const date = new Date(startDate);
@@ -406,15 +403,9 @@ async function seedDemo(ptwReal) {
           { group: 'G1', unit: 'ST1', type: 'ST', load: load * 0.6, generation: generation * 0.6 }
       ]
     });
-
-    envReports.push({
-      date, so2: nox * 0.7, nox, co: 5 + Math.random() * 5, particulate: 2 + Math.random() * 2,
-      stackTemp, remarks: 'Daily monitoring completed'
-    });
   }
   await PlantPerformance.insertMany(kpis);
-  await EnvironmentalReport.insertMany(envReports);
-  console.log('✅ Demo Performance & Env Data Seeded');
+  console.log('✅ Demo Performance Data Seeded');
 
   // 4. Safety Data
   if (ptwReal) {
