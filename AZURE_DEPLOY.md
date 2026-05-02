@@ -1,24 +1,48 @@
-# Azure Deployment Notes (Backend)
+# Azure Deployment Notes (Backend API)
 
-## Required GitHub Secrets
+## Azure resources
 
-- `AZURE_WEBAPP_PUBLISH_PROFILE`: Publish profile XML from the **QIPP-Backend** Web App (download from Azure Portal → **Get publish profile**)
+- **Resource group:** `AcwaOpsQIPP` (West Europe)
+- **App Service plan:** `plan-qibb-qipp` (shared with the frontend web app `qippop`)
+- **Web App:** `qipp-api` → https://qipp-api.azurewebsites.net  
+  API routes are under `/api` (e.g. https://qipp-api.azurewebsites.net/api/auth/login).
 
-The workflow deploys to app name `QIPP-Backend` (fixed in `.github/workflows/deploy-azure-webapp.yml`).
+The workflow (`.github/workflows/deploy-azure-webapp.yml`) runs `npm ci --omit=dev` and deploys the repo root (including `node_modules`). Startup command on Azure is **`node index.js`**.
 
-## Required Azure App Settings
+## GitHub repository secret
 
-- `COSMOS_CONNECTION_STRING`
-- `JWT_SECRET`
+**`AZURE_WEBAPP_PUBLISH_PROFILE`** — publish profile XML for Web App **`qipp-api`** (not the frontend).
 
-Optional:
+```bash
+az webapp deployment list-publishing-profiles --name qipp-api --resource-group AcwaOpsQIPP --xml
+```
 
-- `ROSTER_SAS_URL`
+Paste the full XML into **this repo’s** Actions secret (`QIBB-backend`). It must not be the same profile as `qippop`.
 
-## Post-deploy checks
+## Application settings (Azure Portal or CLI)
 
-1. Verify health endpoint:
-   - `https://<your-backend-domain>/health`
-2. Seed demo users/data when needed:
-   - SSH into app and run `node /home/site/wwwroot/seed-demo.js`
-   - or run locally with the same `COSMOS_CONNECTION_STRING`
+Configure these on **Web App → Configuration → Application settings** (do not commit real values to git):
+
+| Name | Purpose |
+|------|---------|
+| **`COSMOS_CONNECTION_STRING`** | MongoDB connection string for Cosmos DB for MongoDB API (`mongoose` uses this in `config/db.js`). |
+| **`JWT_SECRET`** | Secret for signing JWTs (same variable name as local `.env`). |
+
+`PORT` is provided by App Service; do not override unless you know you need to.
+
+### Cosmos networking
+
+If the database rejects connections, open **Cosmos DB → Networking** and allow access from Azure or add the App Service **outbound IP addresses** (shown under Web App **Properties**) to the firewall allowlist.
+
+## Frontend pairing
+
+The frontend repo secret **`NEXT_PUBLIC_API_URL`** should match this API base URL, including `/api`:
+
+`https://qipp-api.azurewebsites.net/api`
+
+Redeploy the frontend after changing it.
+
+## Checks after deploy
+
+1. `GET https://qipp-api.azurewebsites.net/health` → JSON with status UP  
+2. Exercise login from the deployed frontend against the API URL above.
