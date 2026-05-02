@@ -72,6 +72,7 @@ async function seedReal() {
       role: p.role,
       color: p.color || 'crew-grey',
       accessRole: 'viewer',
+      isApproved: true,
       leaves: p.leaves.map(l => ({
         start: new Date(l.start),
         end: new Date(l.end),
@@ -91,7 +92,8 @@ async function seedReal() {
     crew: 'S',
     role: 'Management',
     accessRole: 'admin',
-    color: 'crew-lightviolet'
+    color: 'crew-lightviolet',
+    isApproved: true
   }).save();
   console.log('✅ Personnel & Admin Seeded');
 
@@ -343,7 +345,7 @@ async function seedDemo(ptwReal) {
   await new AdminUser({
     name: 'System Administrator', email: 'ops.admin@acwapower.com', empId: 'ADMIN-001',
     crew: 'S', role: 'Management', color: 'crew-lightviolet', leaves: [],
-    passwordHash: adminPasswordHash, accessRole: 'admin'
+    passwordHash: adminPasswordHash, accessRole: 'admin', isApproved: true
   }).save();
 
   // 2. 99 Users
@@ -366,6 +368,7 @@ async function seedDemo(ptwReal) {
       color: randomChoice(colors),
       passwordHash: viewerPasswordHash,
       accessRole: 'viewer',
+      isApproved: true,
       leaves: []
     });
   }

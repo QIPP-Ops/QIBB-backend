@@ -15,7 +15,8 @@ const AdminUserSchema = new mongoose.Schema({ // TODO: COSMOS_COMPAT_CHECK
   role: { type: String, required: true },
   color: { type: String, default: 'crew-grey' },
   leaves: [LeaveSchema],
-  accessRole: { type: String, enum: ['admin', 'viewer'], default: 'viewer' }
+  accessRole: { type: String, enum: ['admin', 'viewer'], default: 'viewer' },
+  isApproved: { type: Boolean, default: false }
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminUser', AdminUserSchema);

@@ -1,4 +1,5 @@
 const AdminConfig = require('../models/AdminConfig');
+const AdminUser = require('../models/AdminUser');
 const bcrypt = require('bcryptjs');
 
 exports.getStatus = async (req, res) => {
@@ -119,5 +120,58 @@ exports.removeRole = async (req, res) => {
     res.json(config.availableRoles);
   } catch (err) {
     res.status(500).json({ message: 'Error removing role', error: err.message });
+  }
+};
+
+// User Management
+exports.getPendingUsers = async (req, res) => {
+  try {
+    const users = await AdminUser.find({ isApproved: false }).select('-passwordHash');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching pending users', error: err.message });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await AdminUser.find().select('-passwordHash');
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching users', error: err.message });
+  }
+};
+
+exports.approveUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await AdminUser.findByIdAndUpdate(id, { isApproved: true }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    res.json({ message: 'User approved.', user });
+  } catch (err) {
+    res.status(500).json({ message: 'Error approving user', error: err.message });
+  }
+};
+
+exports.rejectUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await AdminUser.findByIdAndDelete(id);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    res.json({ message: 'User rejected and removed.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error rejecting user', error: err.message });
+  }
+};
+
+exports.updateUserRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { accessRole } = req.body;
+    const user = await AdminUser.findByIdAndUpdate(id, { accessRole }, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    res.json({ message: 'User role updated.', user });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating user role', error: err.message });
   }
 };

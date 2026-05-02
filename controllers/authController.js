@@ -9,6 +9,13 @@ exports.register = async (req, res) => {
     return res.status(400).json({ message: 'All personnel fields are required.' });
   }
 
+  // Domain restriction
+  const allowedDomains = ['acwapower.com', 'nomac.com'];
+  const domain = email.split('@')[1];
+  if (!allowedDomains.includes(domain)) {
+    return res.status(403).json({ message: 'Only @acwapower.com and @nomac.com emails are allowed.' });
+  }
+
   try {
     const existing = await AdminUser.findOne({ $or: [{ email }, { empId }] });
     if (existing) {
@@ -27,11 +34,12 @@ exports.register = async (req, res) => {
       role,
       color: color || 'crew-grey',
       accessRole: accessRole || 'viewer',
-      leaves: []
+      leaves: [],
+      isApproved: false // Explicitly set to false
     });
     
     await user.save();
-    res.status(201).json({ message: 'Personnel registered successfully.', role: user.accessRole });
+    res.status(201).json({ message: 'Personnel registered successfully. Pending admin approval.', role: user.accessRole });
   } catch (error) {
     res.status(500).json({ message: 'Error registering personnel.', error: error.message });
   }
@@ -43,6 +51,10 @@ exports.login = async (req, res) => {
     const user = await AdminUser.findOne({ email });
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
     
+    if (!user.isApproved) {
+      return res.status(403).json({ message: 'Your account is pending admin approval.' });
+    }
+
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials.' });
     

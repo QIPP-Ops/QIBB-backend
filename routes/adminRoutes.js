@@ -15,4 +15,11 @@ router.delete('/crews/:crew', protect, admin, adminController.removeCrew);
 router.post('/roles', protect, admin, adminController.addRole);
 router.delete('/roles/:role', protect, admin, adminController.removeRole);
 
+// User Management Routes
+router.get('/users', protect, admin, adminController.getAllUsers);
+router.get('/users/pending', protect, admin, adminController.getPendingUsers);
+router.put('/users/:id/approve', protect, admin, adminController.approveUser);
+router.delete('/users/:id/reject', protect, admin, adminController.rejectUser);
+router.put('/users/:id/role', protect, admin, adminController.updateUserRole);
+
 module.exports = router;
