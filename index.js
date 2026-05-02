@@ -18,6 +18,7 @@ const kpiRoutes = require('./routes/kpiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const safetyRoutes = require('./routes/safetyRoutes');
+const roReportRoutes = require('./routes/roReportRoutes');
 
 app.use(cors({
   origin: '*',
@@ -34,6 +35,7 @@ app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/safety', safetyRoutes);
+app.use('/api/ro-reports', roReportRoutes);
 
 
 // Database Connection
