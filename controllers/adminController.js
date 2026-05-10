@@ -179,3 +179,31 @@ exports.updateUserRole = async (req, res) => {
     res.json({ message: 'Role updated.', user });
   } catch (err) { res.status(500).json({ message: err.message }); }
 };
+exports.getPtwPersonnel = async (req, res) => {
+  try {
+    const config = await AdminConfig.findOne();
+    res.json(config?.ptwPersonnel || []);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+exports.addPtwPerson = async (req, res) => {
+  try {
+    const config = await AdminConfig.findOneAndUpdate({}, { $push: { ptwPersonnel: req.body } }, { new: true, upsert: true });
+    res.json(config.ptwPersonnel);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+exports.updatePtwPerson = async (req, res) => {
+  try {
+    const config = await AdminConfig.findOne();
+    const person = config.ptwPersonnel.id(req.params.id);
+    if (!person) return res.status(404).json({ message: 'Not found' });
+    Object.assign(person, req.body);
+    await config.save();
+    res.json(config.ptwPersonnel);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
+exports.deletePtwPerson = async (req, res) => {
+  try {
+    const config = await AdminConfig.findOneAndUpdate({}, { $pull: { ptwPersonnel: { _id: req.params.id } } }, { new: true });
+    res.json(config.ptwPersonnel);
+  } catch (err) { res.status(500).json({ message: err.message }); }
+};
