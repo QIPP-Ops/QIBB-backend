@@ -3,6 +3,11 @@ const router = express.Router();
 const c = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
+// PTW
+router.get('/ptw', adminController.getPtwPersonnel);
+router.post('/ptw', protect, admin, adminController.addPtwPerson);
+router.patch('/ptw/:id', protect, admin, adminController.updatePtwPerson);
+router.delete('/ptw/:id', protect, admin, adminController.deletePtwPerson);
 router.get('/status', c.getStatus);
 router.get('/config', c.getConfig);
 router.patch('/config', protect, admin, c.updateConfig);
