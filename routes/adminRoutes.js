@@ -1,18 +1,30 @@
 const express = require('express');
 const router = express.Router();
-const adminController = require('../controllers/adminController');
+const c = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/auth');
 
-router.get('/status', adminController.getStatus);
-router.post('/set-pin', protect, admin, adminController.setPin);
-router.post('/check-pin', adminController.checkPin);
-router.post('/set-lock', protect, admin, adminController.setLock);
-
-// Dynamic Config Routes
-router.get('/config', adminController.getConfig);
-router.post('/crews', protect, admin, adminController.addCrew);
-router.delete('/crews/:crew', protect, admin, adminController.removeCrew);
-router.post('/roles', protect, admin, adminController.addRole);
-router.delete('/roles/:role', protect, admin, adminController.removeRole);
-
+router.get('/status', c.getStatus);
+router.get('/config', c.getConfig);
+router.patch('/config', protect, admin, c.updateConfig);
+router.post('/set-pin', protect, admin, c.setPin);
+router.post('/check-pin', c.checkPin);
+router.post('/set-lock', protect, admin, c.setLock);
+router.post('/crews', protect, admin, c.addCrew);
+router.delete('/crews/:crew', protect, admin, c.removeCrew);
+router.post('/roles', protect, admin, c.addRole);
+router.delete('/roles/:role', protect, admin, c.removeRole);
+// Achievements
+router.get('/achievements', c.getAchievements);
+router.post('/achievements', protect, admin, c.addAchievement);
+router.patch('/achievements/:id', protect, admin, c.updateAchievement);
+router.delete('/achievements/:id', protect, admin, c.deleteAchievement);
+// KPI Templates
+router.get('/kpi-templates', c.getKpiTemplates);
+router.post('/kpi-templates', protect, admin, c.upsertKpiTemplate);
+// Users
+router.get('/users', protect, admin, c.getAllUsers);
+router.get('/users/pending', protect, admin, c.getPendingUsers);
+router.put('/users/:id/approve', protect, admin, c.approveUser);
+router.delete('/users/:id/reject', protect, admin, c.rejectUser);
+router.put('/users/:id/role', protect, admin, c.updateUserRole);
 module.exports = router;
