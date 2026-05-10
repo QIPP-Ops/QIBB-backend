@@ -1,0 +1,33 @@
+schedules:
+  - cron: "0 */3 * * *"        # every 3 hours
+    displayName: "ETL every 3h"
+    branches:
+      include:
+        - main
+    always: true               # run even if no code changes
+
+trigger: none                  # don't run on every commit
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: qipp-etl-secrets    # variable group (see step 2 below)
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: "3.11"
+
+  - script: |
+      pip install pymongo pandas openpyxl
+    displayName: "Install dependencies"
+
+  - script: |
+      cd QIBB-backend
+      python etl/run_all_etl.py
+    displayName: "Run QIPP ETL"
+    env:
+      COSMOS_MONGO_URI: $(COSMOS_MONGO_URI)
+      COSMOS_DB_NAME:   $(COSMOS_DB_NAME)
+      DATA_ROOT:        $(DATA_ROOT)
