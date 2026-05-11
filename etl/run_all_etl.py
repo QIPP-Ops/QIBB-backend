@@ -1,42 +1,45 @@
 # run_all_etl.py
 import logging
+import subprocess
 import sys
+import os
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-def run_etl(name, module):
-    logger.info(f"{'='*50}")
+ETL_DIR = Path(__file__).parent
+
+ETLS = [
+    ("Water Balance",          "etl_water_balance.py"),
+    ("Daily Energy Hourly",    "etl_energy_hourly.py"),
+    ("GT Air Intake Filters",  "etl_gt_air_filter.py"),
+    ("GT Fuel Gas Filters",    "etl_gt_fg_filter.py"),
+    ("RO / HRSG Chemistry",    "etl_ro_hrsg.py"),
+    ("Daily Operation Report", "etl_daily_operation.py"),
+]
+
+def run_etl(name, filename):
+    logger.info("=" * 50)
     logger.info(f"Starting ETL: {name}")
-    try:
-        module.run()
-        logger.info(f"Completed ETL: {name}")
-    except Exception as e:
-        logger.error(f"FAILED ETL: {name} - {e}")
-        raise
+    script = ETL_DIR / filename
+    env = os.environ.copy()
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        env=env,
+        capture_output=False
+    )
+    if result.returncode != 0:
+        logger.error(f"FAILED ETL: {name} (exit code {result.returncode})")
+        return False
+    logger.info(f"Completed ETL: {name}")
+    return True
 
 if __name__ == "__main__":
-    import etl_water_balance
-    import etl_energy_hourly
-    import etl_gt_air_filter
-    import etl_gt_fg_filter
-    import etl_ro_hrsg
-    import etl_daily_operation
-
-    etls = [
-        ("Water Balance",          etl_water_balance),
-        ("Daily Energy Hourly",    etl_energy_hourly),
-        ("GT Air Intake Filters",  etl_gt_air_filter),
-        ("GT Fuel Gas Filters",    etl_gt_fg_filter),
-        ("RO / HRSG Chemistry",    etl_ro_hrsg),
-        ("Daily Operation Report", etl_daily_operation),
-    ]
-
     failed = []
-    for name, module in etls:
-        try:
-            run_etl(name, module)
-        except Exception:
+    for name, filename in ETLS:
+        ok = run_etl(name, filename)
+        if not ok:
             failed.append(name)
 
     if failed:
