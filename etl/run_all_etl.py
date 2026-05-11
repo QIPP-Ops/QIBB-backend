@@ -12,24 +12,24 @@ def run_etl(name, module):
         module.run()
         logger.info(f"Completed ETL: {name}")
     except Exception as e:
-        logger.error(f"FAILED ETL: {name} — {e}")
+        logger.error(f"FAILED ETL: {name} - {e}")
         raise
 
 if __name__ == "__main__":
     import etl_water_balance
-    import etl_daily_energy_hourly
-    import etl_gt_air_intake_filters
-    import etl_gt_fuel_gas_filters
-    import etl_ro_hrsg_chemistry
+    import etl_energy_hourly
+    import etl_gt_air_filter
+    import etl_gt_fg_filter
+    import etl_ro_hrsg
     import etl_daily_operation
 
     etls = [
-        ("Water Balance",           etl_water_balance),
-        ("Daily Energy Hourly",     etl_daily_energy_hourly),
-        ("GT Air Intake Filters",   etl_gt_air_intake_filters),
-        ("GT Fuel Gas Filters",     etl_gt_fuel_gas_filters),
-        ("RO / HRSG Chemistry",     etl_ro_hrsg_chemistry),
-        ("Daily Operation Report",  etl_daily_operation),
+        ("Water Balance",          etl_water_balance),
+        ("Daily Energy Hourly",    etl_energy_hourly),
+        ("GT Air Intake Filters",  etl_gt_air_filter),
+        ("GT Fuel Gas Filters",    etl_gt_fg_filter),
+        ("RO / HRSG Chemistry",    etl_ro_hrsg),
+        ("Daily Operation Report", etl_daily_operation),
     ]
 
     failed = []
