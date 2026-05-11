@@ -1,50 +1,35 @@
 # sync_blob.py
-# Downloads Excel files modified in the last 3 hours
-# from Azure Blob Storage (container: report) into DATA_ROOT
-#
-# Required env vars:
-#   BLOB_SAS_URL  — full Blob Service SAS URL
-#   DATA_ROOT     — local folder to download files into
-
 import os
+import logging
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-
 from azure.storage.blob import BlobServiceClient
 
-BLOB_SAS_URL = os.environ["BLOB_SAS_URL"]
-CONTAINER    = "report"
-DATA_ROOT    = Path(os.environ.get("DATA_ROOT", "./data"))
-LOOKBACK_HRS = 3
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
 
-DATA_ROOT.mkdir(parents=True, exist_ok=True)
+BLOB_SAS_URL   = os.environ["BLOB_SAS_URL"]
+CONTAINER_NAME = "report"
+LOCAL_DIR      = Path("./data")
 
-
-def sync():
+def run():
+    LOCAL_DIR.mkdir(exist_ok=True)
     client    = BlobServiceClient(account_url=BLOB_SAS_URL)
-    container = client.get_container_client(CONTAINER)
-    cutoff    = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HRS)
+    container = client.get_container_client(CONTAINER_NAME)
 
-    downloaded = 0
-    for blob in container.list_blobs():
-        # Only xlsx files modified in the last 3 hours
-        if not blob.name.endswith(".xlsx"):
+    blobs = list(container.list_blobs())
+    logger.info(f"Found {len(blobs)} blobs in '{CONTAINER_NAME}'.")
+
+    for blob in blobs:
+        dest = LOCAL_DIR / blob.name.replace("/", "_")
+        if dest.exists():
+            logger.info(f"  Skipping (already exists): {blob.name}")
             continue
-        if blob.last_modified < cutoff:
-            continue
+        logger.info(f"  Downloading: {blob.name}")
+        data = container.download_blob(blob.name).readall()
+        dest.write_bytes(data)
+        logger.info(f"  Saved: {dest}")
 
-        out_path = DATA_ROOT / blob.name
-        blob_client = container.get_blob_client(blob.name)
-        with open(out_path, "wb") as f:
-            f.write(blob_client.download_blob().readall())
-        print(f"Downloaded: {blob.name} (modified: {blob.last_modified})")
-        downloaded += 1
-
-    if downloaded == 0:
-        print("No new files found in the last 3 hours")
-    else:
-        print(f"Sync complete — {downloaded} file(s) downloaded")
-
+    logger.info("Sync complete.")
 
 if __name__ == "__main__":
-    sync()
+    run()
