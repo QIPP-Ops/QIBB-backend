@@ -34,6 +34,10 @@ app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/safety', safetyRoutes);
+app.use('/api/water-balance',    require('./routes/waterBalanceRoutes'));
+app.use('/api/energy',           require('./routes/energyRoutes'));
+app.use('/api/gt-filter',        require('./routes/gtFilterRoutes'));
+app.use('/api/daily-operation',  require('./routes/dailyOperationRoutes'));
 
 
 // Database Connection
