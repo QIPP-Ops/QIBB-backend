@@ -1,12 +1,12 @@
 # azure-pipelines-etl.yml
 # Runs every 3 hours:
-#   Step 1 — Download new Excel files from Blob Storage
-#   Step 2 — Run ETL to write data into Cosmos DB
+#   Step 1 - Download new Excel files from Blob Storage
+#   Step 2 - Run ETL to write data into Cosmos DB
 #
 # Variable group "qipp-etl-secrets" must contain:
-#   BLOB_SAS_URL      — Blob Service SAS URL (secret)
-#   COSMOS_MONGO_URI  — Cosmos DB connection string (secret)
-#   COSMOS_DB_NAME    — e.g. qipp_ops
+#   BLOB_SAS_URL      - Blob Service SAS URL (secret)
+#   COSMOS_MONGO_URI  - Cosmos DB connection string (secret)
+#   COSMOS_DB_NAME    - e.g. qipp_ops
 
 schedules:
   - cron: "0 */3 * * *"
@@ -24,7 +24,7 @@ pool:
 variables:
   - group: qipp-etl-secrets
   - name: DATA_ROOT
-      value: "$(System.DefaultWorkingDirectory)/data"
+    value: "$(System.DefaultWorkingDirectory)/data"
 
 steps:
   - task: UsePythonVersion@0
@@ -37,17 +37,17 @@ steps:
     displayName: "Install dependencies"
 
   - script: |
-      cd $(System.DefaultWorkingDirectory)/QIBB-backend
-      python etl/sync_blob.py
-    displayName: "Step 1 — Sync Excel files from Blob Storage"
+      cd $(System.DefaultWorkingDirectory)/etl
+      python sync_blob.py
+    displayName: "Step 1 - Sync Excel files from Blob Storage"
     env:
       BLOB_SAS_URL: $(BLOB_SAS_URL)
       DATA_ROOT:    $(DATA_ROOT)
 
   - script: |
-      cd $(System.DefaultWorkingDirectory)/QIBB-backend
-      python etl/run_all_etl.py
-    displayName: "Step 2 — ETL to Cosmos DB"
+      cd $(System.DefaultWorkingDirectory)/etl
+      python run_all_etl.py
+    displayName: "Step 2 - ETL to Cosmos DB"
     env:
       COSMOS_MONGO_URI: $(COSMOS_MONGO_URI)
       COSMOS_DB_NAME:   $(COSMOS_DB_NAME)
