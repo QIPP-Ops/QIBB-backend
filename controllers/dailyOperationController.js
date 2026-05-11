@@ -48,6 +48,25 @@ exports.getSummary = async (req, res) => {
   }
 };
 
+// This function finds the single latest report to show as the KPI cards
+exports.getKpis = async (req, res) => {
+  try {
+    // We sort by date (-1 means newest first) and take only 1 record
+    const latest = await DailyOperation.findOne().sort({ report_date: -1 });
+    
+    res.status(200).json({
+      success: true,
+      data: latest
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Could not fetch Daily Ops KPIs",
+      error: error.message
+    });
+  }
+};
+
 exports.getKpis = async (req, res) => {
   try {
     const latest = await DailyOperation.findOne().sort({ report_date: -1 });
