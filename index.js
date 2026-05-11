@@ -6,8 +6,6 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use('/api/trends', require('./routes/trendsRoutes'));
-
 // Middleware
 const requestLogger = require('./middleware/requestLogger');
 
@@ -18,6 +16,11 @@ const kpiRoutes = require('./routes/kpiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const safetyRoutes = require('./routes/safetyRoutes');
+const trendsRoutes = require('./routes/trendsRoutes');
+const waterBalanceRoutes = require('./routes/waterBalanceRoutes');
+const energyRoutes = require('./routes/energyRoutes');
+const gtFilterRoutes = require('./routes/gtFilterRoutes');
+const dailyOperationRoutes = require('./routes/dailyOperationRoutes');
 
 app.use(cors({
   origin: '*',
@@ -28,28 +31,21 @@ app.use(express.json());
 app.use(requestLogger);
 
 // API Routes
+app.use('/api/trends', trendsRoutes);
 app.use('/api/environmental-reports', environmentalReportRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/safety', safetyRoutes);
-app.use('/api/water-balance',    require('./routes/waterBalanceRoutes'));
-app.use('/api/energy',           require('./routes/energyRoutes'));
-app.use('/api/gt-filter',        require('./routes/gtFilterRoutes'));
-app.use('/api/daily-operation',  require('./routes/dailyOperationRoutes'));
+app.use('/api/water-balance', waterBalanceRoutes);
+app.use('/api/energy', energyRoutes);
+app.use('/api/gt-filter', gtFilterRoutes);
+app.use('/api/daily-operation', dailyOperationRoutes);
 
-
-// Database Connection
-const connectDB = require('./config/db');
-connectDB();
-
-// Health Check
-app.get('/health', (req, res) => {
-  res.json({ status: 'UP', timestamp: new Date() });
-});
-
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Backend Server running on http://localhost:${PORT}`);
-});
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
