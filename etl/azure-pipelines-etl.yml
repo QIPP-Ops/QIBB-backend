@@ -24,7 +24,7 @@ pool:
 variables:
   - group: qipp-etl-secrets
   - name: DATA_ROOT
-    value: "$(System.DefaultWorkingDirectory)/QIBB-backend/data"
+      value: "$(System.DefaultWorkingDirectory)/data"
 
 steps:
   - task: UsePythonVersion@0
