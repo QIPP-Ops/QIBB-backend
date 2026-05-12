@@ -1,5 +1,5 @@
 # azure-pipelines-etl.yml
-# Runs every 3 hours:
+# Runs every 3 hours OR on code push to main:
 #   Step 1 - Download new Excel files from Blob Storage
 #   Step 2 - Run ETL to write data into Cosmos DB
 #
@@ -7,6 +7,7 @@
 #   BLOB_SAS_URL      - Blob Service SAS URL (secret)
 #   COSMOS_MONGO_URI  - Cosmos DB connection string (secret)
 #   COSMOS_DB_NAME    - e.g. qipp_ops
+#   JWT_SECRET        - Needed for auth/token generation (secret)
 
 schedules:
   - cron: "0 */3 * * *"
@@ -16,7 +17,8 @@ schedules:
         - main
     always: true
 
-trigger: none
+trigger:
+  - main
 
 pool:
   vmImage: "ubuntu-latest"
@@ -43,6 +45,7 @@ steps:
     env:
       BLOB_SAS_URL: $(BLOB_SAS_URL)
       DATA_ROOT:    $(DATA_ROOT)
+      JWT_SECRET:   $(JWT_SECRET)
 
   - script: |
       cd $(System.DefaultWorkingDirectory)/etl
@@ -52,3 +55,4 @@ steps:
       COSMOS_MONGO_URI: $(COSMOS_MONGO_URI)
       COSMOS_DB_NAME:   $(COSMOS_DB_NAME)
       DATA_ROOT:        $(DATA_ROOT)
+      JWT_SECRET:       $(JWT_SECRET)
