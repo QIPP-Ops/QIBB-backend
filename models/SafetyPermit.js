@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
 
-const SafetyPermitSchema = new mongoose.Schema({
+const ptwSchema = new mongoose.Schema({
   permitId: { type: String, required: true, unique: true },
   type: { 
     type: String, 
     required: true,
-    enum: ['Hot Work', 'Cold Work', 'Confined Space', 'Working at Height', 'Electrical Isolation', 'General']
+    enum: ['Hot Work', 'Lifting', 'Confined Space', 'Working at Height', 'Diving', 'Live', 'Access', 'Electrical Isolation', 'General']
   },
   status: { 
     type: String, 
     required: true,
-    enum: ['Pending', 'Active', 'Suspended', 'Closed'],
-    default: 'Pending'
+    enum: ['Prepared', 'Issued', 'Suspended', 'Closed'],
+    default: 'Prepared'
   },
   location: { type: String, required: true },
   description: { type: String, required: true },
@@ -22,4 +22,4 @@ const SafetyPermitSchema = new mongoose.Schema({
   validTo: { type: Date, required: true }
 }, { timestamps: true });
 
-module.exports = mongoose.model('SafetyPermit', SafetyPermitSchema);
+module.exports = mongoose.model('PTW', PTWSchema);
