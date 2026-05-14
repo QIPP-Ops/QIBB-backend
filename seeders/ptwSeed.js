@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 const AdminConfig = require('../models/AdminConfig');
 
-
 const PTW_PERSONNEL = [
   // SCE
   { name: 'Abdullah Alamri', designation: 'SCE', empNo: '', authorizations: ['safetyCoordinator','safetyControllerB','permitIssuer','isolationAuthority','voltageLow','voltageHigh'], validUntil: '' },
