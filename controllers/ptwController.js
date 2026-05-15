@@ -1,8 +1,8 @@
-const SafetyPermit = require('../models/SafetyPermit');
+const PTW = require('../models/PTW');
 
 exports.getAllPermits = async (req, res) => {
   try {
-    const permits = await SafetyPermit.find().sort({ createdAt: -1 });
+    const permits = await PTW.find().sort({ createdAt: -1 });
     res.json(permits);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -16,7 +16,7 @@ exports.createPermit = async (req, res) => {
     if (!permitData.permitId) {
       permitData.permitId = `PTW-${Math.floor(1000 + Math.random() * 9000)}`;
     }
-    const permit = new SafetyPermit(permitData);
+    const permit = new PTW(permitData);
     const newPermit = await permit.save();
     res.status(201).json(newPermit);
   } catch (error) {
@@ -29,7 +29,7 @@ exports.updatePermitStatus = async (req, res) => {
     const { id } = req.params;
     const { status, authorizedBy } = req.body;
     
-    const permit = await SafetyPermit.findByIdAndUpdate(
+    const permit = await PTW.findByIdAndUpdate(
       id, 
       { status, authorizedBy }, 
       { new: true }
@@ -45,7 +45,7 @@ exports.updatePermitStatus = async (req, res) => {
 exports.deletePermit = async (req, res) => {
   try {
     const { id } = req.params;
-    const permit = await SafetyPermit.findByIdAndDelete(id);
+    const permit = await PTW.findByIdAndDelete(id);
     if (!permit) return res.status(404).json({ message: 'Permit not found' });
     res.json({ message: 'Permit deleted' });
   } catch (error) {
