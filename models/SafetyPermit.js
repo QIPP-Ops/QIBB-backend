@@ -5,7 +5,7 @@ const ptwSchema = new mongoose.Schema({
   type: { 
     type: String, 
     required: true,
-    enum: ['Hot Work', 'Lifting', 'Confined Space', 'Working at Height', 'Diving', 'Live', 'Access', 'Electrical Isolation', 'General']
+    enum: ['Hot Work', 'Lifting', 'Confined Space', 'Working at Height', 'Diving', 'Live', 'Access', 'Standard', 'ROSH']
   },
   status: { 
     type: String, 
