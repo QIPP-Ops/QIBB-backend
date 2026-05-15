@@ -1,14 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const safetyController = require('../controllers/safetyController');
+const ptwController = require('../controllers/ptwController');
 const { protect } = require('../middleware/auth');
 
-// GET is public so it can be seen on the dashboard/safety page without login
-router.get('/', safetyController.getAllPermits);
+
+router.get('/', ptwController.getAllPermits);
 
 // Mutations require protection
-router.post('/', protect, safetyController.createPermit);
-router.patch('/:id', protect, safetyController.updatePermitStatus);
-router.delete('/:id', protect, safetyController.deletePermit);
+router.post('/', protect, ptwController.createPermit);
+router.patch('/:id', protect, ptwController.updatePermitStatus);
+router.delete('/:id', protect, ptwController.deletePermit);
 
 module.exports = router;
