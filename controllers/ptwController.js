@@ -11,14 +11,24 @@ exports.getAllPermits = async (req, res) => {
 
 exports.createPermit = async (req, res) => {
   try {
-    const permitData = req.body;
-    // Generate a simple Permit ID if not provided (e.g. PTW-12345)
+    const permitData = { ...req.body };
+
     if (!permitData.permitId) {
-      permitData.permitId = `PTW-${Math.floor(1000 + Math.random() * 9000)}`;
+      permitData.permitId = `PTW-${Date.now().toString().slice(-6)}`;
     }
+    if (!permitData.status) {
+      permitData.status = 'Pending';
+    }
+    if (!permitData.validFrom) {
+      permitData.validFrom = new Date();
+    }
+    if (!permitData.validTo) {
+      permitData.validTo = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    }
+
     const permit = new PTW(permitData);
-    const newPermit = await permit.save();
-    res.status(201).json(newPermit);
+    const saved = await permit.save();
+    res.status(201).json(saved);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -27,14 +37,9 @@ exports.createPermit = async (req, res) => {
 exports.updatePermitStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, authorizedBy } = req.body;
-    
-    const permit = await PTW.findByIdAndUpdate(
-      id, 
-      { status, authorizedBy }, 
-      { new: true }
-    );
-    
+    const updates = req.body || {};
+
+    const permit = await PTW.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!permit) return res.status(404).json({ message: 'Permit not found' });
     res.json(permit);
   } catch (error) {
