@@ -1,13 +1,25 @@
 const DailyOperation = require('../models/DailyOperation');
 
+// Choose which collection model to use for "main" queries.
+// Default to DailyOpSummary (plant-level data).
+const Model = DailyOperation.DailyOpSummary;
+
 exports.getLatest = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
+    const days = parseInt(req.query.days, 10) || 30;
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const data = await DailyOperation.find({ report_date: { $gte: since } })
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const data = await Model.find({
+      $or: [
+        { report_date: { $gte: sinceStr } },
+        { report_date: { $gte: since } }
+      ]
+    })
       .sort({ report_date: -1 })
       .limit(200);
+
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching daily operation data' });
@@ -17,7 +29,7 @@ exports.getLatest = async (req, res) => {
 exports.getByDate = async (req, res) => {
   try {
     const { date } = req.query;
-    const data = await DailyOperation.find({ report_date: new Date(date) });
+    const data = await Model.find({ report_date: date });
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching daily operation data' });
@@ -26,51 +38,44 @@ exports.getByDate = async (req, res) => {
 
 exports.getSummary = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
+    const days = parseInt(req.query.days, 10) || 30;
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const data = await DailyOperation.aggregate([
-      { $match: { report_date: { $gte: since } } },
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const data = await Model.aggregate([
+      {
+        $match: {
+          $or: [
+            { report_date: { $gte: sinceStr } },
+            { report_date: { $gte: since } }
+          ]
+        }
+      },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$report_date' } },
+          _id: '$report_date',
           avgProductionRate: { $avg: '$production_rate' },
-          totalProduction: { $sum: '$daily_production' },
-          avgEfficiency: { $avg: '$efficiency_percent' },
-          count: { $sum: 1 },
-        },
+          totalProduction:   { $sum: '$daily_production' },
+          avgEfficiency:     { $avg: '$efficiency_percent' },
+          count:             { $sum: 1 }
+        }
       },
-      { $sort: { _id: -1 } },
+      { $sort: { _id: -1 } }
     ]);
+
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching daily operation summary' });
   }
 };
 
-// This function finds the single latest report to show as the KPI cards
 exports.getKpis = async (req, res) => {
   try {
-    // We sort by date (-1 means newest first) and take only 1 record
-    const latest = await DailyOperation.findOne().sort({ report_date: -1 });
-    
-    res.status(200).json({
-      success: true,
-      data: latest
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Could not fetch Daily Ops KPIs",
-      error: error.message
-    });
-  }
-};
-
-exports.getKpis = async (req, res) => {
-  try {
-    const latest = await DailyOperation.findOne().sort({ report_date: -1 });
-    if (!latest) return res.status(404).json({ success: false, message: 'No data found' });
+    const latest = await Model.findOne().sort({ report_date: -1 });
+    if (!latest) {
+      return res.status(404).json({ success: false, message: 'No data found' });
+    }
     res.json({ success: true, data: latest });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching KPIs' });
