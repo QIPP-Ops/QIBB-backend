@@ -6,7 +6,7 @@ const AchievementSchema = new mongoose.Schema({
   date:   { type: Date, default: Date.now },
   icon:   { type: String, default: 'award' },
   empId:  { type: String, default: '' }
-});
+}, { _id: true });
 
 const CurriculumItemSchema = new mongoose.Schema({
   category:    { type: String, required: true },
@@ -16,18 +16,16 @@ const CurriculumItemSchema = new mongoose.Schema({
   duration:    { type: String, default: '' },
 }, { timestamps: true });
 
-const KpiTemplateSchema = new mongoose.Schema({
-  role:  { type: String, required: true },
-  goals: [{ type: String }]
-});
-
+// Flexible PTW personnel schema — supports both the simple {empId,name,role,can...}
+// format AND the matrix format {name,designation,empNo,authorizations[],...}
 const PtwPersonnelSchema = new mongoose.Schema({
-  empId:          { type: String, default: '' },
   name:           { type: String, required: true },
   designation:    { type: String, default: '' },
   empNo:          { type: String, default: '' },
+  empId:          { type: String, default: '' },
   role:           { type: String, default: '' },
   crew:           { type: String, default: '' },
+  department:     { type: String, default: '' },
   authorizations: { type: [String], default: [] },
   validUntil:     { type: String, default: '' },
   remarks:        { type: String, default: '' },
@@ -35,13 +33,16 @@ const PtwPersonnelSchema = new mongoose.Schema({
   canReceive:     { type: Boolean, default: false },
   canApprove:     { type: Boolean, default: false },
   canPerform:     { type: Boolean, default: false },
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
+
+const KpiTemplateSchema = new mongoose.Schema({
+  role:  { type: String, required: true },
+  goals: [{ type: String }]
+}, { _id: true });
 
 const AdminConfigSchema = new mongoose.Schema({
-  pinHash:                 { type: String, default: '' },
-  editingLocked:           { type: Boolean, default: false },
-  globalKpiEditingAllowed: { type: Boolean, default: true },
-  shiftCycleBaseDate:      { type: String, default: '2026-01-01' },
+  pinHash:        { type: String, default: '' },
+  editingLocked:  { type: Boolean, default: false },
   availableCrews: {
     type: [String],
     default: ['A', 'B', 'C', 'D', 'General', 'S']
@@ -50,19 +51,22 @@ const AdminConfigSchema = new mongoose.Schema({
     type: [String],
     default: [
       'Shift in Charge Engineer',
+      'Shift in Charge',
       'Supervisor',
       'CCR Operator',
       'Local Operator',
       'Field Operator',
+      'Filed Operator',
       'Management',
       'Operations Support'
     ]
   },
-  achievements:  { type: [AchievementSchema],    default: [] },
-  curriculum:    { type: [CurriculumItemSchema], default: [] },
-  kpiTemplates:  { type: [KpiTemplateSchema],    default: [] },
-  ptwPersonnel:  { type: [PtwPersonnelSchema],   default: [] },
+  curriculum:              { type: [CurriculumItemSchema], default: [] },
+  ptwPersonnel:            { type: [PtwPersonnelSchema],   default: [] },
+  achievements:            { type: [AchievementSchema],    default: [] },
+  kpiTemplates:            { type: [KpiTemplateSchema],    default: [] },
+  globalKpiEditingAllowed: { type: Boolean, default: true },
+  shiftCycleBaseDate:      { type: String,  default: '2026-01-01' }
 }, { timestamps: true });
 
-module.exports = mongoose.models.AdminConfig ||
-  mongoose.model('AdminConfig', AdminConfigSchema);
+module.exports = mongoose.model('AdminConfig', AdminConfigSchema);
