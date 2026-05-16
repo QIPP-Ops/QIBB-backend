@@ -2,7 +2,7 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
 const bcrypt      = require('bcryptjs');
 
-// ─── Status / PIN / Lock ──────────────────────────────────────────────────────
+// ─── Status / PIN / Lock ─────────────────────────────────────────────────────
 
 exports.getStatus = async (req, res) => {
   try {
@@ -43,7 +43,7 @@ exports.checkPin = async (req, res) => {
   try {
     const { pin } = req.body;
     const config = await AdminConfig.findOne();
-    if (!config) return res.status(404).json({ message: 'No PIN set.' });
+    if (!config || !config.pinHash) return res.status(404).json({ message: 'No PIN set.' });
     const valid = await bcrypt.compare(pin, config.pinHash);
     if (!valid) return res.status(401).json({ message: 'Invalid PIN.' });
     res.json({ message: 'PIN valid.' });
@@ -56,23 +56,27 @@ exports.setLock = async (req, res) => {
   try {
     const { locked } = req.body;
     let config = await AdminConfig.findOne();
-    if (!config) return res.status(404).json({ message: 'No config found.' });
+    if (!config) config = new AdminConfig();
     config.editingLocked = !!locked;
     await config.save();
-    res.json({ message: `Editing lock set to ${!!locked}` });
+    res.json({ message: `Editing lock set to ${!!locked}`, editingLocked: config.editingLocked });
   } catch (err) {
     res.status(500).json({ message: 'Error toggling lock', error: err.message });
   }
 };
 
-// ─── Crews / Roles ────────────────────────────────────────────────────────────
+// ─── Crews / Roles (accepts {crew} OR {name}) ────────────────────────────────
 
 exports.addCrew = async (req, res) => {
   try {
-    const { crew } = req.body;
+    const crew = (req.body.crew || req.body.name || '').toString().trim();
+    if (!crew) return res.status(400).json({ message: 'Crew name is required.' });
     let config = await AdminConfig.findOne();
     if (!config) config = new AdminConfig();
-    if (!config.availableCrews.includes(crew)) { config.availableCrews.push(crew); await config.save(); }
+    if (!config.availableCrews.includes(crew)) {
+      config.availableCrews.push(crew);
+      await config.save();
+    }
     res.json(config.availableCrews);
   } catch (err) {
     res.status(500).json({ message: 'Error adding crew', error: err.message });
@@ -94,10 +98,14 @@ exports.removeCrew = async (req, res) => {
 
 exports.addRole = async (req, res) => {
   try {
-    const { role } = req.body;
+    const role = (req.body.role || req.body.name || '').toString().trim();
+    if (!role) return res.status(400).json({ message: 'Role name is required.' });
     let config = await AdminConfig.findOne();
     if (!config) config = new AdminConfig();
-    if (!config.availableRoles.includes(role)) { config.availableRoles.push(role); await config.save(); }
+    if (!config.availableRoles.includes(role)) {
+      config.availableRoles.push(role);
+      await config.save();
+    }
     res.json(config.availableRoles);
   } catch (err) {
     res.status(500).json({ message: 'Error adding role', error: err.message });
@@ -106,7 +114,7 @@ exports.addRole = async (req, res) => {
 
 exports.removeRole = async (req, res) => {
   try {
-    const { role } = req.params;
+    const role = decodeURIComponent(req.params.role);
     let config = await AdminConfig.findOne();
     if (!config) return res.status(404).json({ message: 'Config not found.' });
     config.availableRoles = config.availableRoles.filter(r => r !== role);
@@ -117,7 +125,7 @@ exports.removeRole = async (req, res) => {
   }
 };
 
-// ─── User Management ──────────────────────────────────────────────────────────
+// ─── User Management ─────────────────────────────────────────────────────────
 
 exports.getPendingUsers = async (req, res) => {
   try {
@@ -171,7 +179,7 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
-// ─── Curriculum CRUD ──────────────────────────────────────────────────────────
+// ─── Curriculum CRUD ─────────────────────────────────────────────────────────
 
 exports.getCurriculum = async (req, res) => {
   try {
@@ -205,11 +213,11 @@ exports.updateCurriculumItem = async (req, res) => {
     if (!config) return res.status(404).json({ message: 'Config not found.' });
     const item = config.curriculum.id(id);
     if (!item) return res.status(404).json({ message: 'Curriculum item not found.' });
-    if (category)    item.category    = category;
-    if (title)       item.title       = title;
+    if (category    !== undefined) item.category    = category;
+    if (title       !== undefined) item.title       = title;
     if (description !== undefined) item.description = description;
-    if (link !== undefined)        item.link        = link;
-    if (duration !== undefined)    item.duration    = duration;
+    if (link        !== undefined) item.link        = link;
+    if (duration    !== undefined) item.duration    = duration;
     await config.save();
     res.json(config.curriculum);
   } catch (err) {
@@ -230,7 +238,7 @@ exports.deleteCurriculumItem = async (req, res) => {
   }
 };
 
-// ─── PTW Personnel CRUD ───────────────────────────────────────────────────────
+// ─── PTW Personnel CRUD (flexible body) ──────────────────────────────────────
 
 exports.getPtwPersonnel = async (req, res) => {
   try {
@@ -244,11 +252,11 @@ exports.getPtwPersonnel = async (req, res) => {
 
 exports.addPtwPersonnel = async (req, res) => {
   try {
-    const { empId, name, role, crew, canIssue, canReceive, canApprove, canPerform } = req.body;
-    if (!empId || !name || !role) return res.status(400).json({ message: 'empId, name, and role are required.' });
+    const body = req.body || {};
+    if (!body.name) return res.status(400).json({ message: 'Name is required.' });
     let config = await AdminConfig.findOne();
     if (!config) config = new AdminConfig();
-    config.ptwPersonnel.push({ empId, name, role, crew, canIssue, canReceive, canApprove, canPerform });
+    config.ptwPersonnel.push(body);
     await config.save();
     res.status(201).json(config.ptwPersonnel);
   } catch (err) {
