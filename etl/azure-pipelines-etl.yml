@@ -9,6 +9,7 @@
 #   COSMOS_DB_NAME    - e.g. qipp_ops
 #   JWT_SECRET        - Needed for auth/token generation (secret)
 
+
 schedules:
   - cron: "0 */3 * * *"
     displayName: "QIPP ETL every 3 hours"
