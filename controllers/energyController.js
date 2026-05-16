@@ -2,12 +2,23 @@ const EnergyHourly = require('../models/EnergyHourly');
 
 exports.getLatest = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
+    const days = parseInt(req.query.days, 10) || 30;
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const data = await EnergyHourly.find({ timestamp: { $gte: since } })
-      .sort({ timestamp: -1 })
+    const sinceStr = since.toISOString().slice(0, 10);
+
+    const data = await EnergyHourly.find({
+      $or: [
+        { timestamp:   { $gte: since } },
+        { date:        { $gte: sinceStr } },
+        { date:        { $gte: since } },
+        { report_date: { $gte: sinceStr } },
+        { report_date: { $gte: since } }
+      ]
+    })
+      .sort({ timestamp: -1, date: -1, report_date: -1 })
       .limit(500);
+
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching energy data' });
@@ -17,10 +28,9 @@ exports.getLatest = async (req, res) => {
 exports.getByDate = async (req, res) => {
   try {
     const { date } = req.query;
-    const start = new Date(date);
-    const end = new Date(date);
-    end.setDate(end.getDate() + 1);
-    const data = await EnergyHourly.find({ timestamp: { $gte: start, $lt: end } });
+    const data = await EnergyHourly.find({
+      $or: [{ date }, { report_date: date }]
+    });
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching energy data' });
@@ -29,21 +39,37 @@ exports.getByDate = async (req, res) => {
 
 exports.getSummary = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7;
+    const days = parseInt(req.query.days, 10) || 7;
     const since = new Date();
     since.setDate(since.getDate() - days);
+    const sinceStr = since.toISOString().slice(0, 10);
+
     const data = await EnergyHourly.aggregate([
-      { $match: { timestamp: { $gte: since } } },
+      {
+        $match: {
+          $or: [
+            { timestamp:   { $gte: since } },
+            { date:        { $gte: sinceStr } },
+            { report_date: { $gte: sinceStr } }
+          ]
+        }
+      },
       {
         $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
-          totalKwh: { $sum: '$kwh' },
-          avgPower: { $avg: '$power_kw' },
-          maxPower: { $max: '$power_kw' },
-        },
+          _id: {
+            $ifNull: [
+              '$date',
+              { $ifNull: ['$report_date', { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } }] }
+            ]
+          },
+          totalKwh: { $sum: { $ifNull: ['$kwh', '$actual_mwh'] } },
+          avgPower: { $avg: { $ifNull: ['$power_kw', '$avail_decl_mw'] } },
+          maxPower: { $max: { $ifNull: ['$power_kw', '$avail_decl_mw'] } }
+        }
       },
-      { $sort: { _id: -1 } },
+      { $sort: { _id: -1 } }
     ]);
+
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error fetching energy summary' });
