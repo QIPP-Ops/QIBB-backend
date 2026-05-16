@@ -1,3 +1,4 @@
+$ cat << 'EOF' > rosterController.js
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 
@@ -7,9 +8,6 @@ exports.getRoster = async (req, res) => {
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
-// Accepts BOTH shapes:
-//   { employeeId, leave: { start, end, type } }
-//   { empId, start, end, type, workingDays?, totalDays? }
 exports.addLeave = async (req, res) => {
   const { employeeId, empId, leave, start, end, type, workingDays, totalDays } = req.body;
   const targetId = employeeId || empId;
@@ -36,7 +34,6 @@ exports.createEmployee = async (req, res) => {
       if (template) kpis = template.goals.map(g => ({ title: g, progress: 0, locked: false, visible: true }));
     }
     const payload = { ...req.body, kpis };
-    // Personnel created from roster page don't have email/password; generate placeholders
     if (!payload.email) {
       payload.email = `${(payload.name || 'user').toLowerCase().replace(/\s+/g, '.')}.${payload.empId}@acwapower.com`;
     }
@@ -52,10 +49,12 @@ exports.createEmployee = async (req, res) => {
 
 exports.updateEmployee = async (req, res) => {
   try {
+    // Strip sensitive fields from update payload
+    const { passwordHash, email: _email, ...safeBody } = req.body;
     const user = await AdminUser.findOneAndUpdate(
       { empId: req.params.empId },
-      req.body,
-      { new: true, runValidators: true }
+      { $set: safeBody },
+      { new: true, runValidators: false }
     ).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
     res.json(user);
@@ -134,41 +133,65 @@ exports.exportIcs = async (req, res) => {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
     const SHIFT_CYCLES = {
-      'A':['O','O','O','O','D','D','N','N'], 'B':['D','D','N','N','O','O','O','O'],
-      'C':['N','N','O','O','O','O','D','D'], 'D':['O','O','D','D','N','N','O','O'],
-      'General':['O','O','O','O','O','O','O','O'], 'S':['O','O','O','O','O','O','O','O'],
+      'A':      ['O','O','O','O','D','D','N','N'],
+      'B':      ['D','D','N','N','O','O','O','O'],
+      'C':      ['N','N','O','O','O','O','D','D'],
+      'D':      ['O','O','D','D','N','N','O','O'],
+      'General':['O','O','O','O','O','O','O','O'],
+      'S':      ['O','O','O','O','O','O','O','O'],
     };
     const config = await AdminConfig.findOne();
     const baseDate = new Date(config?.shiftCycleBaseDate || '2026-01-01T00:00:00Z');
-    const today = new Date(); today.setHours(0,0,0,0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
     const endDate = new Date(today); endDate.setDate(endDate.getDate() + 90);
-    const pad = n => String(n).padStart(2,'0');
+    const pad = n => String(n).padStart(2, '0');
+    const fmtDate = (dt) =>
+      `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
     const cycle = SHIFT_CYCLES[user.crew] || SHIFT_CYCLES['General'];
-    const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//QIPP Ops//EN',
-      `X-WR-CALNAME:${user.name} Shift Schedule`,'CALSCALE:GREGORIAN'];
+    const lines = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//QIPP Ops//EN',
+      `X-WR-CALNAME:${user.name} Shift Schedule`, 'CALSCALE:GREGORIAN'
+    ];
     let d = new Date(today);
     while (d <= endDate) {
       const diff = Math.floor((d - baseDate) / 86400000);
       const shift = cycle[((diff % 8) + 8) % 8];
       if (shift !== 'O') {
-        const ds = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-        lines.push('BEGIN:VEVENT',
-          `DTSTART;TZID=Asia/Riyadh:${ds}T${shift==='D'?'060000':'180000'}`,
-          `DTEND;TZID=Asia/Riyadh:${ds}T${shift==='D'?'180000':'060000'}`,
-          `SUMMARY:${shift==='D'?'☀️ Day':'🌙 Night'} Shift - Crew ${user.crew}`,
-          `UID:shift-${user.empId}-${ds}@qipp`, 'END:VEVENT');
+        const isNight = shift === 'N';
+        const startStr = `${fmtDate(d)}T${isNight ? '180000' : '060000'}`;
+        // Night shift ends next calendar day at 06:00
+        let endDay = new Date(d);
+        if (isNight) endDay.setDate(endDay.getDate() + 1);
+        const endStr = `${fmtDate(endDay)}T${isNight ? '060000' : '180000'}`;
+        lines.push(
+          'BEGIN:VEVENT',
+          `DTSTART;TZID=Asia/Riyadh:${startStr}`,
+          `DTEND;TZID=Asia/Riyadh:${endStr}`,
+          `SUMMARY:${isNight ? '🌙 Night' : '☀️ Day'} Shift - Crew ${user.crew}`,
+          `UID:shift-${user.empId}-${fmtDate(d)}@qipp`,
+          'END:VEVENT'
+        );
       }
       d.setDate(d.getDate() + 1);
     }
     user.leaves.forEach((lv, i) => {
-      const s = new Date(lv.start), e = new Date(lv.end); e.setDate(e.getDate()+1);
-      const fmt = x => `${x.getFullYear()}${pad(x.getMonth()+1)}${pad(x.getDate())}`;
-      lines.push('BEGIN:VEVENT',`DTSTART;VALUE=DATE:${fmt(s)}`,`DTEND;VALUE=DATE:${fmt(e)}`,
-        `SUMMARY:🏖️ ${lv.type}`,`UID:leave-${user.empId}-${i}@qipp`,'END:VEVENT');
+      const s = new Date(lv.start);
+      const e = new Date(lv.end);
+      e.setDate(e.getDate() + 1); // DTEND is exclusive in iCal
+      lines.push(
+        'BEGIN:VEVENT',
+        `DTSTART;VALUE=DATE:${fmtDate(s)}`,
+        `DTEND;VALUE=DATE:${fmtDate(e)}`,
+        `SUMMARY:🏖️ ${lv.type || 'Leave'}`,
+        `UID:leave-${user.empId}-${i}@qipp`,
+        'END:VEVENT'
+      );
     });
     lines.push('END:VCALENDAR');
-    res.setHeader('Content-Type','text/calendar; charset=utf-8');
-    res.setHeader('Content-Disposition',`attachment; filename="${user.name.replace(/\s+/g,'_')}.ics"`);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${user.name.replace(/\s+/g, '_')}.ics"`);
     res.send(lines.join('\r\n'));
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
+EOF
+echo "Done"
