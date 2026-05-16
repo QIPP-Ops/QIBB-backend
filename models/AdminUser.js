@@ -1,18 +1,9 @@
 const mongoose = require('mongoose');
 
 const LeaveSchema = new mongoose.Schema({
-  start: { type: Date, required: true },
-  end:   { type: Date, required: true },
-  type: {
-    type: String,
-    enum: [
-      'Annual Leave Plan', 'SAP Approved', 'Marriage Leave',
-      'Maternity Leave', 'Sick Leave', 'Pilgrimage Leave',
-      'Compassionate Leave', 'Compensate Leave', 'Academic Leave',
-      'Applied on SAP', 'Planned'
-    ],
-    default: 'Planned'
-  },
+  start:       { type: Date, required: true },
+  end:         { type: Date, required: true },
+  type:        { type: String, default: 'Planned' },  // open-ended
   workingDays: { type: Number },
   totalDays:   { type: Number }
 });
@@ -27,6 +18,12 @@ const KpiGoalSchema = new mongoose.Schema({
   completedAt: { type: Date }
 });
 
+const COLOR_VALUES = [
+  'crew-red', 'crew-yellow', 'crew-green',
+  'crew-lightblue', 'crew-lightviolet',
+  'crew-lightorange', 'crew-grey'
+];
+
 const AdminUserSchema = new mongoose.Schema({
   email:        { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
@@ -36,20 +33,20 @@ const AdminUserSchema = new mongoose.Schema({
   role:         { type: String, required: true },
   color: {
     type: String,
-    enum: [
-      'crew-red', 'crew-yellow', 'crew-green',
-      'crew-lightblue', 'crew-lightviolet',
-      'crew-lightorange', 'crew-grey'
-    ],
+    enum: COLOR_VALUES,
     default: 'crew-grey'
   },
-  compensateBalance: { type: Number, default: 0 },
+  // kept as alias for backward compatibility
+  seniority: {
+    type: String,
+    enum: COLOR_VALUES,
+    default: 'crew-grey'
+  },
   leaves:            [LeaveSchema],
-  accessRole:        { type: String, enum: ['admin', 'viewer', 'supervisor'], default: 'viewer' },
+  accessRole:        { type: String, enum: ['admin', 'viewer'], default: 'viewer' },
   isApproved:        { type: Boolean, default: false },
   kpis:              [KpiGoalSchema],
   kpiEditingAllowed: { type: Boolean, default: true }
 }, { timestamps: true });
 
-module.exports = mongoose.models.AdminUser ||
-  mongoose.model('AdminUser', AdminUserSchema);
+module.exports = mongoose.model('AdminUser', AdminUserSchema);
