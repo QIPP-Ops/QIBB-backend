@@ -3,16 +3,25 @@ const AdminConfig = require('../models/AdminConfig');
 
 exports.getRoster = async (req, res) => {
   try {
-    res.json(await AdminUser.find().sort({ crew: 1, role: 1 }));
+    res.json(await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }));
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
+// Accepts BOTH shapes:
+//   { employeeId, leave: { start, end, type } }
+//   { empId, start, end, type, workingDays?, totalDays? }
 exports.addLeave = async (req, res) => {
-  const { employeeId, leave } = req.body;
+  const { employeeId, empId, leave, start, end, type, workingDays, totalDays } = req.body;
+  const targetId = employeeId || empId;
+  if (!targetId) return res.status(400).json({ message: 'employeeId (or empId) is required.' });
   try {
-    const user = await AdminUser.findOne({ empId: employeeId });
+    const user = await AdminUser.findOne({ empId: targetId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
-    user.leaves.push(leave);
+    const leaveData = leave || { start, end, type, workingDays, totalDays };
+    if (!leaveData.start || !leaveData.end) {
+      return res.status(400).json({ message: 'Leave start and end dates are required.' });
+    }
+    user.leaves.push(leaveData);
     await user.save();
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -23,10 +32,19 @@ exports.createEmployee = async (req, res) => {
     const config = await AdminConfig.findOne();
     let kpis = [];
     if (config && req.body.role) {
-      const template = config.kpiTemplates.find(t => t.role === req.body.role);
+      const template = (config.kpiTemplates || []).find(t => t.role === req.body.role);
       if (template) kpis = template.goals.map(g => ({ title: g, progress: 0, locked: false, visible: true }));
     }
-    const user = new AdminUser({ ...req.body, kpis });
+    const payload = { ...req.body, kpis };
+    // Personnel created from roster page don't have email/password; generate placeholders
+    if (!payload.email) {
+      payload.email = `${(payload.name || 'user').toLowerCase().replace(/\s+/g, '.')}.${payload.empId}@acwapower.com`;
+    }
+    if (!payload.passwordHash) {
+      const bcrypt = require('bcryptjs');
+      payload.passwordHash = await bcrypt.hash('acwa_ops_2026', 10);
+    }
+    const user = new AdminUser(payload);
     await user.save();
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -34,7 +52,11 @@ exports.createEmployee = async (req, res) => {
 
 exports.updateEmployee = async (req, res) => {
   try {
-    const user = await AdminUser.findOneAndUpdate({ empId: req.params.empId }, req.body, { new: true, runValidators: true });
+    const user = await AdminUser.findOneAndUpdate(
+      { empId: req.params.empId },
+      req.body,
+      { new: true, runValidators: true }
+    ).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -76,11 +98,11 @@ exports.updateKpi = async (req, res) => {
     const { progress, title, description, locked, visible, targetDate } = req.body;
     if (progress !== undefined) kpi.progress = progress;
     if (isAdmin) {
-      if (title !== undefined) kpi.title = title;
+      if (title       !== undefined) kpi.title       = title;
       if (description !== undefined) kpi.description = description;
-      if (locked !== undefined) kpi.locked = locked;
-      if (visible !== undefined) kpi.visible = visible;
-      if (targetDate !== undefined) kpi.targetDate = targetDate;
+      if (locked      !== undefined) kpi.locked      = locked;
+      if (visible     !== undefined) kpi.visible     = visible;
+      if (targetDate  !== undefined) kpi.targetDate  = targetDate;
     }
     await user.save();
     res.json(user);
