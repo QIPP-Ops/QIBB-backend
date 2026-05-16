@@ -132,66 +132,73 @@ exports.exportIcs = async (req, res) => {
   try {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
     const SHIFT_CYCLES = {
-      'A':      ['O','O','O','O','D','D','N','N'],
-      'B':      ['D','D','N','N','O','O','O','O'],
-      'C':      ['N','N','O','O','O','O','D','D'],
-      'D':      ['O','O','D','D','N','N','O','O'],
-      'General':['O','O','O','O','O','O','O','O'],
-      'S':      ['O','O','O','O','O','O','O','O'],
+      'A': ['O','O','O','O','D','D','N','N'],
+      'B': ['D','D','N','N','O','O','O','O'],
+      'C': ['N','N','O','O','O','O','D','D'],
+      'D': ['O','O','D','D','N','N','O','O'],
+      'General': ['O','O','O','O','O','O','O','O'],
+      'S': ['O','O','O','O','O','O','O','O'],
     };
+
     const config = await AdminConfig.findOne();
     const baseDate = new Date(config?.shiftCycleBaseDate || '2026-01-01T00:00:00Z');
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const endDate = new Date(today); endDate.setDate(endDate.getDate() + 90);
     const pad = n => String(n).padStart(2, '0');
-    const fmtDate = (dt) =>
-      `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}`;
+
     const cycle = SHIFT_CYCLES[user.crew] || SHIFT_CYCLES['General'];
     const lines = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//QIPP Ops//EN',
       `X-WR-CALNAME:${user.name} Shift Schedule`, 'CALSCALE:GREGORIAN'
     ];
+
     let d = new Date(today);
     while (d <= endDate) {
       const diff = Math.floor((d - baseDate) / 86400000);
       const shift = cycle[((diff % 8) + 8) % 8];
+
       if (shift !== 'O') {
-        const isNight = shift === 'N';
-        const startStr = `${fmtDate(d)}T${isNight ? '180000' : '060000'}`;
-        // Night shift ends next calendar day at 06:00
-        let endDay = new Date(d);
-        if (isNight) endDay.setDate(endDay.getDate() + 1);
-        const endStr = `${fmtDate(endDay)}T${isNight ? '060000' : '180000'}`;
+        const ds = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
+
+        // Night shift ends next day at 05:30
+        const nextDay = new Date(d);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const dsNext = `${nextDay.getFullYear()}${pad(nextDay.getMonth() + 1)}${pad(nextDay.getDate())}`;
+
         lines.push(
           'BEGIN:VEVENT',
-          `DTSTART;TZID=Asia/Riyadh:${startStr}`,
-          `DTEND;TZID=Asia/Riyadh:${endStr}`,
-          `SUMMARY:${isNight ? '🌙 Night' : '☀️ Day'} Shift - Crew ${user.crew}`,
-          `UID:shift-${user.empId}-${fmtDate(d)}@qipp`,
+          `DTSTART;TZID=Asia/Riyadh:${ds}T${shift === 'D' ? '053000' : '173000'}`,
+          `DTEND;TZID=Asia/Riyadh:${shift === 'D' ? ds + 'T173000' : dsNext + 'T053000'}`,
+          `SUMMARY:${shift === 'D' ? '☀️ Day' : '🌙 Night'} Shift - Crew ${user.crew}`,
+          `UID:shift-${user.empId}-${ds}@qipp`,
           'END:VEVENT'
         );
       }
       d.setDate(d.getDate() + 1);
     }
+
     user.leaves.forEach((lv, i) => {
-      const s = new Date(lv.start);
-      const e = new Date(lv.end);
-      e.setDate(e.getDate() + 1); // DTEND is exclusive in iCal
+      const s = new Date(lv.start), e = new Date(lv.end);
+      e.setDate(e.getDate() + 1);
+      const fmt = x => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}`;
       lines.push(
         'BEGIN:VEVENT',
-        `DTSTART;VALUE=DATE:${fmtDate(s)}`,
-        `DTEND;VALUE=DATE:${fmtDate(e)}`,
-        `SUMMARY:🏖️ ${lv.type || 'Leave'}`,
+        `DTSTART;VALUE=DATE:${fmt(s)}`,
+        `DTEND;VALUE=DATE:${fmt(e)}`,
+        `SUMMARY:🏖️ ${lv.type}`,
         `UID:leave-${user.empId}-${i}@qipp`,
         'END:VEVENT'
       );
     });
+
     lines.push('END:VCALENDAR');
+
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${user.name.replace(/\s+/g, '_')}.ics"`);
     res.send(lines.join('\r\n'));
-  } catch (error) { res.status(500).json({ message: error.message }); }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
-EOF
-echo "Done"
