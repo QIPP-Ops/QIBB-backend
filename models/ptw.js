@@ -6,15 +6,15 @@ const ptwSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: [
-      'Hot Work', 'Cold Work', 'Lifting', 'Confined Space',
-      'Working at Height', 'Diving', 'Live', 'Access',
-      'Standard', 'ROSH', 'Electrical Isolation', 'General'
+      'Hot Work', 'Cold Work', 'Lifting', 'Confined Space', 'Working at Height',
+      'Diving', 'Live', 'Access', 'Standard', 'ROSH',
+      'Electrical Isolation', 'General'
     ]
   },
   status: {
     type: String,
     required: true,
-    enum: ['Prepared', 'Pending', 'Issued', 'Active', 'Suspended', 'Closed'],
+    enum: ['Prepared', 'Issued', 'Suspended', 'Closed', 'Active', 'Pending', 'Authorized', 'Revoked'],
     default: 'Pending'
   },
   location:     { type: String, required: true },
@@ -26,4 +26,4 @@ const ptwSchema = new mongoose.Schema({
   validTo:      { type: Date, required: true }
 }, { timestamps: true });
 
-module.exports = mongoose.models.PTW || mongoose.model('PTW', ptwSchema);
+module.exports = mongoose.model('PTW', ptwSchema);
