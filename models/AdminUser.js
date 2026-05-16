@@ -50,3 +50,9 @@ const AdminUserSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminUser', AdminUserSchema);
+
+emailVerified:    { type: Boolean, default: false },
+otpHash:          { type: String,  default: '' },
+otpExpiry:        { type: Date,    default: null },
+resetTokenHash:   { type: String,  default: '' },
+resetTokenExpiry: { type: Date,    default: null },
