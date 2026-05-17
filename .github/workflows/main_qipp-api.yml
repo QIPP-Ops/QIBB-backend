@@ -21,7 +21,7 @@ jobs:
           node-version: '22.x'
 
       - name: Install dependencies
-        run: npm ci
+  run: npm install
 
       - name: Zip for deployment
         run: zip -r release.zip . --exclude "*.git*"
