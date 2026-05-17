@@ -1,4 +1,3 @@
-$ cat << 'EOF' > rosterController.js
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 
@@ -49,7 +48,6 @@ exports.createEmployee = async (req, res) => {
 
 exports.updateEmployee = async (req, res) => {
   try {
-    // Strip sensitive fields from update payload
     const { passwordHash, email: _email, ...safeBody } = req.body;
     const user = await AdminUser.findOneAndUpdate(
       { empId: req.params.empId },
@@ -161,8 +159,6 @@ exports.exportIcs = async (req, res) => {
 
       if (shift !== 'O') {
         const ds = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
-
-        // Night shift ends next day at 05:30
         const nextDay = new Date(d);
         nextDay.setDate(nextDay.getDate() + 1);
         const dsNext = `${nextDay.getFullYear()}${pad(nextDay.getMonth() + 1)}${pad(nextDay.getDate())}`;
