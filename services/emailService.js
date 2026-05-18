@@ -1,20 +1,19 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  host:   'smtp.office365.com',
-  port:   587,
-  secure: false, // STARTTLS
+  host:   process.env.SMTP_HOST,
+  port:   parseInt(process.env.SMTP_PORT) || 587,
+  secure: false,
   auth: {
-    user: process.env.EMAIL_USER, // admin@acwaops.com
-    pass: process.env.EMAIL_PASS, // your Outlook app password
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
   tls: {
-    ciphers: 'SSLv3',
     rejectUnauthorized: false,
   }
 });
 
-const FROM = `"ACWA Ops System" <${process.env.EMAIL_USER}>`;
+const FROM = `"ACWA Ops System" <${process.env.SMTP_USER}>`;
 
 // ─── Shared HTML wrapper ─────────────────────────────────────────────────────
 function emailTemplate(title, bodyHtml) {
