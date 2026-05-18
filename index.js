@@ -43,7 +43,7 @@ app.use('/api/energy', energyRoutes);
 app.use('/api/gt-filter', gtFilterRoutes);
 app.use('/api/daily-operation', dailyOperationRoutes);
 
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.COSMOS_URI, { retryWrites: false })
   .then(() => {
     console.log('MongoDB connected');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
