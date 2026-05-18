@@ -11,8 +11,8 @@ const plantData  = require('./data/plant_data.json');
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
-    console.log('🌱 Connected to MongoDB for seeding...');
+    await mongoose.connect(process.env.COSMOS_URI, { retryWrites: false });
+    console.log('🌱 Connected to CosmosDB for seeding...');
 
     // 1. Clear existing data
     await PlantPerformance.deleteMany({});
@@ -56,7 +56,7 @@ async function seed() {
     console.log(`✅ Seeded ${formattedPersonnel.length} personnel accounts`);
 
     // 4. Create a dedicated System Admin
-    const adminEmail = 'ops.admin@acwapower.com';
+    const adminEmail = 'admin@acwaops.com';
     const existingAdmin = await AdminUser.findOne({ email: adminEmail });
     if (!existingAdmin) {
       const admin = new AdminUser({
@@ -71,7 +71,7 @@ async function seed() {
         isApproved:   true
       });
       await admin.save();
-      console.log('👑 Admin created: ops.admin@acwapower.com / acwa_admin_2026');
+      console.log('👑 Admin created: admin@acwaops.com / @5Sicparvismagna');
     }
 
     // 5. Seed KPI Data
