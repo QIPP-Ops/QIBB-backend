@@ -1,10 +1,12 @@
-function validateEnv() {
-  const required = ['JWT_SECRET', 'COSMOS_URI'];
-  const missing = required.filter((key) => !process.env[key]?.trim());
+const { getMongoUri } = require('./database');
 
-  if (missing.length > 0) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}`);
-    console.error('Copy .env.example to .env and fill in values.');
+function validateEnv() {
+  if (!process.env.JWT_SECRET?.trim()) {
+    console.error('Missing required environment variable: JWT_SECRET');
+    process.exit(1);
+  }
+  if (!getMongoUri()) {
+    console.error('Missing database URI: set COSMOS_URI or MONGODB_URI');
     process.exit(1);
   }
 

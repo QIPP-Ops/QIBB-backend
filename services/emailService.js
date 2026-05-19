@@ -1,6 +1,6 @@
 const nodemailer = require('nodemailer');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
-const { getSmtpPassword, isEmailConfigured } = require('../config/smtp');
+const { getSmtpUser, getSmtpPassword, isEmailConfigured } = require('../config/smtp');
 
 function createTransporter() {
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
@@ -11,7 +11,7 @@ function createTransporter() {
     secure,
     requireTLS: !secure && port === 587,
     auth: {
-      user: process.env.SMTP_USER,
+      user: getSmtpUser(),
       pass: getSmtpPassword(),
     },
     connectionTimeout: 20000,
@@ -24,7 +24,7 @@ function createTransporter() {
 }
 
 function getFromAddress() {
-  return `"ACWA Ops System" <${process.env.SMTP_USER}>`;
+  return `"ACWA Ops System" <${getSmtpUser()}>`;
 }
 
 async function sendMail(options) {

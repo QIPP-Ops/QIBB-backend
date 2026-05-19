@@ -8,7 +8,9 @@ validateEnv();
 
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.COSMOS_URI, { retryWrites: false })
+const { getMongoUri } = require('./config/database');
+
+mongoose.connect(getMongoUri(), { retryWrites: false })
   .then(() => {
     console.log('MongoDB connected');
     startPlantIngestScheduler();
