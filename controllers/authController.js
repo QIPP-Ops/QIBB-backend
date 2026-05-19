@@ -170,11 +170,18 @@ exports.verifyOtp = async (req, res) => {
 // ─── Resend OTP ──────────────────────────────────────────────────────────────
 
 exports.resendOtp = async (req, res) => {
-  const { email } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ message: 'Email is required.' });
 
+  if (!isEmailConfigured()) {
+    return res.status(503).json({
+      message: 'Email is not configured on the server. Contact your administrator.',
+      code: 'SMTP_NOT_CONFIGURED',
+    });
+  }
+
   try {
-    const user = await AdminUser.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (user.isEmailVerified) return res.json({ message: 'Email already verified.' });
 
@@ -186,7 +193,15 @@ exports.resendOtp = async (req, res) => {
     user.otpExpiresAt = otpExpiresAt;
     await user.save();
 
-    await sendOtpEmail(email, user.name, otp);
+    try {
+      await sendOtpEmail(user.email, user.name, otp);
+    } catch (emailErr) {
+      console.error('OTP resend failed:', emailErr.message);
+      return res.status(503).json({
+        message: 'Could not send OTP email. Check SMTP settings on the API server.',
+        code: 'OTP_EMAIL_FAILED',
+      });
+    }
     res.json({ message: 'OTP resent successfully.' });
   } catch (error) {
     res.status(500).json({ message: 'Failed to resend OTP.', error: error.message });
@@ -334,13 +349,24 @@ exports.adminResetPassword = async (req, res) => {
     user.passwordHash = await bcrypt.hash(tempPassword, 10);
     await user.save();
 
-    try {
-      await sendTempPasswordEmail(user.email, user.name, tempPassword);
-    } catch (emailErr) {
-      console.error('Temp password email failed:', emailErr.message);
+    let emailSent = false;
+    if (isEmailConfigured()) {
+      try {
+        await sendTempPasswordEmail(user.email, user.name, tempPassword);
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('Temp password email failed:', emailErr.message);
+      }
     }
 
-    res.json({ message: `Password reset. Temporary password sent to ${user.email}.` });
+    res.json({
+      message: emailSent
+        ? `Temporary password emailed to ${user.email}.`
+        : `Temporary password set. Copy it from this response — email was not sent.`,
+      emailSent,
+      tempPassword,
+      email: user.email,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Admin reset failed.', error: error.message });
   }

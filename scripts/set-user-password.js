@@ -5,19 +5,28 @@
  * Usage:
  *   node scripts/set-user-password.js admin@acwaops.com "YourNewPassword"
  *
- * Requires COSMOS_URI in .env or environment.
+ * Requires COSMOS_URI or MONGODB_URI in .env or environment (same value as Azure qipp-api).
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const AdminUser = require('../models/AdminUser');
+const { getMongoUri } = require('../config/database');
 
-const uri = process.env.COSMOS_URI || process.env.MONGODB_URI;
+const uri = getMongoUri();
 const email = (process.argv[2] || process.env.SET_PASSWORD_EMAIL || '').trim().toLowerCase();
 const password = process.argv[3] || process.env.SET_PASSWORD_VALUE;
 
 if (!uri) {
-  console.error('Set COSMOS_URI before running.');
+  console.error('Missing database connection string.');
+  console.error('');
+  console.error('Create QIBB-backend-main/.env with one of:');
+  console.error('  MONGODB_URI=mongodb+srv://...   (copy from Azure → qipp-api → Environment variables)');
+  console.error('  COSMOS_URI=mongodb+srv://...    (same value)');
+  console.error('');
+  console.error('Or run once in PowerShell:');
+  console.error('  $env:MONGODB_URI="mongodb+srv://YOUR_CONNECTION_STRING"');
+  console.error('  node scripts/set-user-password.js admin@acwaops.com "YourNewPassword"');
   process.exit(1);
 }
 if (!email || !password) {
@@ -46,7 +55,7 @@ async function run() {
       email,
       passwordHash,
       name: 'System Administrator',
-      empId: 'ADMIN-001',
+      empId: `ADMIN-${Date.now().toString().slice(-6)}`,
       crew: 'S',
       role: 'Management',
       accessRole: 'admin',
