@@ -1,4 +1,4 @@
-const PTW = require('../models/PTW');
+const PTW = require('../models/ptw');
 
 const PTW_CREATE_FIELDS = [
   'permitId', 'type', 'status', 'location', 'description',

@@ -1,3 +1,18 @@
+jest.mock('../models/AdminUser', () => ({
+  findById: jest.fn(() => ({
+    select: jest.fn().mockResolvedValue({
+      _id: '507f1f77bcf86cd799439011',
+      email: 'test@acwapower.com',
+      accessRole: 'viewer',
+      role: 'Shift Supervisor',
+      name: 'Test User',
+      empId: '100001',
+      crew: 'A',
+      color: 'Crew A',
+    }),
+  })),
+}));
+
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 
@@ -23,7 +38,7 @@ describe('auth middleware', () => {
 
   test('protect accepts valid JWT', async () => {
     const token = jwt.sign(
-      { id: 'user1', email: 'test@acwapower.com', role: 'viewer' },
+      { id: '507f1f77bcf86cd799439011', email: 'test@acwapower.com', role: 'viewer' },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
