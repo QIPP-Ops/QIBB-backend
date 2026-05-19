@@ -9,12 +9,16 @@ function createTransporter() {
     host: process.env.SMTP_HOST,
     port,
     secure,
+    requireTLS: !secure && port === 587,
     auth: {
       user: process.env.SMTP_USER,
       pass: getSmtpPassword(),
     },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true',
+      minVersion: 'TLSv1.2',
     },
   });
 }

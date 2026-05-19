@@ -53,8 +53,21 @@ const authLimiter = rateLimit({
   message: { message: 'Too many requests. Please try again later.' },
 });
 
+const { isEmailConfigured } = require('./config/smtp');
+const { getFrontendBaseUrl } = require('./config/frontendUrl');
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/health/email', (_req, res) => {
+  res.json({
+    smtpConfigured: isEmailConfigured(),
+    smtpHost: process.env.SMTP_HOST || null,
+    smtpUser: process.env.SMTP_USER || null,
+    hasPassword: Boolean(process.env.SMTP_PASS?.trim() || process.env.EMAIL_PASS?.trim()),
+    frontendUrl: getFrontendBaseUrl(),
+  });
 });
 
 app.get('/ready', (_req, res) => {
