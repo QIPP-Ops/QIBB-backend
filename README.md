@@ -1,20 +1,106 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# QIPP Backend API
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+Express 5 API for QIPP operational data (roster, KPIs, PTW, ETL-backed plant metrics). Data is stored in Azure Cosmos DB (MongoDB API).
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## Prerequisites
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+- Node.js 18+
+- Azure Cosmos DB connection string
+- SMTP credentials (for OTP and password reset emails)
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+## Setup
+
+1. Clone the repository and install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy environment template and configure:
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable | Description |
+|----------|-------------|
+| `COSMOS_URI` | MongoDB connection string (Cosmos DB) |
+| `JWT_SECRET` | Secret for signing JWTs (32+ chars recommended) |
+| `PORT` | HTTP port (default `5000`) |
+| `FRONTEND_URL` | Frontend origin for reset links and CORS |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Outbound email |
+| `BLOB_SAS_URL` | Azure Blob SAS URL for storage account (container `report`) |
+| `BLOB_CONTAINER_NAME` | Blob container name (default `report`) |
+| `BLOB_STORAGE_ACCOUNT` | Storage account name (default `acwaopsqipp`) |
+
+3. Start the server:
+
+```bash
+npm run dev    # development (nodemon)
+npm start      # production
+```
+
+4. Health checks: `GET /health`, `GET /ready` (DB connectivity)
+
+5. Legacy auth field migration (if upgrading an old database):
+
+```bash
+npm run migrate:auth
+```
+
+API contract with frontend: [docs/AUTH_CONTRACT.md](docs/AUTH_CONTRACT.md)
+
+## Seeding
+
+```bash
+npm run seed       # roster + KPI sample data + admin user
+npm run seed:ptw   # PTW personnel into AdminConfig
+```
+
+**Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
+
+Default seeded passwords are defined in `seed.js` only — they are not printed to the console. Change them immediately in non-local environments.
+
+## Authentication flow
+
+1. `POST /api/auth/register` — creates account with `accessRole: viewer` (role cannot be set by client)
+2. `POST /api/auth/verify-otp` — verifies email via OTP
+3. Admin approves user via `PUT /api/admin/users/:id/approve`
+4. `POST /api/auth/login` — returns JWT (requires verified email + approval)
+5. `GET /api/auth/verify` — validates token (send `Authorization: Bearer <token>`)
+
+All operational routes require a valid JWT unless noted otherwise. `/health` is public.
+
+## Python ETL
+
+```bash
+cd etl
+pip install -r requirements.txt
+export COSMOS_MONGO_URI="<same as COSMOS_URI>"
+python run_all_etl.py
+```
+
+Collection field names and API mapping: see [docs/ETL_SCHEMAS.md](docs/ETL_SCHEMAS.md).
+
+## Tests
+
+```bash
+npm test
+```
+
+## Deploy
+
+Production runs on Azure App Service (`qipp-api`). Set secrets in **App Settings** (never commit `.env`). Configure CORS via `FRONTEND_URL` (defaults include `https://qippop.azurewebsites.net` and `http://localhost:3000`).
+
+## Security notes
+
+- Rotate any credentials that were ever committed to git
+- Use strong `JWT_SECRET` in production
+- Rate limits apply to `/api/auth/*` and `POST /api/admin/check-pin`
+
+## Architecture notes
+
+- Shared API response helper: `utils/apiResponse.js` (`{ success, data }` / `{ success: false, message }`)
+- Long-term: split `AdminUser` auth from roster HR records; optional httpOnly cookies via Next.js BFF (see [docs/AUTH_CONTRACT.md](docs/AUTH_CONTRACT.md))

@@ -1,5 +1,22 @@
 const PTW = require('../models/PTW');
 
+const PTW_CREATE_FIELDS = [
+  'permitId', 'type', 'status', 'location', 'description',
+  'issuedBy', 'authorizedBy', 'contractor', 'validFrom', 'validTo',
+];
+
+const PTW_UPDATE_FIELDS = [
+  'status', 'location', 'description', 'issuedBy', 'authorizedBy',
+  'contractor', 'validFrom', 'validTo', 'type',
+];
+
+function pickAllowed(body, allowed) {
+  return allowed.reduce((acc, key) => {
+    if (body[key] !== undefined) acc[key] = body[key];
+    return acc;
+  }, {});
+}
+
 exports.getAllPermits = async (req, res) => {
   try {
     const permits = await PTW.find().sort({ createdAt: -1 });
@@ -11,7 +28,7 @@ exports.getAllPermits = async (req, res) => {
 
 exports.createPermit = async (req, res) => {
   try {
-    const permitData = { ...req.body };
+    const permitData = pickAllowed(req.body || {}, PTW_CREATE_FIELDS);
 
     if (!permitData.permitId) {
       permitData.permitId = `PTW-${Date.now().toString().slice(-6)}`;
@@ -37,7 +54,11 @@ exports.createPermit = async (req, res) => {
 exports.updatePermitStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body || {};
+    const updates = pickAllowed(req.body || {}, PTW_UPDATE_FIELDS);
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update.' });
+    }
 
     const permit = await PTW.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
     if (!permit) return res.status(404).json({ message: 'Permit not found' });

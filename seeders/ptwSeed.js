@@ -79,7 +79,7 @@ const PTW_PERSONNEL = [
 ];
 
 async function seed() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.COSMOS_URI, { retryWrites: false });
   const config = await AdminConfig.findOne() || new AdminConfig();
   config.ptwPersonnel = PTW_PERSONNEL;
   await config.save();

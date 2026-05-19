@@ -1,6 +1,7 @@
 const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
 const bcrypt      = require('bcryptjs');
+const { logRosterEvent } = require('../services/rosterAuditService');
 
 // ─── Status / PIN / Lock ─────────────────────────────────────────────────────
 
@@ -148,8 +149,27 @@ exports.getAllUsers = async (req, res) => {
 exports.approveUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await AdminUser.findByIdAndUpdate(id, { isApproved: true }, { new: true });
+    const { crew, role, empId, color } = req.body;
+
+    const updates = { isApproved: true };
+    if (crew)  updates.crew  = crew;
+    if (role)  updates.role  = role;
+    if (empId) updates.empId = String(empId).trim();
+    if (color) updates.color = color;
+
+    const user = await AdminUser.findByIdAndUpdate(id, updates, { new: true, runValidators: true })
+      .select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
+    await logRosterEvent({
+      action: 'USER_APPROVED',
+      actor,
+      target: user,
+      summary: `Approved ${user.name} (${user.email}) — empId ${user.empId}, crew ${user.crew}`,
+      metadata: { crew: user.crew, role: user.role, empId: user.empId },
+    });
+
     res.json({ message: 'User approved.', user });
   } catch (err) {
     res.status(500).json({ message: 'Error approving user', error: err.message });
@@ -161,6 +181,15 @@ exports.rejectUser = async (req, res) => {
     const { id } = req.params;
     const user = await AdminUser.findByIdAndDelete(id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
+    await logRosterEvent({
+      action: 'USER_REJECTED',
+      actor,
+      target: user,
+      summary: `Rejected registration for ${user.email}`,
+    });
+
     res.json({ message: 'User rejected and removed.' });
   } catch (err) {
     res.status(500).json({ message: 'Error rejecting user', error: err.message });
@@ -171,8 +200,21 @@ exports.updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { accessRole } = req.body;
-    const user = await AdminUser.findByIdAndUpdate(id, { accessRole }, { new: true });
+    if (!['admin', 'viewer'].includes(accessRole)) {
+      return res.status(400).json({ message: 'accessRole must be admin or viewer.' });
+    }
+    const user = await AdminUser.findByIdAndUpdate(id, { accessRole }, { new: true }).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
+    await logRosterEvent({
+      action: 'USER_ROLE_CHANGED',
+      actor,
+      target: user,
+      summary: `Changed portal access for ${user.email} to ${accessRole}`,
+      metadata: { accessRole },
+    });
+
     res.json({ message: 'User role updated.', user });
   } catch (err) {
     res.status(500).json({ message: 'Error updating user role', error: err.message });

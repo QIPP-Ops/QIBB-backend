@@ -28,7 +28,10 @@ exports.getLatest = async (req, res) => {
 
 exports.getByDate = async (req, res) => {
   try {
-    const target = req.params.date || req.query.date;
+    const target = req.query.date;
+    if (!target) {
+      return res.status(400).json({ success: false, message: 'Query parameter "date" is required (YYYY-MM-DD).' });
+    }
     const data = await WaterBalance.find({
       $or: [{ report_date: target }, { date: target }]
     });

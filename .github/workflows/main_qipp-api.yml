@@ -23,8 +23,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Run tests
+        run: npm test
+        env:
+          JWT_SECRET: test-jwt-secret-at-least-32-chars-long
+          COSMOS_URI: mongodb://127.0.0.1:27017/qipp-ci-test
+
       - name: Zip for deployment
-        run: zip -r release.zip . --exclude "*.git*"
+        run: |
+          zip -r release.zip . \
+            -x "*.git*" \
+            -x "env" \
+            -x ".env" \
+            -x ".env.*" \
+            -x "*/.env" \
+            -x "*/.env.*" \
+            -x "coverage/*"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

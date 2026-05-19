@@ -1,0 +1,16 @@
+node_modules/
+uploads/
+
+# Secrets — never commit real credentials
+env
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Test / coverage
+coverage/

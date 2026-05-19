@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 BLOB_SAS_URL   = os.environ["BLOB_SAS_URL"]
-CONTAINER_NAME = "report"
+CONTAINER_NAME = os.environ.get("BLOB_CONTAINER_NAME", "report")
 LOCAL_DIR      = Path("./data")
 
 def run():

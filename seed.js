@@ -29,49 +29,61 @@ async function seed() {
     const defaultPasswordHash = await bcrypt.hash('acwa_ops_2026', 10);
     const adminPasswordHash   = await bcrypt.hash('acwa_admin_2026', 10);
 
-    console.log('👤 Seeding personnel from roster data...');
-    const formattedPersonnel = rosterData.map(p => {
-      const empId = p.empId ? String(p.empId).trim() : `TEMP-${p.id || Math.floor(Math.random() * 10000)}`;
-      const email = `${p.name.toLowerCase().replace(/\s+/g, '.')}@acwapower.com`;
+    console.log('👤 Seeding personnel from roster data (email required per row)...');
+    const formattedPersonnel = rosterData
+      .map((p) => {
+        const empId = p.empId ? String(p.empId).trim() : `TEMP-${p.id || Math.floor(Math.random() * 10000)}`;
+        const email = (p.email || '').trim().toLowerCase();
+        if (!email) return null;
 
-      return {
-        name:         p.name,
-        email,
-        passwordHash: defaultPasswordHash,
-        empId,
-        crew:         p.crew || 'General',
-        role:         p.role || 'Local Operator',
-        color:        p.color || 'crew-grey',
-        accessRole:   'viewer',
-        isApproved:   true,
-        leaves: (p.leaves || []).map(l => ({
-          start: new Date(l.start),
-          end:   new Date(l.end),
-          type:  l.type || 'Planned'
-        }))
-      };
-    });
+        return {
+          name:            p.name,
+          email,
+          passwordHash:    defaultPasswordHash,
+          empId,
+          crew:            p.crew || 'General',
+          role:            p.role || 'Local Operator',
+          color:           p.color || 'crew-grey',
+          accessRole:      'viewer',
+          isApproved:      true,
+          isEmailVerified: true,
+          leaves: (p.leaves || []).map((l) => ({
+            start: new Date(l.start),
+            end:   new Date(l.end),
+            type:  l.type || 'Planned',
+          })),
+        };
+      })
+      .filter(Boolean);
 
-    await AdminUser.insertMany(formattedPersonnel);
-    console.log(`✅ Seeded ${formattedPersonnel.length} personnel accounts`);
+    if (formattedPersonnel.length) {
+      await AdminUser.insertMany(formattedPersonnel);
+    }
+    console.log(`✅ Seeded ${formattedPersonnel.length} personnel accounts (${rosterData.length - formattedPersonnel.length} skipped — no email in roster.json)`);
 
     // 4. Create a dedicated System Admin
-    const adminEmail = 'admin@acwaops.com';
-    const existingAdmin = await AdminUser.findOne({ email: adminEmail });
-    if (!existingAdmin) {
-      const admin = new AdminUser({
-        email:        adminEmail,
-        passwordHash: adminPasswordHash,
-        name:         'System Administrator',
-        empId:        'ADMIN-001',
-        crew:         'S',
-        role:         'Management',
-        accessRole:   'admin',
-        color:        'crew-lightviolet',
-        isApproved:   true
-      });
-      await admin.save();
-      console.log('👑 Admin created: admin@acwaops.com / @5Sicparvismagna');
+    const adminEmail = (process.env.SEED_ADMIN_EMAIL || '').trim().toLowerCase();
+    if (!adminEmail) {
+      console.log('⏭️  Skipped admin user — set SEED_ADMIN_EMAIL in .env to create one');
+    }
+    if (adminEmail) {
+      const existingAdmin = await AdminUser.findOne({ email: adminEmail });
+      if (!existingAdmin) {
+        const admin = new AdminUser({
+          email:           adminEmail,
+          passwordHash:    adminPasswordHash,
+          name:            'System Administrator',
+          empId:           'ADMIN-001',
+          crew:            'S',
+          role:            'Management',
+          accessRole:      'admin',
+          color:           'crew-lightviolet',
+          isApproved:      true,
+          isEmailVerified: true,
+        });
+        await admin.save();
+        console.log(`👑 Admin created: ${adminEmail} (password from seed script — change after first login)`);
+      }
     }
 
     // 5. Seed KPI Data

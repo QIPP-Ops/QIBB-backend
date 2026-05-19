@@ -1,5 +1,13 @@
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
+const { logRosterEvent } = require('../services/rosterAuditService');
+const ShiftOverride = require('../models/ShiftOverride');
+const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
+
+async function loadActor(req) {
+  if (!req.user?.id) return null;
+  return AdminUser.findById(req.user.id).select('-passwordHash');
+}
 
 exports.getRoster = async (req, res) => {
   try {
@@ -11,58 +19,122 @@ exports.addLeave = async (req, res) => {
   const { employeeId, empId, leave, start, end, type, workingDays, totalDays } = req.body;
   const targetId = employeeId || empId;
   if (!targetId) return res.status(400).json({ message: 'employeeId (or empId) is required.' });
+
   try {
+    const actor = await loadActor(req);
     const user = await AdminUser.findOne({ empId: targetId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin && actor && actor.empId !== targetId) {
+      return res.status(403).json({ message: 'You can only apply leave for your own account.' });
+    }
+
     const leaveData = leave || { start, end, type, workingDays, totalDays };
     if (!leaveData.start || !leaveData.end) {
       return res.status(400).json({ message: 'Leave start and end dates are required.' });
     }
+
     user.leaves.push(leaveData);
     await user.save();
+
+    const startStr = new Date(leaveData.start).toISOString().slice(0, 10);
+    const endStr = new Date(leaveData.end).toISOString().slice(0, 10);
+
+    await logRosterEvent({
+      action: 'LEAVE_APPLIED',
+      actor,
+      target: user,
+      summary: `${user.name} (${user.empId}): leave ${leaveData.type || 'Planned'} ${startStr} → ${endStr}`,
+      metadata: { leave: leaveData, appliedBy: actor?.email || 'unknown' },
+    });
+
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
-exports.createEmployee = async (req, res) => {
-  try {
-    const config = await AdminConfig.findOne();
-    let kpis = [];
-    if (config && req.body.role) {
-      const template = (config.kpiTemplates || []).find(t => t.role === req.body.role);
-      if (template) kpis = template.goals.map(g => ({ title: g, progress: 0, locked: false, visible: true }));
-    }
-    const payload = { ...req.body, kpis };
-    if (!payload.email) {
-      payload.email = `${(payload.name || 'user').toLowerCase().replace(/\s+/g, '.')}.${payload.empId}@acwapower.com`;
-    }
-    if (!payload.passwordHash) {
-      const bcrypt = require('bcryptjs');
-      payload.passwordHash = await bcrypt.hash('acwa_ops_2026', 10);
-    }
-    const user = new AdminUser(payload);
-    await user.save();
-    res.status(201).json(user);
-  } catch (error) { res.status(400).json({ message: error.message }); }
+/** Removed: admins do not create accounts with invented emails. Users register with their real email. */
+exports.createEmployee = async (_req, res) => {
+  res.status(403).json({
+    message: 'Direct account creation is disabled. Personnel must register with their own email; admins approve pending users in Management.',
+    code: 'USE_REGISTRATION_FLOW',
+  });
 };
 
 exports.updateEmployee = async (req, res) => {
   try {
-    const { passwordHash, email: _email, ...safeBody } = req.body;
+    const actor = await loadActor(req);
+    const isAdmin = req.user?.role === 'admin';
+    const isOpsLead = actor && userCanAccessOpsTools(actor);
+
+    if (!isAdmin && !isOpsLead) {
+      return res.status(403).json({
+        message: 'Only administrators or management can update personnel profiles.',
+      });
+    }
+
+    const {
+      passwordHash,
+      email,
+      accessRole,
+      isApproved,
+      isEmailVerified,
+      leaves,
+      kpis,
+      ...rest
+    } = req.body;
+
+    let safeBody;
+    if (isAdmin) {
+      safeBody = { ...rest };
+    } else {
+      const allowed = ['name', 'crew', 'role', 'color', 'seniority'];
+      safeBody = {};
+      allowed.forEach((k) => {
+        if (rest[k] !== undefined) safeBody[k] = rest[k];
+      });
+      if (!Object.keys(safeBody).length) {
+        return res.status(403).json({
+          message: 'Management can only update name, crew, role, and color.',
+        });
+      }
+    }
+
     const user = await AdminUser.findOneAndUpdate(
       { empId: req.params.empId },
       { $set: safeBody },
-      { new: true, runValidators: false }
+      { new: true, runValidators: true }
     ).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    await logRosterEvent({
+      action: 'PROFILE_UPDATED',
+      actor,
+      target: user,
+      summary: `${isAdmin ? 'Admin' : 'Management'} updated profile for ${user.name} (${user.empId})`,
+      metadata: { fields: Object.keys(safeBody) },
+    });
+
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
 exports.deleteEmployee = async (req, res) => {
   try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can remove personnel.' });
+    }
+    const actor = await loadActor(req);
     const user = await AdminUser.findOneAndDelete({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    await logRosterEvent({
+      action: 'USER_REJECTED',
+      actor,
+      target: user,
+      summary: `Removed personnel record ${user.name} (${user.empId})`,
+    });
+
     res.json({ message: 'Deleted' });
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
@@ -70,10 +142,27 @@ exports.deleteEmployee = async (req, res) => {
 exports.removeLeave = async (req, res) => {
   const { employeeId, leaveId } = req.params;
   try {
+    const actor = await loadActor(req);
     const user = await AdminUser.findOne({ empId: employeeId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
-    user.leaves = user.leaves.filter(l => l._id.toString() !== leaveId);
+
+    const isAdmin = req.user?.role === 'admin';
+    if (!isAdmin && actor && actor.empId !== employeeId) {
+      return res.status(403).json({ message: 'You can only remove your own leave requests.' });
+    }
+
+    const removed = user.leaves.id(leaveId);
+    user.leaves = user.leaves.filter((l) => l._id.toString() !== leaveId);
     await user.save();
+
+    await logRosterEvent({
+      action: 'LEAVE_REMOVED',
+      actor,
+      target: user,
+      summary: `Leave removed for ${user.name} (${user.empId})`,
+      metadata: { leaveId, removed },
+    });
+
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
@@ -120,7 +209,7 @@ exports.deleteKpi = async (req, res) => {
   try {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
-    user.kpis = user.kpis.filter(k => k._id.toString() !== req.params.kpiId);
+    user.kpis = user.kpis.filter((k) => k._id.toString() !== req.params.kpiId);
     await user.save();
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -131,31 +220,30 @@ exports.exportIcs = async (req, res) => {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
-    const SHIFT_CYCLES = {
-      'A': ['O','O','O','O','D','D','N','N'],
-      'B': ['D','D','N','N','O','O','O','O'],
-      'C': ['N','N','O','O','O','O','D','D'],
-      'D': ['O','O','D','D','N','N','O','O'],
-      'General': ['O','O','O','O','O','O','O','O'],
-      'S': ['O','O','O','O','O','O','O','O'],
-    };
-
     const config = await AdminConfig.findOne();
-    const baseDate = new Date(config?.shiftCycleBaseDate || '2026-01-01T00:00:00Z');
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const endDate = new Date(today); endDate.setDate(endDate.getDate() + 90);
-    const pad = n => String(n).padStart(2, '0');
+    const pad = (n) => String(n).padStart(2, '0');
 
-    const cycle = SHIFT_CYCLES[user.crew] || SHIFT_CYCLES['General'];
     const lines = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//QIPP Ops//EN',
-      `X-WR-CALNAME:${user.name} Shift Schedule`, 'CALSCALE:GREGORIAN'
+      `X-WR-CALNAME:${user.name} Shift Schedule`, 'CALSCALE:GREGORIAN',
     ];
+
+    const padDate = (x) => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}`;
+    const startStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    const endStr = `${endDate.getFullYear()}-${pad(endDate.getMonth() + 1)}-${pad(endDate.getDate())}`;
+    const overrideDocs = await ShiftOverride.find({
+      empId: user.empId,
+      date: { $gte: startStr, $lte: endStr },
+    }).lean();
+    const overrideByDate = Object.fromEntries(overrideDocs.map((o) => [o.date, o.shift]));
 
     let d = new Date(today);
     while (d <= endDate) {
-      const diff = Math.floor((d - baseDate) / 86400000);
-      const shift = cycle[((diff % 8) + 8) % 8];
+      const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const shift = overrideByDate[dateStr] || getShiftForDate(user.crew, dateStr, baseDate);
 
       if (shift !== 'O') {
         const ds = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
@@ -167,7 +255,7 @@ exports.exportIcs = async (req, res) => {
           'BEGIN:VEVENT',
           `DTSTART;TZID=Asia/Riyadh:${ds}T${shift === 'D' ? '053000' : '173000'}`,
           `DTEND;TZID=Asia/Riyadh:${shift === 'D' ? ds + 'T173000' : dsNext + 'T053000'}`,
-          `SUMMARY:${shift === 'D' ? '☀️ Day' : '🌙 Night'} Shift - Crew ${user.crew}`,
+          `SUMMARY:${shift === 'D' ? 'Day' : 'Night'} Shift - Crew ${user.crew}`,
           `UID:shift-${user.empId}-${ds}@qipp`,
           'END:VEVENT'
         );
@@ -176,14 +264,14 @@ exports.exportIcs = async (req, res) => {
     }
 
     user.leaves.forEach((lv, i) => {
-      const s = new Date(lv.start), e = new Date(lv.end);
+      const s = new Date(lv.start); const e = new Date(lv.end);
       e.setDate(e.getDate() + 1);
-      const fmt = x => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}`;
+      const fmt = (x) => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}`;
       lines.push(
         'BEGIN:VEVENT',
         `DTSTART;VALUE=DATE:${fmt(s)}`,
         `DTEND;VALUE=DATE:${fmt(e)}`,
-        `SUMMARY:🏖️ ${lv.type}`,
+        `SUMMARY:${lv.type}`,
         `UID:leave-${user.empId}-${i}@qipp`,
         'END:VEVENT'
       );
