@@ -9,6 +9,7 @@
     "seed": "node seed.js",
     "seed:ptw": "node seeders/ptwSeed.js",
     "migrate:auth": "node scripts/migrate-auth-fields.js",
+    "set-password": "node scripts/set-user-password.js",
     "test": "jest --forceExit --detectOpenHandles"
   },
   "keywords": [],

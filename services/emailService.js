@@ -1,19 +1,6 @@
 const nodemailer = require('nodemailer');
-
-const DEFAULT_FRONTEND_URL = 'https://qippop.azurewebsites.net';
-
-function isEmailConfigured() {
-  return Boolean(
-    process.env.SMTP_HOST?.trim()
-    && process.env.SMTP_USER?.trim()
-    && process.env.SMTP_PASS?.trim()
-  );
-}
-
-function getFrontendBaseUrl() {
-  const url = (process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL).trim().replace(/\/$/, '');
-  return url || DEFAULT_FRONTEND_URL;
-}
+const { getFrontendBaseUrl } = require('../config/frontendUrl');
+const { getSmtpPassword, isEmailConfigured } = require('../config/smtp');
 
 function createTransporter() {
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
@@ -24,7 +11,7 @@ function createTransporter() {
     secure,
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      pass: getSmtpPassword(),
     },
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true',
@@ -38,7 +25,7 @@ function getFromAddress() {
 
 async function sendMail(options) {
   if (!isEmailConfigured()) {
-    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, SMTP_PASS required).');
+    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS or EMAIL_PASS required).');
   }
   const transporter = createTransporter();
   await transporter.sendMail({

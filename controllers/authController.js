@@ -8,11 +8,21 @@ const {
   sendResetEmail,
   sendTempPasswordEmail,
   isEmailConfigured,
-  getFrontendBaseUrl,
 } = require('../services/emailService');
+const { getFrontendBaseUrl } = require('../config/frontendUrl');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
+}
+
+async function findUserByEmail(email) {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return null;
+  let user = await AdminUser.findOne({ email: normalized });
+  if (user) return user;
+  return AdminUser.findOne({
+    email: { $regex: new RegExp(`^${normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+  });
 }
 
 const AdminConfig = require('../models/AdminConfig');
@@ -192,8 +202,12 @@ exports.login = async (req, res) => {
     return res.status(400).json({ message: 'Email and password are required.' });
   }
   try {
-    const user = await AdminUser.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
+
+    if (!user.passwordHash) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ message: 'Invalid credentials.' });
@@ -240,7 +254,7 @@ exports.forgotPassword = async (req, res) => {
   }
 
   try {
-    const user = await AdminUser.findOne({ email });
+    const user = await findUserByEmail(email);
     if (!user) {
       return res.json({ message: 'If that email exists, a reset link has been sent.' });
     }

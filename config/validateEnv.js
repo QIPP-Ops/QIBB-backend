@@ -12,14 +12,10 @@ function validateEnv() {
     console.warn('Warning: JWT_SECRET should be at least 32 characters for production.');
   }
 
-  const smtpOk = Boolean(
-    process.env.SMTP_HOST?.trim()
-    && process.env.SMTP_USER?.trim()
-    && process.env.SMTP_PASS?.trim()
-  );
-  if (!smtpOk) {
+  const { isEmailConfigured } = require('./smtp');
+  if (!isEmailConfigured()) {
     console.warn(
-      'Warning: SMTP_HOST, SMTP_USER, and SMTP_PASS are not set — OTP and password reset emails will not send.'
+      'Warning: SMTP_HOST, SMTP_USER, and SMTP_PASS (or EMAIL_PASS) are not set — OTP and password reset emails will not send.'
     );
   }
   if (!process.env.FRONTEND_URL?.trim()) {

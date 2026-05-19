@@ -22,14 +22,13 @@ const plantDataRoutes = require('./routes/plantDataRoutes');
 
 const app = express();
 
+const { getAllowedFrontendOrigins } = require('./config/frontendUrl');
+
 const ALLOWED_ORIGINS = [
   'https://qippop.azurewebsites.net',
   'http://localhost:3000',
+  ...getAllowedFrontendOrigins(),
 ];
-
-if (process.env.FRONTEND_URL) {
-  ALLOWED_ORIGINS.push(process.env.FRONTEND_URL.replace(/\/$/, ''));
-}
 
 app.use(helmet());
 app.use(cors({
