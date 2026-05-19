@@ -1,19 +1,51 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  host:   process.env.SMTP_HOST,
-  port:   parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  }
-});
+const DEFAULT_FRONTEND_URL = 'https://qippop.azurewebsites.net';
 
-const FROM = `"ACWA Ops System" <${process.env.SMTP_USER}>`;
+function isEmailConfigured() {
+  return Boolean(
+    process.env.SMTP_HOST?.trim()
+    && process.env.SMTP_USER?.trim()
+    && process.env.SMTP_PASS?.trim()
+  );
+}
+
+function getFrontendBaseUrl() {
+  const url = (process.env.FRONTEND_URL || DEFAULT_FRONTEND_URL).trim().replace(/\/$/, '');
+  return url || DEFAULT_FRONTEND_URL;
+}
+
+function createTransporter() {
+  const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port,
+    secure,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true',
+    },
+  });
+}
+
+function getFromAddress() {
+  return `"ACWA Ops System" <${process.env.SMTP_USER}>`;
+}
+
+async function sendMail(options) {
+  if (!isEmailConfigured()) {
+    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, SMTP_PASS required).');
+  }
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: getFromAddress(),
+    ...options,
+  });
+}
 
 // ─── Shared HTML wrapper ─────────────────────────────────────────────────────
 function emailTemplate(title, bodyHtml) {
@@ -66,8 +98,7 @@ exports.sendOtpEmail = async (email, name, otp) => {
     <p>If you did not register, ignore this email.</p>
   `);
 
-  await transporter.sendMail({
-    from:    FROM,
+  await sendMail({
     to:      email,
     subject: 'Your ACWA Ops Verification Code',
     html,
@@ -85,8 +116,7 @@ exports.sendResetEmail = async (email, name, resetUrl) => {
     <p>If you did not request a reset, ignore this email. Your password will not change.</p>
   `);
 
-  await transporter.sendMail({
-    from:    FROM,
+  await sendMail({
     to:      email,
     subject: 'ACWA Ops — Password Reset Request',
     html,
@@ -102,10 +132,12 @@ exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
     <p>For security, please update your password after logging in.</p>
   `);
 
-  await transporter.sendMail({
-    from:    FROM,
+  await sendMail({
     to:      email,
     subject: 'ACWA Ops — Your Temporary Password',
     html,
   });
 };
+
+exports.isEmailConfigured = isEmailConfigured;
+exports.getFrontendBaseUrl = getFrontendBaseUrl;

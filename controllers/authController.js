@@ -3,7 +3,17 @@ const AdminUser = require('../models/AdminUser');
 const bcrypt    = require('bcryptjs');
 const jwt       = require('jsonwebtoken');
 const crypto    = require('crypto');
-const { sendOtpEmail, sendResetEmail, sendTempPasswordEmail } = require('../services/emailService');
+const {
+  sendOtpEmail,
+  sendResetEmail,
+  sendTempPasswordEmail,
+  isEmailConfigured,
+  getFrontendBaseUrl,
+} = require('../services/emailService');
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
 
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
@@ -176,7 +186,11 @@ exports.resendOtp = async (req, res) => {
 // ─── Login ───────────────────────────────────────────────────────────────────
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
   try {
     const user = await AdminUser.findOne({ email });
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
@@ -215,12 +229,21 @@ exports.login = async (req, res) => {
 // ─── Forgot Password ─────────────────────────────────────────────────────────
 
 exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!email) return res.status(400).json({ message: 'Email is required.' });
+
+  if (!isEmailConfigured()) {
+    return res.status(503).json({
+      message: 'Password reset email is not configured on the server. Contact your administrator.',
+      code: 'SMTP_NOT_CONFIGURED',
+    });
+  }
 
   try {
     const user = await AdminUser.findOne({ email });
-    if (!user) return res.json({ message: 'If that email exists, a reset link has been sent.' });
+    if (!user) {
+      return res.json({ message: 'If that email exists, a reset link has been sent.' });
+    }
 
     const token             = crypto.randomBytes(32).toString('hex');
     const resetToken        = crypto.createHash('sha256').update(token).digest('hex');
@@ -230,12 +253,19 @@ exports.forgotPassword = async (req, res) => {
     user.resetTokenExpires = resetTokenExpires;
     await user.save();
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const resetUrl = `${getFrontendBaseUrl()}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
     try {
       await sendResetEmail(email, user.name, resetUrl);
     } catch (emailErr) {
       console.error('Reset email failed:', emailErr.message);
+      user.resetToken = null;
+      user.resetTokenExpires = null;
+      await user.save();
+      return res.status(503).json({
+        message: 'Could not send reset email. Check that SMTP settings are correct, or contact your administrator.',
+        code: 'RESET_EMAIL_FAILED',
+      });
     }
 
     res.json({ message: 'If that email exists, a reset link has been sent.' });
@@ -247,7 +277,8 @@ exports.forgotPassword = async (req, res) => {
 // ─── Reset Password (user via token) ─────────────────────────────────────────
 
 exports.resetPassword = async (req, res) => {
-  const { email, token, newPassword } = req.body;
+  const email = normalizeEmail(req.body.email);
+  const { token, newPassword } = req.body;
   if (!email || !token || !newPassword) {
     return res.status(400).json({ message: 'All fields required.' });
   }
