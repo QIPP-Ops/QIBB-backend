@@ -1,6 +1,7 @@
 /**
  * Set or create a user password (e.g. recover admin access).
  *
+ 
  * Usage:
  *   node scripts/set-user-password.js admin@acwaops.com "YourNewPassword"
  *
