@@ -1,8 +1,15 @@
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
 require('dotenv').config();
 const AdminConfig = require('../models/AdminConfig');
 
-const PTW_PERSONNEL = [
+const jsonPath = path.join(__dirname, '../data/ptw-authorization-2026.json');
+const PTW_FROM_EXCEL = fs.existsSync(jsonPath)
+  ? JSON.parse(fs.readFileSync(jsonPath, 'utf8'))
+  : null;
+
+const PTW_PERSONNEL = PTW_FROM_EXCEL || [
   // SCE
   { name: 'Abdullah Alamri', designation: 'SCE', empNo: '', authorizations: ['safetyCoordinator','safetyControllerB','permitIssuer','isolationAuthority','voltageLow','voltageHigh'], validUntil: '' },
   { name: 'Mustafa Salem', designation: 'SCE', empNo: '', authorizations: ['safetyCoordinator','safetyControllerC','permitIssuer','isolationAuthority','voltageLow','voltageHigh'], validUntil: '2027-11-30' },

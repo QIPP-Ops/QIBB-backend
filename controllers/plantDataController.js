@@ -24,6 +24,8 @@ exports.getStatus = async (_req, res) => {
       reportsRoot: state?.reportsRoot || '',
       blobAccount: process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp',
       blobContainer: CONTAINER,
+      blobSasConfigured: blobIngestConfigured(),
+      maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10),
       ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
       lastRunAt: state?.lastRunAt,
       lastSuccessAt: state?.lastSuccessAt,

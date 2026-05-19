@@ -15,7 +15,7 @@ const {
 } = require('./blobReports');
 
 const MAX_FILES = parseInt(process.env.PLANT_INGEST_MAX_FILES || '80', 10);
-const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '14', 10);
+const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10);
 
 async function upsertPoints(points) {
   let n = 0;

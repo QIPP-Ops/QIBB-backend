@@ -26,6 +26,8 @@ const { getAllowedFrontendOrigins } = require('./config/frontendUrl');
 
 const ALLOWED_ORIGINS = [
   'https://qippop.azurewebsites.net',
+  'https://qipp.live',
+  'https://www.qipp.live',
   'http://localhost:3000',
   ...getAllowedFrontendOrigins(),
 ];
@@ -61,15 +63,38 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/health/email', (_req, res) => {
-  res.json({
+app.get('/health/email', async (req, res) => {
+  const payload = {
     smtpConfigured: isEmailConfigured(),
     smtpHost: process.env.SMTP_HOST || null,
+    smtpPort: parseInt(process.env.SMTP_PORT, 10) || 587,
     smtpUser: getSmtpUser() || null,
     hasPassword: Boolean(getSmtpPassword()),
     mongoUriSet: Boolean(getMongoUri()),
     frontendUrl: getFrontendBaseUrl(),
-  });
+  };
+  if (req.query.verify === '1' && isEmailConfigured()) {
+    try {
+      const nodemailer = require('nodemailer');
+      const port = parseInt(process.env.SMTP_PORT, 10) || 587;
+      const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure,
+        requireTLS: !secure && port === 587,
+        auth: { user: getSmtpUser(), pass: getSmtpPassword() },
+        connectionTimeout: 15000,
+        tls: { minVersion: 'TLSv1.2' },
+      });
+      await transporter.verify();
+      payload.smtpVerify = 'ok';
+    } catch (err) {
+      payload.smtpVerify = 'failed';
+      payload.smtpVerifyError = err.message;
+    }
+  }
+  res.json(payload);
 });
 
 app.get('/ready', (_req, res) => {
