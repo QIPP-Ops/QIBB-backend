@@ -52,6 +52,30 @@ const PANEL_DEFS = [
     maxKeys: 2,
   },
   {
+    id: 'chemistry',
+    title: 'Chemistry & RO',
+    chartType: 'line',
+    category: 'chemistry',
+    matchers: [/chlor|ph|conduct|silica|ro|permeate|recovery/i],
+    maxKeys: 4,
+  },
+  {
+    id: 'environment',
+    title: 'Environmental',
+    chartType: 'area',
+    category: 'environment',
+    matchers: [/emission|stack|nox|so2|co2|ambient|environment/i],
+    maxKeys: 4,
+  },
+  {
+    id: 'power_gen',
+    title: 'Power generation',
+    chartType: 'line',
+    category: 'energy',
+    matchers: [/generation|gross.*power|net.*power|mw/i],
+    maxKeys: 3,
+  },
+  {
     id: 'power_kpi',
     title: 'GT power vs period avg',
     chartType: 'kpi',
@@ -74,8 +98,19 @@ function matchMetrics(allMetrics, panel) {
   for (const m of allMetrics) {
     if (panel.category && m.category !== panel.category) continue;
     const label = `${m.label} ${m.metricKey}`;
-    if (panel.matchers.some((re) => re.test(label))) hits.push(m);
+    const matched = panel.matchers.some((re) => re.test(label));
+    if (!matched) continue;
+    if (hits.some((h) => h.metricKey === m.metricKey)) continue;
+    hits.push(m);
     if (hits.length >= panel.maxKeys) break;
+  }
+  if (!hits.length && panel.category) {
+    for (const m of allMetrics) {
+      if (m.category !== panel.category) continue;
+      if (hits.some((h) => h.metricKey === m.metricKey)) continue;
+      hits.push(m);
+      if (hits.length >= panel.maxKeys) break;
+    }
   }
   return hits.slice(0, panel.maxKeys);
 }

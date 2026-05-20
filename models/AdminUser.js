@@ -57,6 +57,16 @@ const AdminUserSchema = new mongoose.Schema({
   resetToken:        { type: String, default: null },      // hashed reset token
   resetTokenExpires: { type: Date,   default: null },      // reset link expiry
 
+  // ─── Operation Team org chart (super-admin layout) ────────────────────────
+  opsGroupLabel:      { type: String, default: '' },
+  opsTreeParentEmpId: { type: String, default: '' },
+  opsTreeRelation:    {
+    type: String,
+    enum: ['', 'root', 'child', 'above', 'below', 'beside'],
+    default: '',
+  },
+  opsTreeOrder:       { type: Number, default: 0 },
+
   // ─── Operational Data ─────────────────────────────────────────────────────
   leaves:            [LeaveSchema],
   kpis:              [KpiGoalSchema],

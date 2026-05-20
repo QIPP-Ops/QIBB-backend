@@ -30,6 +30,9 @@ function canEditCompensateBalance(req, targetUser) {
 function rosterRowForClient(doc) {
   const row = doc.toObject ? doc.toObject() : { ...doc };
   row.email = sanitizeEmailForClient(row.email);
+  if (!row.opsGroupLabel) row.opsGroupLabel = '';
+  if (!row.opsTreeParentEmpId) row.opsTreeParentEmpId = '';
+  if (!row.opsTreeRelation) row.opsTreeRelation = '';
   return row;
 }
 
@@ -218,6 +221,13 @@ exports.updateEmployee = async (req, res) => {
         'employmentType', 'company', 'canOpsLead',
       ];
       hrFields.forEach((k) => {
+        if (rest[k] !== undefined) safeBody[k] = rest[k];
+      });
+    }
+
+    const { isSuperAdmin } = require('../middleware/superAdmin');
+    if (isSuperAdmin(req)) {
+      ['opsGroupLabel', 'opsTreeParentEmpId', 'opsTreeRelation', 'opsTreeOrder'].forEach((k) => {
         if (rest[k] !== undefined) safeBody[k] = rest[k];
       });
     }

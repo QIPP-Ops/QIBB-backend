@@ -265,10 +265,7 @@ exports.forgotPassword = async (req, res) => {
   if (!email) return res.status(400).json({ message: 'Email is required.' });
 
   if (!isEmailConfigured()) {
-    return res.status(503).json({
-      message: 'Password reset email is not configured on the server. Contact your administrator.',
-      code: 'SMTP_NOT_CONFIGURED',
-    });
+    return res.json({ message: 'If that email exists, a reset link has been sent.' });
   }
 
   try {
@@ -294,11 +291,7 @@ exports.forgotPassword = async (req, res) => {
       user.resetToken = null;
       user.resetTokenExpires = null;
       await user.save();
-      return res.status(503).json({
-        message:
-          'Could not send reset email. On Azure, set SMTP_HOST=smtpout.secureserver.net, SMTP_USER=admin@acwaops.com, and EMAIL_PASS (or SMTP_PASS) to your GoDaddy mailbox password, then restart the API.',
-        code: 'RESET_EMAIL_FAILED',
-      });
+      return res.json({ message: 'If that email exists, a reset link has been sent.' });
     }
 
     res.json({ message: 'If that email exists, a reset link has been sent.' });

@@ -117,6 +117,19 @@ exports.getHistoricalDashboard = async (req, res) => {
   }
 };
 
+exports.getOperationalOverview = async (req, res) => {
+  try {
+    const { buildOperationalOverview } = require('../services/plantReports/operationalOverview');
+    const data = await buildOperationalOverview({
+      from: req.query.startDate || req.query.from,
+      to: req.query.endDate || req.query.to,
+    });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getMetricSeries = async (req, res) => {
   const keys = String(req.query.keys || '')
     .split(',')
