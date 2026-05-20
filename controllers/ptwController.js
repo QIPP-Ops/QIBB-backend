@@ -31,7 +31,7 @@ function isSafetyController(person) {
 
 exports.getMyAccess = async (req, res) => {
   try {
-    if (req.user?.role === 'admin') {
+    if (req.user?.role === 'admin' || req.user?.accessRole === 'admin') {
       return res.json({
         authorized: true,
         isAdmin: true,

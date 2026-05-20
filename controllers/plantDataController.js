@@ -17,28 +17,47 @@ async function loadDbUser(req) {
 }
 
 exports.getStatus = async (_req, res) => {
-  const state = await PlantIngestionState.findOne({ key: 'global' }).lean();
-  res.json({
-    success: true,
-    data: {
-      reportsRoot: state?.reportsRoot || '',
-      blobAccount: process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp',
-      blobContainer: CONTAINER,
-      blobSasConfigured: blobIngestConfigured(),
-      maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10),
-      ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
-      lastRunAt: state?.lastRunAt,
-      lastSuccessAt: state?.lastSuccessAt,
-      lastError: state?.lastError || '',
-      filesScanned: state?.filesScanned || 0,
-      filesProcessed: state?.filesProcessed || 0,
-      pointsUpserted: state?.pointsUpserted || 0,
-      highlightsFound: state?.highlightsFound || 0,
-      metricsDiscovered: state?.metricsDiscovered || 0,
-      lastByKind: state?.lastByKind || {},
-      autoIngest: blobIngestConfigured() || Boolean(process.env.PLANT_REPORTS_DIR),
-    },
-  });
+  const { parseMongoUri, classifyMongoError } = require('../utils/mongoDiagnostics');
+  const { getMongoUri } = require('../config/database');
+  const uriInfo = parseMongoUri(getMongoUri());
+  try {
+    const state = await PlantIngestionState.findOne({ key: 'global' }).lean();
+    res.json({
+      success: true,
+      data: {
+        mongo: { ok: true, ...uriInfo },
+        reportsRoot: state?.reportsRoot || '',
+        blobAccount: process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp',
+        blobContainer: CONTAINER,
+        blobSasConfigured: blobIngestConfigured(),
+        maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10),
+        ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
+        lastRunAt: state?.lastRunAt,
+        lastSuccessAt: state?.lastSuccessAt,
+        lastError: state?.lastError || '',
+        filesScanned: state?.filesScanned || 0,
+        filesProcessed: state?.filesProcessed || 0,
+        pointsUpserted: state?.pointsUpserted || 0,
+        highlightsFound: state?.highlightsFound || 0,
+        metricsDiscovered: state?.metricsDiscovered || 0,
+        lastByKind: state?.lastByKind || {},
+        autoIngest: blobIngestConfigured() || Boolean(process.env.PLANT_REPORTS_DIR),
+      },
+    });
+  } catch (err) {
+    const c = classifyMongoError(err);
+    res.status(500).json({
+      success: false,
+      source: c.source,
+      error: c.summary,
+      data: {
+        mongo: { ok: false, ...uriInfo },
+        lastError: c.summary,
+        lastErrorSource: 'database',
+        blobSasConfigured: blobIngestConfigured(),
+      },
+    });
+  }
 };
 
 exports.getHighlights = async (req, res) => {

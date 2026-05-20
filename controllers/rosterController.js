@@ -9,6 +9,23 @@ async function loadActor(req) {
   return AdminUser.findById(req.user.id).select('-passwordHash');
 }
 
+function calendarDaysInclusive(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  s.setHours(0, 0, 0, 0);
+  e.setHours(0, 0, 0, 0);
+  if (e < s) return 0;
+  return Math.floor((e - s) / 86400000) + 1;
+}
+
+function canEditCompensateBalance(req, targetUser) {
+  if (!req.user) return false;
+  if (req.user.role === 'admin') return true;
+  if (req.user.canOpsLead) return true;
+  if (req.user.role === 'management' && targetUser.crew === req.user.crew) return true;
+  return false;
+}
+
 exports.getRoster = async (req, res) => {
   try {
     res.json(await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }));
@@ -33,6 +50,24 @@ exports.addLeave = async (req, res) => {
     const leaveData = leave || { start, end, type, workingDays, totalDays };
     if (!leaveData.start || !leaveData.end) {
       return res.status(400).json({ message: 'Leave start and end dates are required.' });
+    }
+    leaveData.start = new Date(leaveData.start);
+    leaveData.end = new Date(leaveData.end);
+    const leaveTypeStr = String(leaveData.type || 'Planned');
+    if (/compensat/i.test(leaveTypeStr)) {
+      const span =
+        typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0
+          ? leaveData.workingDays
+          : typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
+            ? leaveData.totalDays
+            : calendarDaysInclusive(leaveData.start, leaveData.end);
+      const bal = user.compensateDayBalance ?? 0;
+      if (bal < span) {
+        return res.status(400).json({
+          message: `Insufficient compensate-day balance (${bal} available, ${span} required).`,
+        });
+      }
+      user.compensateDayBalance = bal - span;
     }
 
     user.leaves.push(leaveData);
@@ -88,16 +123,29 @@ exports.updateEmployee = async (req, res) => {
     if (isAdmin) {
       safeBody = { ...rest };
     } else {
-      const allowed = ['name', 'crew', 'role', 'color', 'seniority'];
+      const allowed = [
+        'name', 'fullName', 'crew', 'role', 'color', 'seniority', 'position',
+        'joiningDate', 'nationality', 'iqama', 'employmentType', 'company', 'empId',
+      ];
       safeBody = {};
       allowed.forEach((k) => {
         if (rest[k] !== undefined) safeBody[k] = rest[k];
       });
       if (!Object.keys(safeBody).length) {
         return res.status(403).json({
-          message: 'Management can only update name, crew, role, and color.',
+          message: 'Management can only update personnel profile fields.',
         });
       }
+    }
+
+    if (isAdmin) {
+      const hrFields = [
+        'fullName', 'position', 'joiningDate', 'nationality', 'iqama',
+        'employmentType', 'company', 'canOpsLead',
+      ];
+      hrFields.forEach((k) => {
+        if (rest[k] !== undefined) safeBody[k] = rest[k];
+      });
     }
 
     const user = await AdminUser.findOneAndUpdate(
@@ -213,6 +261,35 @@ exports.deleteKpi = async (req, res) => {
     await user.save();
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+exports.patchCompensateBalance = async (req, res) => {
+  try {
+    const { empId } = req.params;
+    const bal = req.body?.balance;
+    if (bal === undefined || Number.isNaN(Number(bal))) {
+      return res.status(400).json({ message: 'Numeric balance is required.' });
+    }
+    const target = await AdminUser.findOne({ empId });
+    if (!target) return res.status(404).json({ message: 'Personnel not found' });
+    if (!canEditCompensateBalance(req, target)) {
+      return res.status(403).json({ message: 'Not allowed to edit compensate balance for this employee.' });
+    }
+    const prev = target.compensateDayBalance ?? 0;
+    target.compensateDayBalance = Number(bal);
+    await target.save();
+    const actor = await loadActor(req);
+    await logRosterEvent({
+      action: 'COMPENSATE_BALANCE_SET',
+      actor,
+      target,
+      summary: `Compensate balance for ${target.name} (${empId}): ${prev} → ${target.compensateDayBalance}`,
+      metadata: { previous: prev, next: target.compensateDayBalance },
+    });
+    res.json(target);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 exports.exportIcs = async (req, res) => {

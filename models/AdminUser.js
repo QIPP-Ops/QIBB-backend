@@ -36,8 +36,17 @@ const AdminUserSchema = new mongoose.Schema({
   seniority:    { type: String, enum: COLOR_VALUES, default: 'crew-grey' }, // backward compat alias
 
   // ─── Auth & Access ────────────────────────────────────────────────────────
-  accessRole:        { type: String, enum: ['admin', 'viewer'], default: 'viewer' },
+  accessRole:        { type: String, enum: ['admin', 'viewer', 'management'], default: 'viewer' },
+  canOpsLead:        { type: Boolean, default: false },
+  compensateDayBalance: { type: Number, default: 0 },
   isApproved:        { type: Boolean, default: false },
+  fullName:          { type: String, default: '' },
+  position:          { type: String, default: '' },
+  joiningDate:       { type: Date, default: null },
+  nationality:       { type: String, default: '' },
+  iqama:             { type: String, default: '' },
+  employmentType:    { type: String, default: '' },
+  company:           { type: String, default: '' },
 
   // ─── NEW: Email Verification ──────────────────────────────────────────────
   isEmailVerified:   { type: Boolean, default: false },

@@ -32,7 +32,7 @@ function hasAuth(person, ...keys) {
 /** Any listed PTW authorization grants portal access. */
 async function requirePtwAccess(req, res, next) {
   try {
-    if (req.user?.role === 'admin') {
+    if (req.user?.role === 'admin' || req.user?.accessRole === 'admin') {
       req.ptwPerson = { name: req.user.name, authorizations: ['admin'] };
       return next();
     }

@@ -36,11 +36,13 @@ async function buildSchedulePayload(start, end) {
 
 exports.getSchedule = async (req, res) => {
   try {
-    const days = Math.min(parseInt(req.query.days, 10) || 48, 120);
-    const start = req.query.start ? new Date(req.query.start) : new Date();
+    const days = Math.min(parseInt(req.query.days, 10) || 48, 366);
+    const startRaw = req.query.start || req.query.from;
+    const endRaw = req.query.end || req.query.to;
+    const start = startRaw ? new Date(startRaw) : new Date();
     start.setHours(0, 0, 0, 0);
-    const end = req.query.end
-      ? new Date(req.query.end)
+    const end = endRaw
+      ? new Date(endRaw)
       : new Date(start.getTime() + (days - 1) * 86400000);
 
     const schedule = await buildSchedulePayload(start, end);

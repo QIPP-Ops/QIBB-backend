@@ -198,10 +198,20 @@ exports.rejectUser = async (req, res) => {
 
 exports.updateUserRole = async (req, res) => {
   try {
+    const { isSuperAdmin } = require('../middleware/superAdmin');
     const { id } = req.params;
     const { accessRole } = req.body;
-    if (!['admin', 'viewer'].includes(accessRole)) {
-      return res.status(400).json({ message: 'accessRole must be admin or viewer.' });
+    if (!['admin', 'viewer', 'management'].includes(accessRole)) {
+      return res.status(400).json({ message: 'accessRole must be admin, viewer, or management.' });
+    }
+    const target = await AdminUser.findById(id);
+    if (!target) return res.status(404).json({ message: 'User not found.' });
+    const promotingToAdmin = accessRole === 'admin' && target.accessRole !== 'admin';
+    const demotingAdmin = target.accessRole === 'admin' && accessRole !== 'admin';
+    if ((promotingToAdmin || demotingAdmin) && !isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only admin@acwaops.com may grant or revoke administrator access.',
+      });
     }
     const user = await AdminUser.findByIdAndUpdate(id, { accessRole }, { new: true }).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found.' });

@@ -39,6 +39,6 @@ const ptwSchema = new mongoose.Schema({
     toStatus: String,
     note: String,
   }],
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 module.exports = mongoose.model('PTW', ptwSchema);
