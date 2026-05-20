@@ -9,6 +9,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.get('/', protect, ctrl.getLatestTrends);
 router.get('/history', protect, ctrl.getTrendsHistory);
 router.post('/sync', protect, admin, ctrl.syncFromSharePoint);
+router.post('/sync-blob', protect, admin, ctrl.syncFromBlob);
 router.post('/upload', protect, admin, upload.single('file'), ctrl.uploadReport);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 const path = require('path');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { BlobServiceClient, ContainerClient } = require('@azure/storage-blob');
 const { classifyReport } = require('./excelUtils');
 
 const EXCEL_EXT = new Set(['.xlsx', '.xlsm', '.xls']);
@@ -18,12 +18,47 @@ function resolveBlobSasUrl() {
   return '';
 }
 
-function getBlobServiceClient() {
+/**
+ * Azure portal often provides a container SAS like:
+ *   https://account.blob.core.windows.net/report?sv=...
+ * Using BlobServiceClient + getContainerClient('report') on that URL fails (404).
+ * Detect container-in-path SAS and use ContainerClient directly.
+ */
+function getReportContainerClient() {
+  const containerName = process.env.BLOB_CONTAINER_NAME || CONTAINER;
+
+  const conn = process.env.AZURE_STORAGE_CONNECTION_STRING?.trim();
+  if (conn) {
+    const service = BlobServiceClient.fromConnectionString(conn);
+    return {
+      container: service.getContainerClient(containerName),
+      accessMode: 'connection_string',
+    };
+  }
+
   const sasUrl = resolveBlobSasUrl();
   if (!sasUrl) {
-    throw new Error('BLOB_SAS_URL (or BLOB_STORAGE_ACCOUNT + BLOB_SAS_TOKEN) is not configured');
+    throw new Error(
+      'Configure AZURE_STORAGE_CONNECTION_STRING, BLOB_SAS_URL (container or account SAS), or BLOB_STORAGE_ACCOUNT + BLOB_SAS_TOKEN'
+    );
   }
-  return new BlobServiceClient(sasUrl);
+
+  try {
+    const parsed = new URL(sasUrl);
+    const pathSeg = parsed.pathname.replace(/^\/+|\/+$/g, '');
+    const firstSegment = pathSeg.split('/').filter(Boolean)[0];
+    if (firstSegment && (firstSegment === containerName || pathSeg === containerName)) {
+      return { container: new ContainerClient(sasUrl), accessMode: 'container_sas' };
+    }
+  } catch {
+    /* fall through to account SAS */
+  }
+
+  const service = new BlobServiceClient(sasUrl);
+  return {
+    container: service.getContainerClient(containerName),
+    accessMode: 'account_sas',
+  };
 }
 
 function isExcelBlob(name) {
@@ -35,8 +70,7 @@ function isExcelBlob(name) {
  */
 async function listReportBlobs(options = {}) {
   const { maxAgeDays = 14, prefix = '' } = options;
-  const client = getBlobServiceClient();
-  const container = client.getContainerClient(CONTAINER);
+  const { container } = getReportContainerClient();
   const minTime = Date.now() - maxAgeDays * 86400000;
 
   const blobs = [];
@@ -47,7 +81,7 @@ async function listReportBlobs(options = {}) {
     const modified = item.properties?.lastModified
       ? new Date(item.properties.lastModified).getTime()
       : 0;
-    if (modified && modified < minTime) continue;
+    if (modified > 0 && modified < minTime) continue;
     blobs.push({
       name: item.name,
       lastModified: item.properties?.lastModified || null,
@@ -65,8 +99,7 @@ async function listReportBlobs(options = {}) {
 }
 
 async function downloadBlobBuffer(blobName) {
-  const client = getBlobServiceClient();
-  const container = client.getContainerClient(CONTAINER);
+  const { container } = getReportContainerClient();
   const res = await container.getBlobClient(blobName).download();
   const chunks = [];
   for await (const chunk of res.readableStreamBody) {
@@ -76,7 +109,28 @@ async function downloadBlobBuffer(blobName) {
 }
 
 function blobIngestConfigured() {
-  return Boolean(resolveBlobSasUrl());
+  return Boolean(
+    process.env.AZURE_STORAGE_CONNECTION_STRING?.trim() || resolveBlobSasUrl()
+  );
+}
+
+function getBlobAccessInfo() {
+  if (process.env.AZURE_STORAGE_CONNECTION_STRING?.trim()) {
+    return { configured: true, mode: 'connection_string', container: CONTAINER };
+  }
+  const sas = resolveBlobSasUrl();
+  if (!sas) return { configured: false, mode: 'none', container: CONTAINER };
+  try {
+    const parsed = new URL(sas);
+    const pathSeg = parsed.pathname.replace(/^\/+|\/+$/g, '');
+    const first = pathSeg.split('/').filter(Boolean)[0];
+    if (first === CONTAINER) {
+      return { configured: true, mode: 'container_sas', container: CONTAINER };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { configured: true, mode: 'account_sas', container: CONTAINER };
 }
 
 module.exports = {
@@ -85,4 +139,6 @@ module.exports = {
   downloadBlobBuffer,
   blobIngestConfigured,
   resolveBlobSasUrl,
+  getBlobAccessInfo,
+  getReportContainerClient,
 };

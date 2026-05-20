@@ -1,5 +1,8 @@
 const TrendsSnapshot = require('../models/TrendsSnapshot');
 const { syncAllReports } = require('../services/sharepointService');
+const { blobIngestConfigured } = require('../services/plantReports/blobReports');
+const { syncTrendsSnapshotFromBlob } = require('../services/plantReports/syncTrendsSnapshot');
+const { runPlantIngestion } = require('../services/plantReports/runIngestion');
 const {
   parseWaterConsumption,
   parseEnergyReport,
@@ -48,6 +51,30 @@ exports.syncFromSharePoint = async (req, res) => {
     res.json({ message: 'Sync complete', snapshot });
   } catch (err) {
     res.status(500).json({ message: 'Sync failed', error: err.message });
+  }
+};
+
+/** Sync KPI trends visuals + plant metrics from Azure Blob container `report` */
+exports.syncFromBlob = async (req, res) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin only' });
+  }
+  if (!blobIngestConfigured()) {
+    return res.status(400).json({
+      message: 'Blob not configured. Set BLOB_SAS_URL or AZURE_STORAGE_CONNECTION_STRING on the API.',
+    });
+  }
+  try {
+    const forceAll = req.query.forceAll === '1' || req.body?.forceAll === true;
+    const ingest = await runPlantIngestion({ forceAll });
+    const snapshot = ingest.trendsSnapshot || (await syncTrendsSnapshotFromBlob());
+    res.json({
+      message: 'Blob sync complete',
+      ingest,
+      trendsSnapshot: snapshot,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Blob sync failed', error: err.message });
   }
 };
 

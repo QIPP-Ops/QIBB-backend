@@ -8,7 +8,11 @@ const {
   ManagementTrendAccess,
 } = require('../models/PlantMetric');
 const { runPlantIngestion } = require('../services/plantReports/runIngestion');
-const { blobIngestConfigured, CONTAINER, resolveBlobSasUrl } = require('../services/plantReports/blobReports');
+const {
+  blobIngestConfigured,
+  CONTAINER,
+  getBlobAccessInfo,
+} = require('../services/plantReports/blobReports');
 const { userCanAccessOpsTools } = require('../services/shiftScheduleService');
 const AdminUser = require('../models/AdminUser');
 
@@ -30,11 +34,7 @@ exports.getStatus = async (_req, res) => {
         blobAccount: process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp',
         blobContainer: CONTAINER,
         blobSasConfigured: blobIngestConfigured(),
-        blobSasSource: resolveBlobSasUrl()
-          ? process.env.BLOB_SAS_URL?.trim()
-            ? 'BLOB_SAS_URL'
-            : 'BLOB_STORAGE_ACCOUNT+BLOB_SAS_TOKEN'
-          : 'none',
+        blobAccess: getBlobAccessInfo(),
         maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10),
         ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
         lastRunAt: state?.lastRunAt,

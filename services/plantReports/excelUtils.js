@@ -69,6 +69,9 @@ function classifyReport(filename) {
   if (n.includes('oil purifier')) return 'oil_purifier';
   if (n.includes('timers-counters') || n.includes('timers counters')) return 'timers';
   if (n.includes('power availability')) return 'power_avail';
+  if (n.includes('energy-produced') || n.includes('energy produced') || (n.includes('energy') && n.includes('report'))) {
+    return 'energy';
+  }
   return 'other';
 }
 

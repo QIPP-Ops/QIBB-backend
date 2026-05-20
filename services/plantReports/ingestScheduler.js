@@ -32,10 +32,16 @@ async function tick() {
 
 function startPlantIngestScheduler() {
   if (!ingestEnabled()) {
-    console.warn('[plant-ingest] BLOB_SAS_URL unset — automatic plant report ingest disabled');
+    console.warn(
+      '[plant-ingest] Blob/local ingest disabled — set BLOB_SAS_URL, AZURE_STORAGE_CONNECTION_STRING, or PLANT_REPORTS_DIR'
+    );
     return;
   }
-  const src = blobIngestConfigured() ? 'Azure Blob (report)' : 'local PLANT_REPORTS_DIR';
+  const { getBlobAccessInfo } = require('./blobReports');
+  const blobInfo = getBlobAccessInfo();
+  const src = blobIngestConfigured()
+    ? `Azure Blob container ${blobInfo.container} (${blobInfo.mode})`
+    : 'local PLANT_REPORTS_DIR';
   console.log(`[plant-ingest] source=${src} · every ${INTERVAL_MS / 60000} minutes`);
   setTimeout(tick, 5000);
   timer = setInterval(tick, INTERVAL_MS);
