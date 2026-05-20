@@ -1,6 +1,7 @@
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
+const { isPlaceholderEmail, sanitizeEmailForClient } = require('../utils/placeholderEmail');
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
 
@@ -26,9 +27,16 @@ function canEditCompensateBalance(req, targetUser) {
   return false;
 }
 
+function rosterRowForClient(doc) {
+  const row = doc.toObject ? doc.toObject() : { ...doc };
+  row.email = sanitizeEmailForClient(row.email);
+  return row;
+}
+
 exports.getRoster = async (req, res) => {
   try {
-    res.json(await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }));
+    const rows = await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }).lean();
+    res.json(rows.map(rosterRowForClient));
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 

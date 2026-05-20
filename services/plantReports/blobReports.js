@@ -5,10 +5,23 @@ const { classifyReport } = require('./excelUtils');
 const EXCEL_EXT = new Set(['.xlsx', '.xlsm', '.xls']);
 const CONTAINER = process.env.BLOB_CONTAINER_NAME || 'report';
 
+function resolveBlobSasUrl() {
+  const direct = process.env.BLOB_SAS_URL?.trim();
+  if (direct) return direct;
+  const account = process.env.BLOB_STORAGE_ACCOUNT?.trim();
+  const sas = process.env.BLOB_SAS_TOKEN?.trim();
+  const container = process.env.BLOB_CONTAINER_NAME || CONTAINER;
+  if (account && sas) {
+    const token = sas.startsWith('?') ? sas : `?${sas}`;
+    return `https://${account}.blob.core.windows.net/${container}${token}`;
+  }
+  return '';
+}
+
 function getBlobServiceClient() {
-  const sasUrl = process.env.BLOB_SAS_URL?.trim();
+  const sasUrl = resolveBlobSasUrl();
   if (!sasUrl) {
-    throw new Error('BLOB_SAS_URL is not configured');
+    throw new Error('BLOB_SAS_URL (or BLOB_STORAGE_ACCOUNT + BLOB_SAS_TOKEN) is not configured');
   }
   return new BlobServiceClient(sasUrl);
 }
@@ -63,7 +76,7 @@ async function downloadBlobBuffer(blobName) {
 }
 
 function blobIngestConfigured() {
-  return Boolean(process.env.BLOB_SAS_URL?.trim());
+  return Boolean(resolveBlobSasUrl());
 }
 
 module.exports = {
@@ -71,4 +84,5 @@ module.exports = {
   listReportBlobs,
   downloadBlobBuffer,
   blobIngestConfigured,
+  resolveBlobSasUrl,
 };

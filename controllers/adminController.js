@@ -2,6 +2,7 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
 const bcrypt      = require('bcryptjs');
 const { logRosterEvent } = require('../services/rosterAuditService');
+const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 
 // ─── Status / PIN / Lock ─────────────────────────────────────────────────────
 
@@ -200,34 +201,71 @@ exports.updateUserRole = async (req, res) => {
   try {
     const { isSuperAdmin } = require('../middleware/superAdmin');
     const { id } = req.params;
-    const { accessRole } = req.body;
-    if (!['admin', 'viewer', 'management'].includes(accessRole)) {
-      return res.status(400).json({ message: 'accessRole must be admin, viewer, or management.' });
+    const { accessRole, canOpsLead } = req.body;
+    const patch = {};
+    if (accessRole !== undefined) {
+      if (!['admin', 'viewer', 'management'].includes(accessRole)) {
+        return res.status(400).json({ message: 'accessRole must be admin, viewer, or management.' });
+      }
+      patch.accessRole = accessRole;
     }
+    if (canOpsLead !== undefined) patch.canOpsLead = Boolean(canOpsLead);
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ message: 'accessRole or canOpsLead required.' });
+    }
+
     const target = await AdminUser.findById(id);
     if (!target) return res.status(404).json({ message: 'User not found.' });
-    const promotingToAdmin = accessRole === 'admin' && target.accessRole !== 'admin';
-    const demotingAdmin = target.accessRole === 'admin' && accessRole !== 'admin';
-    if ((promotingToAdmin || demotingAdmin) && !isSuperAdmin(req)) {
-      return res.status(403).json({
-        message: 'Only admin@acwaops.com may grant or revoke administrator access.',
-      });
+
+    if (patch.accessRole) {
+      const promotingToAdmin = patch.accessRole === 'admin' && target.accessRole !== 'admin';
+      const demotingAdmin = target.accessRole === 'admin' && patch.accessRole !== 'admin';
+      if ((promotingToAdmin || demotingAdmin) && !isSuperAdmin(req)) {
+        return res.status(403).json({
+          message: 'Only admin@acwaops.com may grant or revoke administrator access.',
+        });
+      }
     }
-    const user = await AdminUser.findByIdAndUpdate(id, { accessRole }, { new: true }).select('-passwordHash');
+
+    const user = await AdminUser.findByIdAndUpdate(id, patch, { new: true }).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
+    const parts = [];
+    if (patch.accessRole) parts.push(`access ${patch.accessRole}`);
+    if (patch.canOpsLead !== undefined) parts.push(`ops lead ${patch.canOpsLead ? 'on' : 'off'}`);
     await logRosterEvent({
       action: 'USER_ROLE_CHANGED',
       actor,
       target: user,
-      summary: `Changed portal access for ${user.email} to ${accessRole}`,
-      metadata: { accessRole },
+      summary: `Portal access for ${user.name} (${user.empId}): ${parts.join(', ')}`,
+      metadata: patch,
     });
 
     res.json({ message: 'User role updated.', user });
   } catch (err) {
     res.status(500).json({ message: 'Error updating user role', error: err.message });
+  }
+};
+
+exports.clearPlaceholderEmails = async (req, res) => {
+  try {
+    const { isSuperAdmin } = require('../middleware/superAdmin');
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only admin@acwaops.com may clear placeholder emails.' });
+    }
+    const users = await AdminUser.find({ email: { $exists: true, $ne: '' } });
+    let cleared = 0;
+    for (const u of users) {
+      if (isPlaceholderEmail(u.email)) {
+        u.email = '';
+        await u.save();
+        cleared += 1;
+      }
+    }
+    res.json({ message: `Cleared ${cleared} placeholder email(s).`, cleared });
+  } catch (err) {
+    res.status(500).json({ message: 'Error clearing emails', error: err.message });
   }
 };
 

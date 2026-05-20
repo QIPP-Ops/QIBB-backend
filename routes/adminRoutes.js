@@ -46,6 +46,7 @@ router.put('/curriculum/:id', protect, admin, c.updateCurriculumItem);
 router.patch('/curriculum/:id', protect, admin, c.updateCurriculumItem);
 router.delete('/curriculum/:id', protect, admin, c.deleteCurriculumItem);
 
+router.post('/users/clear-placeholder-emails', protect, admin, c.clearPlaceholderEmails);
 router.get('/users', protect, admin, c.getAllUsers);
 router.get('/users/pending', protect, admin, c.getPendingUsers);
 router.put('/users/:id/approve', protect, admin, c.approveUser);
