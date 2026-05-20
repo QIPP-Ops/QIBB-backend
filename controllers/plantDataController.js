@@ -94,8 +94,30 @@ exports.runIngestNow = async (req, res) => {
   }
 };
 
+exports.getMetricDateRange = async (_req, res) => {
+  try {
+    const { getDateBounds } = require('../services/plantReports/historicalDashboard');
+    const data = await getDateBounds();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getHistoricalDashboard = async (req, res) => {
+  try {
+    const { buildHistoricalDashboard } = require('../services/plantReports/historicalDashboard');
+    const data = await buildHistoricalDashboard({
+      from: req.query.from,
+      to: req.query.to,
+    });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getMetricSeries = async (req, res) => {
-  const days = Math.min(parseInt(req.query.days, 10) || 30, 365);
   const keys = String(req.query.keys || '')
     .split(',')
     .map((k) => k.trim())
@@ -104,13 +126,20 @@ exports.getMetricSeries = async (req, res) => {
     return res.status(400).json({ message: 'keys query required (comma-separated metricKey)' });
   }
 
-  const since = new Date();
-  since.setDate(since.getDate() - days);
-  const sinceStr = since.toISOString().slice(0, 10);
+  let fromStr = req.query.from;
+  let toStr = req.query.to;
+
+  if (!fromStr || !toStr) {
+    const days = Math.min(parseInt(req.query.days, 10) || 90, 1825);
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    fromStr = fromStr || since.toISOString().slice(0, 10);
+    toStr = toStr || new Date().toISOString().slice(0, 10);
+  }
 
   const rows = await PlantMetricPoint.find({
     metricKey: { $in: keys },
-    reportDate: { $gte: sinceStr },
+    reportDate: { $gte: fromStr, $lte: toStr },
   })
     .sort({ reportDate: 1 })
     .lean();
@@ -121,11 +150,16 @@ exports.getMetricSeries = async (req, res) => {
     byDate[r.reportDate][r.metricKey] = r.value;
   }
 
+  const dates = Object.keys(byDate).sort();
   res.json({
     success: true,
     data: {
-      series: Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)),
+      series: dates.map((d) => byDate[d]),
       metrics: keys,
+      from: fromStr,
+      to: toStr,
+      minDate: dates[0] || null,
+      maxDate: dates[dates.length - 1] || null,
     },
   });
 };
