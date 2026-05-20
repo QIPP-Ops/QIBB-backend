@@ -96,12 +96,78 @@ exports.addLeave = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
-/** Removed: admins do not create accounts with invented emails. Users register with their real email. */
-exports.createEmployee = async (_req, res) => {
-  res.status(403).json({
-    message: 'Direct account creation is disabled. Personnel must register with their own email; admins approve pending users in Management.',
-    code: 'USE_REGISTRATION_FLOW',
-  });
+exports.createEmployee = async (req, res) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: 'Only administrators can add roster members.' });
+  }
+  try {
+    const bcrypt = require('bcryptjs');
+    const crypto = require('crypto');
+    const actor = await loadActor(req);
+    const { name, empId, crew, role, color, email, accessRole } = req.body;
+    if (!name?.trim() || !empId?.trim() || !crew || !role) {
+      return res.status(400).json({ message: 'name, empId, crew, and role are required.' });
+    }
+    const id = String(empId).trim();
+    const dup = await AdminUser.findOne({ empId: id });
+    if (dup) return res.status(409).json({ message: `Employee ID ${id} already exists.` });
+
+    const loginEmail = (email || '').trim().toLowerCase() || `${id}@roster.acwaops.local`;
+    const emailTaken = await AdminUser.findOne({ email: loginEmail });
+    if (emailTaken) {
+      return res.status(409).json({ message: 'That email is already in use.' });
+    }
+
+    const validColors = [
+      'crew-red', 'crew-yellow', 'crew-green', 'crew-lightblue',
+      'crew-lightviolet', 'crew-lightorange', 'crew-grey',
+    ];
+    const tempPassword = crypto.randomBytes(6).toString('base64url');
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+    const { isSuperAdmin } = require('../middleware/superAdmin');
+    let resolvedRole = 'viewer';
+    if (['admin', 'viewer', 'management'].includes(accessRole)) {
+      if (accessRole === 'admin' && !isSuperAdmin(req)) {
+        return res.status(403).json({
+          message: 'Only admin@acwaops.com may create accounts with admin access.',
+        });
+      }
+      resolvedRole = accessRole;
+    }
+
+    const user = await AdminUser.create({
+      name: name.trim(),
+      empId: id,
+      crew,
+      role,
+      color: validColors.includes(color) ? color : 'crew-grey',
+      email: loginEmail,
+      passwordHash,
+      accessRole: resolvedRole,
+      isApproved: true,
+      isEmailVerified: Boolean(email?.trim()),
+    });
+
+    await logRosterEvent({
+      action: 'PROFILE_UPDATED',
+      actor,
+      target: user,
+      summary: `Admin added ${user.name} (${user.empId}) to crew ${user.crew}`,
+      metadata: { created: true },
+    });
+
+    const out = user.toObject();
+    delete out.passwordHash;
+    res.status(201).json({
+      message: 'Personnel added.',
+      user: out,
+      tempPassword: email?.trim() ? undefined : tempPassword,
+      loginEmail,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 exports.updateEmployee = async (req, res) => {

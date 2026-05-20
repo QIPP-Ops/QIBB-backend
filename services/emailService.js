@@ -64,8 +64,8 @@ function emailTemplate(title, bodyHtml) {
   <body>
     <div class="wrapper">
       <div class="header">
-        <img src="https://www.acwapower.com/images/favicon.png" alt="ACWA Power" />
-        <h1>ACWA Power — Operations System</h1>
+        <img src="${process.env.FRONTEND_URL || 'https://qipp.live'}/acwa-operations-logo.png" alt="acwa operations" style="max-height:48px" />
+        <h1>acwa operations</h1>
       </div>
       <div class="body">
         <h2>${title}</h2>
