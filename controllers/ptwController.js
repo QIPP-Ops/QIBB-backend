@@ -37,6 +37,9 @@ exports.getMyAccess = async (req, res) => {
         isAdmin: true,
         authorizations: ['admin'],
         person: { name: req.user.name },
+        canReceive: true,
+        canApproveJha: true,
+        canIssue: true,
       });
     }
     const person = await findPtwPersonForUser(req.user);

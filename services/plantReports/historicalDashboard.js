@@ -115,14 +115,10 @@ function matchMetrics(allMetrics, panel) {
   return hits.slice(0, panel.maxKeys);
 }
 
+const { expandDayColumnSeries } = require('./seriesTimeline');
+
 function buildSeriesFromRows(rows, keys) {
-  const byDate = {};
-  for (const r of rows) {
-    if (!keys.includes(r.metricKey)) continue;
-    if (!byDate[r.reportDate]) byDate[r.reportDate] = { date: r.reportDate };
-    byDate[r.reportDate][r.metricKey] = r.value;
-  }
-  return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+  return expandDayColumnSeries(rows, keys);
 }
 
 function panelSummary(series, primaryKey) {

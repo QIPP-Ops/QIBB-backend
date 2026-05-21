@@ -12,6 +12,7 @@ router.get('/metrics/date-range', protect, c.getMetricDateRange);
 router.get('/metrics/series', protect, c.getMetricSeries);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
 router.get('/operational-overview', protect, c.getOperationalOverview);
+router.get('/home-trends', protect, c.getHomeTrends);
 router.get('/metrics', protect, opsLead, c.listMetrics);
 router.post('/metrics', protect, c.upsertMetric);
 router.delete('/metrics/:metricKey', protect, c.deleteMetric);

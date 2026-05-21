@@ -117,6 +117,37 @@ exports.getHistoricalDashboard = async (req, res) => {
   }
 };
 
+exports.getHomeTrends = async (req, res) => {
+  try {
+    const { expandDayColumnSeries } = require('../services/plantReports/seriesTimeline');
+    const trends = await CustomTrend.find({ showOnHomePage: true })
+      .sort({ updatedAt: -1 })
+      .limit(12)
+      .lean();
+    const from = req.query.from;
+    const to = req.query.to;
+    let dateFilter = {};
+    if (from && to) dateFilter = { reportDate: { $gte: from, $lte: to } };
+
+    const enriched = [];
+    for (const t of trends) {
+      const rows = await PlantMetricPoint.find({
+        metricKey: { $in: t.metricKeys },
+        ...dateFilter,
+      })
+        .sort({ reportDate: 1 })
+        .lean();
+      enriched.push({
+        ...t,
+        series: expandDayColumnSeries(rows, t.metricKeys),
+      });
+    }
+    res.json({ success: true, data: enriched });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getOperationalOverview = async (req, res) => {
   try {
     const { buildOperationalOverview } = require('../services/plantReports/operationalOverview');
@@ -157,17 +188,13 @@ exports.getMetricSeries = async (req, res) => {
     .sort({ reportDate: 1 })
     .lean();
 
-  const byDate = {};
-  for (const r of rows) {
-    if (!byDate[r.reportDate]) byDate[r.reportDate] = { date: r.reportDate };
-    byDate[r.reportDate][r.metricKey] = r.value;
-  }
+  const { expandDayColumnSeries } = require('../services/plantReports/seriesTimeline');
+  const series = expandDayColumnSeries(rows, keys);
 
-  const dates = Object.keys(byDate).sort();
   res.json({
     success: true,
     data: {
-      series: dates.map((d) => byDate[d]),
+      series,
       metrics: keys,
       from: fromStr,
       to: toStr,
@@ -278,7 +305,17 @@ exports.saveCustomTrend = async (req, res) => {
     return res.status(403).json({ message: 'Trend builder access required' });
   }
 
-  const { id, name, description, chartType, metricKeys, sharedWithManagement, allowedUserIds } = req.body;
+  const {
+    id,
+    name,
+    description,
+    chartType,
+    metricKeys,
+    sharedWithManagement,
+    allowedUserIds,
+    showOnHomePage,
+    chartTheme,
+  } = req.body;
   if (!name || !metricKeys?.length) {
     return res.status(400).json({ message: 'name and metricKeys required' });
   }
@@ -290,6 +327,8 @@ exports.saveCustomTrend = async (req, res) => {
     metricKeys,
     sharedWithManagement: Boolean(sharedWithManagement),
     allowedUserIds: allowedUserIds || [],
+    showOnHomePage: Boolean(showOnHomePage),
+    chartTheme: chartTheme || 'light',
     createdBy: dbUser._id,
   };
 

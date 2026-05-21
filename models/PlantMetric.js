@@ -34,6 +34,12 @@ const CustomTrendSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', required: true },
   sharedWithManagement: { type: Boolean, default: false },
   allowedUserIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser' }],
+  showOnHomePage: { type: Boolean, default: false },
+  chartTheme: {
+    type: String,
+    enum: ['light', 'chemistry', 'emissions', 'st-units'],
+    default: 'light',
+  },
 }, { timestamps: true });
 
 const ManagementTrendAccessSchema = new mongoose.Schema({

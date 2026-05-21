@@ -172,16 +172,22 @@ async function parseROHRSGReport(buffer) {
   const hrsgSheet = workbook.getWorksheet('HRSG') || workbook.getWorksheet('HRSG Report');
   if (hrsgSheet) {
     const units = {};
-    hrsgSheet.eachRow((row) => {
-      const unitNo = String(row.getCell(1).value || '').trim();
-      if (!unitNo.match(/^\d{2}$/)) return;
+    const ingestUnit = (unitNo, row) => {
+      if (!unitNo || !/^\d{2}$/.test(unitNo)) return;
       const pH = safeNum(row.getCell(2).value);
       const sc = safeNum(row.getCell(3).value);
       const cc = safeNum(row.getCell(4).value);
       const doVal = safeNum(row.getCell(5).value);
-      if (pH !== null || sc !== null) {
-        units[`unit${unitNo}`] = { pH, sc, cc, dissolvedOxygen: doVal };
+      if (pH !== null || sc !== null || cc !== null || doVal !== null) {
+        units[`ST${unitNo}`] = { pH, sc, cc, dissolvedOxygen: doVal };
       }
+    };
+    hrsgSheet.eachRow((row) => {
+      ingestUnit(String(row.getCell(1).value || '').trim(), row);
+      ingestUnit(String(row.getCell(6).value || '').trim(), row);
+    });
+    ['10', '20', '30', '40', '50', '60'].forEach((id) => {
+      if (!units[`ST${id}`]) units[`ST${id}`] = { pH: null, sc: null, cc: null, dissolvedOxygen: null };
     });
     result.hrsg = { condensate: units };
   }
