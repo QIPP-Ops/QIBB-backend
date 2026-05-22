@@ -132,3 +132,5 @@ exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
 
 exports.isEmailConfigured = isEmailConfigured;
 exports.getFrontendBaseUrl = getFrontendBaseUrl;
+exports.sendMail = sendMail;
+exports.emailTemplate = emailTemplate;

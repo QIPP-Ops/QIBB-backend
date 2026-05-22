@@ -1,4 +1,5 @@
 const RosterAuditLog = require('../models/RosterAuditLog');
+const { notifyLeavePlannerEdit } = require('./leaveNotifyService');
 
 async function logRosterEvent({
   action,
@@ -19,6 +20,8 @@ async function logRosterEvent({
       summary,
       metadata,
     });
+
+    notifyLeavePlannerEdit({ action, actor, target, summary, metadata }).catch(() => {});
   } catch (err) {
     console.error('Roster audit log failed:', err.message);
   }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ptwController = require('../controllers/ptwController');
+const ptwDashboardController = require('../controllers/ptwDashboardController');
 const { protect } = require('../middleware/auth');
 const { requirePtwAccess } = require('../middleware/ptwAccess');
 
@@ -8,6 +9,7 @@ router.get('/access', protect, ptwController.getMyAccess);
 
 router.use(protect, requirePtwAccess);
 
+router.get('/dashboard', ptwDashboardController.getDashboard);
 router.get('/', ptwController.getAllPermits);
 router.get('/permits', ptwController.getAllPermits);
 router.post('/', ptwController.createPermit);
