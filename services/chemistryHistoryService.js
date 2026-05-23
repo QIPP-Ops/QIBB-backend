@@ -7,6 +7,49 @@ function flattenReadings(block) {
   return [];
 }
 
+function slugSegment(s) {
+  return String(s || '').replace(/[^a-zA-Z0-9]/g, '');
+}
+
+function buildParameterKey(prefix, path, paramKey) {
+  const paramSlug = slugSegment(paramKey).toLowerCase();
+  const pathParts = path.map(slugSegment).filter(Boolean);
+  if (!pathParts.length) return `${prefix}_${paramSlug}`;
+  return `${prefix}_${pathParts.join('_')}_${paramSlug}`;
+}
+
+/** Flatten nested RO/HRSG snapshot objects (dafTank, condensate/ST10, etc.). */
+function flattenNestedSnapshot(block, prefix, path = []) {
+  if (!block || typeof block !== 'object' || Array.isArray(block)) return [];
+
+  const docs = [];
+  for (const [key, val] of Object.entries(block)) {
+    if (val == null || typeof val !== 'object' || Array.isArray(val)) continue;
+
+    const scalars = Object.entries(val).filter(([, v]) => Number.isFinite(Number(v)));
+    const paramLike = /^(ph|sc|turbidity|cl|orp|cc|dissolved|silica|iron|phosphate)/i.test(
+      Object.keys(val).join(' ')
+    );
+
+    if (scalars.length && paramLike) {
+      for (const [pk, pv] of scalars) {
+        const value = Number(pv);
+        if (!Number.isFinite(value)) continue;
+        docs.push({
+          parameterKey: buildParameterKey(prefix, [...path, key], pk),
+          tankName: key,
+          value,
+          unit: '',
+        });
+      }
+    } else {
+      const nextPath = key === 'condensate' ? path : [...path, key];
+      docs.push(...flattenNestedSnapshot(val, prefix, nextPath));
+    }
+  }
+  return docs;
+}
+
 function readingFields(r) {
   const parameter = String(r.parameter || r.Parameter || r.name || '').trim();
   if (!parameter) return null;
@@ -27,8 +70,8 @@ async function appendFromTrendsSnapshot(snapshot) {
   if (!chem) return { inserted: 0 };
 
   const docs = [];
-  const addBlock = (prefix, arr) => {
-    for (const r of flattenReadings(arr)) {
+  const addBlock = (prefix, block) => {
+    for (const r of flattenReadings(block)) {
       const parsed = readingFields(r);
       if (!parsed) continue;
       docs.push({
@@ -36,6 +79,16 @@ async function appendFromTrendsSnapshot(snapshot) {
         tankName: parsed.tankName || prefix,
         value: parsed.value,
         unit: parsed.unit,
+        timestamp: ts,
+        source: 'trends_snapshot',
+      });
+    }
+    for (const row of flattenNestedSnapshot(block, prefix)) {
+      docs.push({
+        parameterKey: row.parameterKey,
+        tankName: row.tankName || prefix,
+        value: row.value,
+        unit: row.unit,
         timestamp: ts,
         source: 'trends_snapshot',
       });
@@ -62,4 +115,5 @@ async function getHistoryForParameter(parameterKey, opts = {}) {
 module.exports = {
   appendFromTrendsSnapshot,
   getHistoryForParameter,
+  buildParameterKey,
 };
