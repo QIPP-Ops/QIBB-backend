@@ -191,12 +191,7 @@ exports.updateShiftReport = async (req, res) => {
 };
 
 exports.getShiftReportAudit = async (req, res) => {
-  const { isSuperAdmin } = require('../middleware/superAdmin');
-  if (!isSuperAdmin(req)) {
-    return res.status(403).json({ message: 'Only the designated super administrator may view audit logs.' });
-  }
   try {
-
     const report = await ShiftReport.findById(req.params.id).lean();
     if (!report) {
       return res.status(404).json({ message: 'Shift report not found.' });

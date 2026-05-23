@@ -102,11 +102,11 @@ describe('audit routes — super admin only', () => {
     expect(res.status).toBe(403);
   });
 
-  test('GET /api/personnel/shift-reports/:id/audit returns 403 for regular admin', async () => {
+  test('GET /api/personnel/shift-reports/:id/audit returns 403 for non-admin', async () => {
     const token = tokenFor({
       id: '507f1f77bcf86cd799439011',
-      email: 'regular.admin@acwapower.com',
-      role: 'admin',
+      email: 'member@acwapower.com',
+      role: 'viewer',
     });
     const res = await request(app)
       .get('/api/personnel/shift-reports/report1/audit')
@@ -114,10 +114,10 @@ describe('audit routes — super admin only', () => {
     expect(res.status).toBe(403);
   });
 
-  test('GET /api/personnel/shift-reports/:id/audit allows super admin', async () => {
+  test('GET /api/personnel/shift-reports/:id/audit allows portal admin', async () => {
     const token = tokenFor({
       id: '507f1f77bcf86cd799439011',
-      email: 'admin@acwaops.com',
+      email: 'regular.admin@acwapower.com',
       role: 'admin',
     });
     const res = await request(app)
