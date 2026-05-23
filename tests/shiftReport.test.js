@@ -65,7 +65,11 @@ function tokenFor(user) {
 describe('personnel shift reports', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    AdminUser.findOne.mockResolvedValue(employee);
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(employee),
+      }),
+    });
     ShiftReport.find.mockImplementation(() => ({
       sort: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue([]),
