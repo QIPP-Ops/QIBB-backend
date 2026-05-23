@@ -33,7 +33,7 @@ exports.getTrendsHistory = async (req, res) => {
 
     const snapshots = await TrendsSnapshot.find({ createdAt: { $gte: since } })
       .sort({ createdAt: 1 })
-      .select('createdAt water energy dailyOps');
+      .select('createdAt water energy dailyOps chemistry');
 
     res.json(snapshots);
   } catch (err) {
