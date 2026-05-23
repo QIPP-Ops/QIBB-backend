@@ -33,7 +33,7 @@ function slugKey(parts) {
     .slice(0, 120);
 }
 
-function inferDateFromFilename(filePath) {
+function inferDateFromFilename(filePath, fallbackDate) {
   const base = require('path').basename(filePath);
   const iso = base.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
@@ -52,8 +52,21 @@ function inferDateFromFilename(filePath) {
     return `${month[3]}-${m}-${d}`;
   }
 
-  const mtime = require('fs').statSync(filePath).mtime;
-  return mtime.toISOString().slice(0, 10);
+  if (fallbackDate) {
+    const d = fallbackDate instanceof Date ? fallbackDate : new Date(fallbackDate);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+
+  try {
+    const fs = require('fs');
+    if (fs.existsSync(filePath)) {
+      return fs.statSync(filePath).mtime.toISOString().slice(0, 10);
+    }
+  } catch {
+    /* blob virtual paths are not on local disk */
+  }
+
+  return new Date().toISOString().slice(0, 10);
 }
 
 function classifyReport(filename) {

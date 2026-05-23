@@ -106,8 +106,16 @@ async function appendFromTrendsSnapshot(snapshot) {
 async function getHistoryForParameter(parameterKey, opts = {}) {
   const limit = Math.min(parseInt(opts.limit, 10) || 500, 2000);
   const since = opts.since ? new Date(opts.since) : null;
+  const until = opts.until ? new Date(opts.until) : null;
   const filter = { parameterKey: String(parameterKey) };
-  if (since && !Number.isNaN(since.getTime())) filter.timestamp = { $gte: since };
+  if (since && !Number.isNaN(since.getTime())) {
+    filter.timestamp = { $gte: since };
+    if (until && !Number.isNaN(until.getTime())) {
+      filter.timestamp.$lte = until;
+    }
+  } else if (until && !Number.isNaN(until.getTime())) {
+    filter.timestamp = { $lte: until };
+  }
 
   return ChemistryHistory.find(filter).sort({ timestamp: 1 }).limit(limit).lean();
 }

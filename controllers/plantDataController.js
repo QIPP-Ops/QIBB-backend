@@ -174,7 +174,7 @@ exports.getMetricSeries = async (req, res) => {
   let toStr = req.query.to;
 
   if (!fromStr || !toStr) {
-    const days = Math.min(parseInt(req.query.days, 10) || 90, 1825);
+    const days = Math.min(parseInt(req.query.days, 10) || 365, 1825);
     const since = new Date();
     since.setDate(since.getDate() - days);
     fromStr = fromStr || since.toISOString().slice(0, 10);

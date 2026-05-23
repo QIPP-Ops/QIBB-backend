@@ -100,7 +100,9 @@ async function runBlobIngestion(forceAll) {
   for (const blob of blobs) {
     try {
       const buffer = await downloadBlobBuffer(blob.name);
-      const result = await ingestWorkbookFromBuffer(buffer, blob.name);
+      const result = await ingestWorkbookFromBuffer(buffer, blob.name, {
+        lastModified: blob.lastModified,
+      });
       const stats = await processIngestResult(result);
       if (result.skipped) continue;
       filesProcessed += 1;

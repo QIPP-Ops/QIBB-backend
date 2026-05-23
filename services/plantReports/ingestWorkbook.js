@@ -8,9 +8,11 @@ const { parseGtFilterWorkbook } = require('./parsers/gtFilters');
 const { parseShiftReportWorkbook } = require('./parsers/shiftReport');
 const { parseEnvironmentWorkbook } = require('./parsers/environment');
 
-async function ingestWorkbookFromBuffer(buffer, sourceName) {
+async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
   const rel = sourceName.replace(/\\/g, '/');
-  const reportDate = inferDateFromFilename(sourceName);
+  const reportDate =
+    options.reportDate ||
+    inferDateFromFilename(sourceName, options.lastModified || options.fallbackDate);
   const kind = classifyReport(path.basename(sourceName));
 
   const wb = new ExcelJS.Workbook();
