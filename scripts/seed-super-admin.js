@@ -36,8 +36,10 @@ async function main() {
   if (user) {
     user.passwordHash = passwordHash;
     user.accessRole = 'admin';
+    user.canOpsLead = true;
     user.isApproved = true;
     user.isEmailVerified = true;
+    user.kpiEditingAllowed = true;
     user.name = user.name || 'System Super Admin';
     user.empId = user.empId || 'SUPER-ADMIN';
     user.crew = user.crew || 'S';
@@ -55,6 +57,8 @@ async function main() {
       role: 'Management',
       color: 'crew-lightviolet',
       accessRole: 'admin',
+      canOpsLead: true,
+      kpiEditingAllowed: true,
       isApproved: true,
       isEmailVerified: true,
     });

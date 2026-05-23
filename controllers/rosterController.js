@@ -5,6 +5,7 @@ const { isPlaceholderEmail, sanitizeEmailForClient } = require('../utils/placeho
 const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/protectedAccounts');
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
+const { hasPortalAdminAccess } = require('../middleware/superAdmin');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -22,7 +23,7 @@ function calendarDaysInclusive(start, end) {
 
 function canEditCompensateBalance(req, targetUser) {
   if (!req.user) return false;
-  if (req.user.role === 'admin') return true;
+  if (hasPortalAdminAccess(req)) return true;
   if (req.user.canOpsLead) return true;
   if (req.user.role === 'management' && targetUser.crew === req.user.crew) return true;
   return false;
@@ -55,7 +56,7 @@ exports.addLeave = async (req, res) => {
     const user = await AdminUser.findOne({ empId: targetId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = hasPortalAdminAccess(req);
     if (!isAdmin && actor && actor.empId !== targetId) {
       return res.status(403).json({ message: 'You can only apply leave for your own account.' });
     }
@@ -102,7 +103,7 @@ exports.addLeave = async (req, res) => {
 };
 
 exports.createEmployee = async (req, res) => {
-  if (req.user?.role !== 'admin') {
+  if (!hasPortalAdminAccess(req)) {
     return res.status(403).json({ message: 'Only administrators can add roster members.' });
   }
   try {
@@ -179,7 +180,7 @@ exports.createEmployee = async (req, res) => {
 exports.updateEmployee = async (req, res) => {
   try {
     const actor = await loadActor(req);
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = hasPortalAdminAccess(req);
     const isOpsLead = actor && userCanAccessOpsTools(actor);
 
     if (!isAdmin && !isOpsLead) {
@@ -256,7 +257,7 @@ exports.updateEmployee = async (req, res) => {
 
 exports.deleteEmployee = async (req, res) => {
   try {
-    if (req.user?.role !== 'admin') {
+    if (!hasPortalAdminAccess(req)) {
       return res.status(403).json({ message: 'Only administrators can remove personnel.' });
     }
     const actor = await loadActor(req);
@@ -285,7 +286,7 @@ exports.removeLeave = async (req, res) => {
     const user = await AdminUser.findOne({ empId: employeeId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = hasPortalAdminAccess(req);
     if (!isAdmin && actor && actor.empId !== employeeId) {
       return res.status(403).json({ message: 'You can only remove your own leave requests.' });
     }
@@ -312,7 +313,7 @@ exports.updateKpi = async (req, res) => {
     const user = await AdminUser.findOne({ empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
     const config = await AdminConfig.findOne();
-    const isAdmin = req.user?.role === 'admin';
+    const isAdmin = hasPortalAdminAccess(req);
     const globalAllowed = config?.globalKpiEditingAllowed !== false;
     if (!isAdmin && (!globalAllowed || !user.kpiEditingAllowed))
       return res.status(403).json({ message: 'KPI editing is locked.' });

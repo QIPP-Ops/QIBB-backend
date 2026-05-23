@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { hasPortalAdminAccess } = require('./superAdmin');
 
 exports.protect = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -16,7 +17,7 @@ exports.protect = (req, res, next) => {
 };
 
 exports.admin = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && hasPortalAdminAccess(req)) {
     next();
   } else {
     res.status(403).json({ message: 'Access denied. Administrator privileges required.' });

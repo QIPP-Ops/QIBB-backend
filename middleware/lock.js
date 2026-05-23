@@ -2,7 +2,8 @@ const AdminConfig = require('../models/AdminConfig');
 
 exports.checkEditingLock = async (req, res, next) => {
   try {
-    if (req.user?.role === 'admin') return next();
+    const { hasPortalAdminAccess } = require('./superAdmin');
+    if (hasPortalAdminAccess(req)) return next();
 
     const config = await AdminConfig.findOne();
     if (!config) {

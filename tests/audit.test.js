@@ -36,7 +36,12 @@ jest.mock('../models/RosterAuditLog', () => ({
 
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
-const { isSuperAdmin, requireSuperAdmin } = require('../middleware/superAdmin');
+const {
+  isSuperAdmin,
+  isSuperAdminUser,
+  hasPortalAdminAccess,
+  requireSuperAdmin,
+} = require('../middleware/superAdmin');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
 process.env.COSMOS_URI = 'mongodb://localhost:27017/qipp-test';
@@ -50,7 +55,20 @@ function tokenFor(user) {
 describe('superAdmin middleware', () => {
   test('isSuperAdmin matches admin@acwaops.com case-insensitively', () => {
     expect(isSuperAdmin({ user: { email: 'Admin@AcwaOps.com' } })).toBe(true);
+    expect(isSuperAdminUser({ user: { email: 'admin@acwaops.com' } })).toBe(true);
     expect(isSuperAdmin({ user: { email: 'other@acwaops.com' } })).toBe(false);
+  });
+
+  test('hasPortalAdminAccess grants super admin full admin routes', () => {
+    expect(
+      hasPortalAdminAccess({ user: { email: 'admin@acwaops.com', role: 'viewer' } })
+    ).toBe(true);
+    expect(
+      hasPortalAdminAccess({ user: { email: 'other@acwaops.com', role: 'admin' } })
+    ).toBe(true);
+    expect(
+      hasPortalAdminAccess({ user: { email: 'user@acwaops.com', role: 'viewer' } })
+    ).toBe(false);
   });
 
   test('requireSuperAdmin returns 403 for regular admin', () => {

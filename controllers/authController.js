@@ -10,6 +10,7 @@ const {
   isEmailConfigured,
 } = require('../services/emailService');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
+const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -240,19 +241,22 @@ exports.login = async (req, res) => {
       });
     }
 
+    const portalRole =
+      normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ? 'admin' : user.accessRole;
+
     const token = jwt.sign({
       id:    user._id,
       email: user.email,
-      role:  user.accessRole,
-      accessRole: user.accessRole,
-      canOpsLead: Boolean(user.canOpsLead),
+      role:  portalRole,
+      accessRole: portalRole,
+      canOpsLead: Boolean(user.canOpsLead) || portalRole === 'admin',
       crew: user.crew,
       name:  user.name,
       empId: user.empId,
       crew:  user.crew,
     }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ token, role: user.accessRole });
+    res.json({ token, role: portalRole });
   } catch (error) {
     res.status(500).json({ message: 'Login failed.', error: error.message });
   }
@@ -374,12 +378,16 @@ exports.verify = async (req, res) => {
   try {
     const user = await AdminUser.findById(req.user.id).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'User not found.' });
+    const portalRole =
+      normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ? 'admin' : user.accessRole;
+
     res.json({
       ok: true,
       user: {
         id:          user._id,
         email:       user.email,
-        role:        user.accessRole,
+        role:        portalRole,
+        accessRole:  portalRole,
         jobRole:     user.role,
         name:        user.name,
         empId:       user.empId,

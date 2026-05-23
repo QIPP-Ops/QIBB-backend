@@ -9,8 +9,21 @@ function isSuperAdmin(req) {
   return e && e === superAdminEmail();
 }
 
+/** Alias used across controllers/middleware. */
+function isSuperAdminUser(req) {
+  return isSuperAdmin(req);
+}
+
+/** Portal admin routes — super admin always has full admin access. */
+function hasPortalAdminAccess(req) {
+  if (isSuperAdmin(req)) return true;
+  return req.user?.role === 'admin' || req.user?.accessRole === 'admin';
+}
+
 exports.superAdminEmail = superAdminEmail;
 exports.isSuperAdmin = isSuperAdmin;
+exports.isSuperAdminUser = isSuperAdminUser;
+exports.hasPortalAdminAccess = hasPortalAdminAccess;
 
 exports.requireSuperAdmin = (req, res, next) => {
   if (!isSuperAdmin(req)) {

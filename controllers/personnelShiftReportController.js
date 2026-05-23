@@ -4,8 +4,10 @@ const ShiftReportAuditLog = require('../models/ShiftReportAuditLog');
 const { logShiftReportEvent } = require('../services/shiftReportAuditService');
 const { getEmployeeDutyStatus, fmtDate } = require('../services/onDutyService');
 
+const { hasPortalAdminAccess } = require('../middleware/superAdmin');
+
 function isPortalAdmin(req) {
-  return req.user?.role === 'admin' || req.user?.accessRole === 'admin';
+  return hasPortalAdminAccess(req);
 }
 
 function actorFromReq(req) {

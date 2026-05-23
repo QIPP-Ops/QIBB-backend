@@ -1,10 +1,11 @@
 const AdminUser = require('../models/AdminUser');
 const { userCanAccessOpsTools } = require('../services/shiftScheduleService');
+const { hasPortalAdminAccess } = require('./superAdmin');
 
 /** Admin accessRole OR management job roles (Supervisor, Shift in Charge, etc.) */
 exports.opsLead = async (req, res, next) => {
   try {
-    if (req.user?.role === 'admin') {
+    if (hasPortalAdminAccess(req)) {
       req.dbUser = await AdminUser.findById(req.user.id).select('-passwordHash');
       return next();
     }
