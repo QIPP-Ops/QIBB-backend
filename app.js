@@ -19,6 +19,8 @@ const energyRoutes = require('./routes/energyRoutes');
 const gtFilterRoutes = require('./routes/gtFilterRoutes');
 const dailyOperationRoutes = require('./routes/dailyOperationRoutes');
 const plantDataRoutes = require('./routes/plantDataRoutes');
+const chemistryRoutes = require('./routes/chemistryRoutes');
+const trainingRoutes = require('./routes/trainingRoutes');
 
 const app = express();
 
@@ -118,6 +120,8 @@ app.use('/api/energy', energyRoutes);
 app.use('/api/gt-filter', gtFilterRoutes);
 app.use('/api/daily-operation', dailyOperationRoutes);
 app.use('/api/plant-data', plantDataRoutes);
+app.use('/api/chemistry', chemistryRoutes);
+app.use('/api/training', trainingRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

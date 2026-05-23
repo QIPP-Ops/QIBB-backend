@@ -76,6 +76,13 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
   const snapshot = new TrendsSnapshot(payload);
   await snapshot.save();
 
+  try {
+    const { appendFromTrendsSnapshot } = require('../chemistryHistoryService');
+    await appendFromTrendsSnapshot(snapshot);
+  } catch (err) {
+    console.warn('[trends-snapshot] chemistry history:', err.message);
+  }
+
   return {
     ok: true,
     snapshotId: snapshot._id,

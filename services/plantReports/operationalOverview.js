@@ -1,11 +1,21 @@
 const { buildHistoricalDashboard, getDateBounds } = require('./historicalDashboard');
 const PlantMetricPoint = require('../../models/PlantMetricPoint');
 const { PlantMetric } = require('../../models/PlantMetric');
+const { expandDayColumnSeries } = require('./seriesTimeline');
+
+const PLANT_CAPACITY_MW = 3883.2;
 
 const KPI_MATCHERS = {
   plf: [/plf|plant.*availability|availability.*factor/i],
-  netGen: [/plant.*load|total.*plant|network.*export|net.*gen|power.*export/i],
+  grossGen: [/gross.*gen|total.*generation|generation.*mwh|net.*generation/i],
+  plantLoad: [/plant.*load|total.*plant.*load|network.*export|net.*gen|power.*export|dispatch/i],
   heatRate: [/heat.*rate|thermal.*efficiency/i],
+  efficiency: [/net.*efficien|thermal.*efficien|efficiency/i],
+  fuelGas: [/fuel.*gas|fg.*consum/i],
+  mfeqh: [/mfeqh|equivalent.*operating.*hours/i],
+  nox: [/nox|no_x/i],
+  sox: [/sox|so2|sulphur/i],
+  co: [/\bco\b|carbon monoxide/i],
   waterProd: [/ro.*prod|dm.*prod|water.*prod|desal|migd/i],
 };
 
@@ -40,8 +50,6 @@ async function seriesForMatchers(matchers, from, to) {
   }));
 }
 
-const { expandDayColumnSeries } = require('./seriesTimeline');
-
 async function seriesForKey(metricKey, from, to) {
   if (!metricKey) return [];
   const rows = await PlantMetricPoint.find({
@@ -60,26 +68,57 @@ async function seriesForKey(metricKey, from, to) {
   return rows.map((r) => ({ date: r.reportDate, value: r.value }));
 }
 
-function mergeKpiRows(plfS, netS, heatS, waterS) {
-  const dates = new Set([
-    ...plfS.map((r) => r.date),
-    ...netS.map((r) => r.date),
-    ...heatS.map((r) => r.date),
-    ...waterS.map((r) => r.date),
-  ]);
-  const plfMap = Object.fromEntries(plfS.map((r) => [r.date, r.value]));
-  const netMap = Object.fromEntries(netS.map((r) => [r.date, r.value]));
-  const heatMap = Object.fromEntries(heatS.map((r) => [r.date, r.value]));
-  const waterMap = Object.fromEntries(waterS.map((r) => [r.date, r.value]));
+function mergeExtendedKpiRows(seriesMap) {
+  const dates = new Set();
+  Object.values(seriesMap).forEach((s) => s.forEach((r) => dates.add(r.date)));
+  const maps = {};
+  for (const [key, series] of Object.entries(seriesMap)) {
+    maps[key] = Object.fromEntries(series.map((r) => [r.date, r.value]));
+  }
+
   return [...dates]
     .sort()
-    .map((date) => ({
-      date,
-      plf: plfMap[date],
-      netGen: netMap[date],
-      heatRate: heatMap[date],
-      water: waterMap[date] != null ? { roProduction: waterMap[date] } : undefined,
-    }));
+    .map((date) => {
+      const plfRaw = maps.plf?.[date];
+      const plf =
+        plfRaw != null ? (plfRaw > 1 && plfRaw <= 100 ? plfRaw : plfRaw <= 1 ? plfRaw * 100 : plfRaw) : undefined;
+      return {
+        date,
+        generation: maps.grossGen?.[date],
+        load: maps.plantLoad?.[date],
+        plf,
+        efficiency: maps.efficiency?.[date],
+        heatRate: maps.heatRate?.[date],
+        fuel: maps.fuelGas?.[date],
+        mfeqh: maps.mfeqh?.[date],
+        emissions: {
+          nox: maps.nox?.[date],
+          sox: maps.sox?.[date],
+          co: maps.co?.[date],
+        },
+        netGen: maps.plantLoad?.[date],
+        water: maps.waterProd?.[date] != null ? { roProduction: maps.waterProd[date] } : undefined,
+      };
+    });
+}
+
+function buildLatestSnapshot(kpiSeries) {
+  if (!kpiSeries?.length) return null;
+  const r = kpiSeries[kpiSeries.length - 1];
+  const em = r.emissions || {};
+  return {
+    date: r.date,
+    generation: r.generation,
+    load: r.load,
+    plf: r.plf,
+    efficiency: r.efficiency,
+    heatRate: r.heatRate,
+    fuel: r.fuel,
+    mfeqh: r.mfeqh,
+    nox: em.nox,
+    sox: em.sox,
+    co: em.co,
+  };
 }
 
 async function buildOperationalOverview(query = {}) {
@@ -95,22 +134,22 @@ async function buildOperationalOverview(query = {}) {
   }
   if (from > to) [from, to] = [to, from];
 
-  const [plfS, netS, heatS, waterS] = await Promise.all([
-    seriesForMatchers(KPI_MATCHERS.plf, from, to),
-    seriesForMatchers(KPI_MATCHERS.netGen, from, to),
-    seriesForMatchers(KPI_MATCHERS.heatRate, from, to),
-    seriesForMatchers(KPI_MATCHERS.waterProd, from, to),
-  ]);
+  const seriesMap = {};
+  for (const key of Object.keys(KPI_MATCHERS)) {
+    seriesMap[key] = await seriesForMatchers(KPI_MATCHERS[key], from, to);
+  }
 
-  const kpiSeries = mergeKpiRows(plfS, netS, heatS, waterS);
+  const kpiSeries = mergeExtendedKpiRows(seriesMap);
   const dashboard = await buildHistoricalDashboard({ from, to });
 
   return {
+    plantCapacityMw: PLANT_CAPACITY_MW,
     dateRange: { from, to, ...bounds },
     kpiSeries,
+    latest: buildLatestSnapshot(kpiSeries),
     panels: dashboard.panels,
     categoryBreakdown: dashboard.categoryBreakdown,
   };
 }
 
-module.exports = { buildOperationalOverview };
+module.exports = { buildOperationalOverview, PLANT_CAPACITY_MW };

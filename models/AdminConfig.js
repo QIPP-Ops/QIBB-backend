@@ -40,6 +40,14 @@ const KpiTemplateSchema = new mongoose.Schema({
   goals: [{ type: String }]
 }, { _id: true });
 
+const CompletedCourseSchema = new mongoose.Schema({
+  empId:         { type: String, default: '' },
+  employeeName:  { type: String, required: true },
+  courseId:      { type: String, default: '' },
+  courseTitle:   { type: String, required: true },
+  completedAt:   { type: Date, default: Date.now },
+}, { _id: true });
+
 const AdminConfigSchema = new mongoose.Schema({
   pinHash:        { type: String, default: '' },
   editingLocked:  { type: Boolean, default: false },
@@ -62,6 +70,7 @@ const AdminConfigSchema = new mongoose.Schema({
     ]
   },
   curriculum:              { type: [CurriculumItemSchema], default: [] },
+  completedCourses:        { type: [CompletedCourseSchema], default: [] },
   ptwPersonnel:            { type: [PtwPersonnelSchema],   default: [] },
   achievements:            { type: [AchievementSchema],    default: [] },
   kpiTemplates:            { type: [KpiTemplateSchema],    default: [] },

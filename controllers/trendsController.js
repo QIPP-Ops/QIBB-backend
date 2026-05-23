@@ -48,6 +48,14 @@ exports.syncFromSharePoint = async (req, res) => {
     const data = await syncAllReports();
     const snapshot = new TrendsSnapshot(data);
     await snapshot.save();
+    if (data.chemistry) {
+      try {
+        const { appendFromTrendsSnapshot } = require('../services/chemistryHistoryService');
+        await appendFromTrendsSnapshot(snapshot);
+      } catch (histErr) {
+        console.warn('[trends-sharepoint] chemistry history:', histErr.message);
+      }
+    }
     res.json({ message: 'Sync complete', snapshot });
   } catch (err) {
     res.status(500).json({ message: 'Sync failed', error: err.message });
@@ -108,6 +116,15 @@ exports.uploadReport = async (req, res) => {
 
     snapshot[type] = parsed;
     await snapshot.save();
+
+    if (type === 'chemistry') {
+      try {
+        const { appendFromTrendsSnapshot } = require('../services/chemistryHistoryService');
+        await appendFromTrendsSnapshot(snapshot);
+      } catch (histErr) {
+        console.warn('[trends-upload] chemistry history:', histErr.message);
+      }
+    }
 
     res.json({ message: `${type} report parsed and saved`, data: parsed });
   } catch (err) {

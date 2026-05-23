@@ -1,0 +1,50 @@
+[
+  {
+    "id": "qhs-001",
+    "title": "QHSE Fundamentals",
+    "category": "Safety",
+    "description": "Core health, safety, and environmental practices for plant operations.",
+    "duration": "2h",
+    "level": "Mandatory"
+  },
+  {
+    "id": "qhs-002",
+    "title": "Lockout Tagout (LOTO)",
+    "category": "Safety",
+    "description": "Isolation and energy control procedures for maintenance work.",
+    "duration": "1h 30m",
+    "level": "Mandatory"
+  },
+  {
+    "id": "tech-001",
+    "title": "GT Operations Overview",
+    "category": "Technical",
+    "description": "Gas turbine operational limits, alarms, and normal response.",
+    "duration": "3h",
+    "level": "Technical"
+  },
+  {
+    "id": "tech-002",
+    "title": "HRSG Chemistry Awareness",
+    "category": "Technical",
+    "description": "Water chemistry limits and sampling for HRSG / ST units.",
+    "duration": "2h",
+    "level": "Technical"
+  },
+  {
+    "id": "lead-001",
+    "title": "Leadership Essentials",
+    "category": "Leadership",
+    "description": "Shift leadership, communication, and escalation.",
+    "duration": "4h",
+    "level": "Professional"
+  },
+  {
+    "id": "comp-001",
+    "title": "Hazardous Materials Handling",
+    "category": "Compliance",
+    "description": "Storage, labeling, and spill response for hazardous materials.",
+    "duration": "1h 45m",
+    "level": "Mandatory"
+  }
+]

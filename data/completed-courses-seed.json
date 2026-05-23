@@ -1,0 +1,23 @@
+[
+  {
+    "empId": "2237",
+    "employeeName": "Mark Ramirez",
+    "courseId": "qhs-002",
+    "courseTitle": "Lockout Tagout (LOTO)",
+    "completedAt": "2026-05-20T10:00:00.000Z"
+  },
+  {
+    "empId": "501388",
+    "employeeName": "Alvin Perello",
+    "courseId": "comp-001",
+    "courseTitle": "Hazardous Materials Handling",
+    "completedAt": "2026-05-19T14:30:00.000Z"
+  },
+  {
+    "empId": "3142",
+    "employeeName": "Adam Alhuzum",
+    "courseId": "lead-001",
+    "courseTitle": "Leadership Essentials",
+    "completedAt": "2026-05-18T09:15:00.000Z"
+  }
+]
