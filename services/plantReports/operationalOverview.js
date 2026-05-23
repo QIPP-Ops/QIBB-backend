@@ -5,13 +5,20 @@ const { expandDayColumnSeries } = require('./seriesTimeline');
 
 const PLANT_CAPACITY_MW = 3883.2;
 
+/** Match ingested metricKey + label patterns (see parsers/dailyOperation.js slugKey output). */
 const KPI_MATCHERS = {
   plf: [/plf|plant.*availability|availability.*factor/i],
-  grossGen: [/gross.*gen|total.*generation|generation.*mwh|net.*generation/i],
-  plantLoad: [/plant.*load|total.*plant.*load|network.*export|net.*gen|power.*export|dispatch/i],
-  heatRate: [/heat.*rate|thermal.*efficiency/i],
-  efficiency: [/net.*efficien|thermal.*efficien|efficiency/i],
-  fuelGas: [/fuel.*gas|fg.*consum/i],
+  grossGen: [
+    /plant_generation/i,
+    /gross.*gen/i,
+    /total.*generation/i,
+    /generation.*mwh/i,
+    /daily_ops_.*_total_mwh/i,
+  ],
+  plantLoad: [/plant_total_load|total_plant_load/i],
+  heatRate: [/plant_heat_rate|heat_rate/i],
+  efficiency: [/plant_net_efficiency|net_efficiency|net.*efficien/i],
+  fuelGas: [/plant_fuel_gas|fuel_gas/i],
   mfeqh: [/mfeqh|equivalent.*operating.*hours/i],
   nox: [/nox|no_x/i],
   sox: [/sox|so2|sulphur/i],
@@ -30,7 +37,15 @@ async function findMetricKeys(matchers, multi = false) {
   return multi ? [...new Set(hits)] : hits[0];
 }
 
-async function seriesForMatchers(matchers, from, to) {
+function pickNumeric(row, keys) {
+  for (const k of keys) {
+    const v = row[k];
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+  }
+  return undefined;
+}
+
+async function seriesForMatchers(matchers, from, to, { sumValues = false } = {}) {
   const keys = await findMetricKeys(matchers, true);
   if (!keys.length) return [];
   const rows = await PlantMetricPoint.find({
@@ -41,13 +56,30 @@ async function seriesForMatchers(matchers, from, to) {
     .lean();
   const expanded = expandDayColumnSeries(rows, keys);
   if (!expanded.length) return [];
-  const primary = keys[0].replace(/_day\d+$/i, '');
+
+  if (sumValues) {
+    return expanded.map((row) => ({
+      date: row.date,
+      value: keys.reduce((acc, k) => {
+        const v = row[k];
+        return typeof v === 'number' && Number.isFinite(v) ? acc + v : acc;
+      }, 0),
+    }));
+  }
+
+  const plantKeys = keys.filter((k) => /plant_generation/i.test(k));
+  const preferred = plantKeys.length ? plantKeys : keys;
+  const primary = preferred[0].replace(/_day\d+$/i, '').replace(/_c\d+$/i, '');
   return expanded.map((row) => ({
     date: row.date,
-    value:
-      row[primary] ??
-      keys.map((k) => row[k]).find((v) => typeof v === 'number' && Number.isFinite(v)),
+    value: pickNumeric(row, preferred) ?? pickNumeric(row, keys),
   }));
+}
+
+async function seriesForGeneration(from, to) {
+  const plantSeries = await seriesForMatchers([/plant_generation/i], from, to);
+  if (plantSeries.some((r) => r.value != null && r.value > 0)) return plantSeries;
+  return seriesForMatchers([/daily_ops_.*_total_mwh/i], from, to, { sumValues: true });
 }
 
 async function seriesForKey(metricKey, from, to) {
@@ -79,13 +111,17 @@ function mergeExtendedKpiRows(seriesMap) {
   return [...dates]
     .sort()
     .map((date) => {
+      const loadMw = maps.plantLoad?.[date];
       const plfRaw = maps.plf?.[date];
-      const plf =
+      let plf =
         plfRaw != null ? (plfRaw > 1 && plfRaw <= 100 ? plfRaw : plfRaw <= 1 ? plfRaw * 100 : plfRaw) : undefined;
+      if (plf == null && loadMw != null && PLANT_CAPACITY_MW > 0) {
+        plf = (loadMw / PLANT_CAPACITY_MW) * 100;
+      }
       return {
         date,
         generation: maps.grossGen?.[date],
-        load: maps.plantLoad?.[date],
+        load: loadMw,
         plf,
         efficiency: maps.efficiency?.[date],
         heatRate: maps.heatRate?.[date],
@@ -136,7 +172,11 @@ async function buildOperationalOverview(query = {}) {
 
   const seriesMap = {};
   for (const key of Object.keys(KPI_MATCHERS)) {
-    seriesMap[key] = await seriesForMatchers(KPI_MATCHERS[key], from, to);
+    if (key === 'grossGen') {
+      seriesMap[key] = await seriesForGeneration(from, to);
+    } else {
+      seriesMap[key] = await seriesForMatchers(KPI_MATCHERS[key], from, to);
+    }
   }
 
   const kpiSeries = mergeExtendedKpiRows(seriesMap);
