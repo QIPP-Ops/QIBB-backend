@@ -33,6 +33,7 @@ function rosterRowForClient(doc) {
   if (!row.opsGroupLabel) row.opsGroupLabel = '';
   if (!row.opsTreeParentEmpId) row.opsTreeParentEmpId = '';
   if (!row.opsTreeRelation) row.opsTreeRelation = '';
+  if (!row.assignedTo) row.assignedTo = '';
   return row;
 }
 
@@ -107,7 +108,7 @@ exports.createEmployee = async (req, res) => {
     const bcrypt = require('bcryptjs');
     const crypto = require('crypto');
     const actor = await loadActor(req);
-    const { name, empId, crew, role, color, email, accessRole } = req.body;
+    const { name, empId, crew, role, color, email, accessRole, assignedTo } = req.body;
     if (!name?.trim() || !empId?.trim() || !crew || !role) {
       return res.status(400).json({ message: 'name, empId, crew, and role are required.' });
     }
@@ -150,6 +151,7 @@ exports.createEmployee = async (req, res) => {
       accessRole: resolvedRole,
       isApproved: true,
       isEmailVerified: Boolean(email?.trim()),
+      ...(assignedTo !== undefined && { assignedTo: String(assignedTo || '').trim() }),
     });
 
     await logRosterEvent({
@@ -227,7 +229,7 @@ exports.updateEmployee = async (req, res) => {
 
     const { isSuperAdmin } = require('../middleware/superAdmin');
     if (isSuperAdmin(req)) {
-      ['opsGroupLabel', 'opsTreeParentEmpId', 'opsTreeRelation', 'opsTreeOrder'].forEach((k) => {
+      ['opsGroupLabel', 'opsTreeParentEmpId', 'opsTreeRelation', 'opsTreeOrder', 'assignedTo'].forEach((k) => {
         if (rest[k] !== undefined) safeBody[k] = rest[k];
       });
     }

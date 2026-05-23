@@ -66,6 +66,8 @@ const AdminUserSchema = new mongoose.Schema({
     default: '',
   },
   opsTreeOrder:       { type: Number, default: 0 },
+  /** Local Operator → parent CCR Operator (empId) */
+  assignedTo:         { type: String, default: '' },
 
   // ─── Operational Data ─────────────────────────────────────────────────────
   leaves:            [LeaveSchema],
