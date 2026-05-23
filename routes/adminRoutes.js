@@ -12,6 +12,7 @@ const pinLimiter = rateLimit({
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
 
+router.get('/ptw-audit', protect, admin, c.getPtwAuditLog);
 router.get('/ptw-personnel', protect, c.getPtwPersonnel);
 router.post('/ptw-personnel', protect, admin, c.addPtwPersonnel);
 router.put('/ptw-personnel/:id', protect, admin, c.updatePtwPersonnel);

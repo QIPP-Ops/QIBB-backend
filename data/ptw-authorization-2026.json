@@ -3,791 +3,1093 @@
     "name": "Abdullah Alamri",
     "designation": "SCE",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Mustafa Salem",
     "designation": "SCE",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerB",
       "safetyControllerC",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Mustafa Al Ansari",
     "designation": "SS",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerB",
       "safetyControllerC",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Syed Shahanwaz",
     "designation": "SS",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Abdul Hameed Abdul Rasheed",
     "designation": "SS",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "K.K.N.Srinivasu",
     "designation": "SS",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerB",
       "safetyControllerC",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Shaheer Yousaf",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Veera Venkata",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
       "safetyCoordinator",
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Juma Khan",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "safetyControllerA",
-      "safetyControllerC",
+      "safetyControllerB",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Ahmed Meshref",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "safetyControllerC",
+      "safetyControllerA",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": true,
+    "canPerform": true
   },
   {
     "name": "Saleh Alamri",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "safetyControllerC",
-      "permitIssuer"
+      "permitIssuer",
+      "isolationAuthority"
     ],
-    "remarks": "31.12.2027",
-    "validUntil": ""
+    "validUntil": "31.12.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Adam Alhuzum",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "safetyControllerC",
-      "permitIssuer"
+      "permitIssuer",
+      "isolationAuthority"
     ],
-    "remarks": "31.12.2027",
-    "validUntil": ""
+    "validUntil": "31.12.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Mohammad Algarni",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "safetyControllerC",
       "permitIssuer",
-      "permitReceiverTest",
-      "voltageLow"
+      "isolationAuthority",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "07.12.2027",
-    "validUntil": ""
+    "validUntil": "07.12.2027",
+    "remarks": "",
+    "canIssue": true,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Ahmed Fathy",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Arshad Hassan",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Abdullah Al Hajri",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Norbie cruze",
     "designation": "CCR",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "06.12.2027",
-    "validUntil": ""
+    "validUntil": "06.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Saravanakumar Madhaiyan",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "M.Afnan Shafi",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "07.12.2027",
-    "validUntil": ""
+    "validUntil": "07.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Abdulwahab Alshehab",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Izhar Ali",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "06.12.2027",
-    "validUntil": ""
+    "validUntil": "06.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Purushothoman Devaraj",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Mohammed Alghamdi",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Ahmed Alsaqoor",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
-    "remarks": "30.11.2027",
-    "validUntil": ""
+    "validUntil": "30.11.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Mark Anthony",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Saad Alenezi",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Mohammed Aldawsari",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Rajeesh Muniasamy",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Mohammed Fahad Al Mulhim",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Abdulaziz Dhaifallah Alharbi",
     "designation": "LO",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "permitIssuer"
+      "isolationAuthority"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": true
   },
   {
     "name": "Khaled Alsaidan",
     "designation": "MMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "06.12.2027",
-    "validUntil": ""
+    "validUntil": "06.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Abdullah Muhanna",
     "designation": "MMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "01.12.2027",
-    "validUntil": ""
+    "validUntil": "01.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammad Alrobia",
     "designation": "MMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "standbyPerson"
     ],
-    "remarks": "09.12.2027",
-    "validUntil": ""
+    "validUntil": "09.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammed AlRamdan",
     "designation": "MMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Yasser Sendi",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammad Alam",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "10.12.2027",
-    "validUntil": ""
+    "validUntil": "10.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Pankaj Kumar",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "standbyPerson"
     ],
-    "remarks": "02.12.2027",
-    "validUntil": ""
+    "validUntil": "02.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "M.Alhammadi",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
-    "remarks": "04.05.2026",
-    "validUntil": ""
+    "validUntil": "04.05.2026",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Satya Narayana Vadde",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "S. Vigneshwaran",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
-    "remarks": "03.05.2026",
-    "validUntil": ""
+    "validUntil": "03.05.2026",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Raj Kumar Tiwari",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Shaik Mujtaba Ahmed",
     "designation": "MMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "04.12.2027",
-    "validUntil": ""
+    "validUntil": "04.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammad Salih Ibrahim",
     "designation": "EMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageLow"
+      "permitReceiverAccess",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "05.12.2027",
-    "validUntil": ""
+    "validUntil": "05.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammed Faqihi",
     "designation": "EMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageLow"
+      "permitReceiverAccess",
+      "voltageLow",
+      "voltageHigh"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Imran Ali",
     "designation": "EMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageLow"
+      "permitReceiverAccess",
+      "voltageLow",
+      "voltageHigh"
     ],
-    "remarks": "08.12.2027",
-    "validUntil": ""
+    "validUntil": "08.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Dhanfordjim Ebreo",
     "designation": "EMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
+      "permitReceiverAccess",
       "voltageLow",
       "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
-    "remarks": "08.12.2027",
-    "validUntil": ""
+    "validUntil": "08.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Nasser Almutairi",
     "designation": "EMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
+      "permitReceiverAccess",
       "voltageLow",
       "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
-    "remarks": "08.12.2027",
-    "validUntil": ""
+    "validUntil": "08.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Suresh Raj",
     "designation": "EMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
+      "permitReceiverAccess",
       "voltageLow",
       "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
-    "remarks": "08.12.2027",
-    "validUntil": ""
+    "validUntil": "08.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Imran Javed",
     "designation": "IMD Sup.",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Murugananthan Sakthivel",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "01.12.2027",
-    "validUntil": ""
+    "validUntil": "01.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Mohammad Khan Saddam",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "skilledPerson",
       "permitReceiverStandard",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "standbyPerson"
     ],
-    "remarks": "04.12.2027",
-    "validUntil": ""
+    "validUntil": "04.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Syed Nadeem Ulhaq",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Muhammed Munir",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "voltageLow",
+      "standbyPerson"
     ],
-    "remarks": "09.12.2027",
-    "validUntil": ""
+    "validUntil": "09.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Malik Ashraf",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "voltageLow",
+      "standbyPerson"
     ],
-    "remarks": "01.12.2027",
-    "validUntil": ""
+    "validUntil": "01.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Abdulaziz Alfardan",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "voltageLow",
+      "standbyPerson"
     ],
-    "remarks": "07.05.2026",
-    "validUntil": ""
+    "validUntil": "07.05.2026",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Khalid Alahmadi",
     "designation": "IMD Tech",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "voltageLow",
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Rampal",
     "designation": "AYTB",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Md. Manjar hussain",
     "designation": "AYTB",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Omprakash",
     "designation": "AYTB",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Md. Tabre",
     "designation": "AYTB",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Indra",
     "designation": "AYTB",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "voltageHigh",
-      "fireWatch"
+      "standbyPerson"
     ],
+    "validUntil": "",
     "remarks": "",
-    "validUntil": ""
+    "canIssue": false,
+    "canReceive": false,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "M.Shoib",
     "designation": "STOM",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "permitReceiverTest"
+      "permitReceiverAccess",
+      "voltageLow"
     ],
-    "remarks": "09.12.2027",
-    "validUntil": ""
+    "validUntil": "09.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Abdul Aleem",
     "designation": "STOM",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
       "permitReceiverStandard",
-      "voltageHigh",
-      "fireWatch"
+      "permitReceiverAccess",
+      "standbyPerson"
     ],
-    "remarks": "25.05.2026",
-    "validUntil": ""
+    "validUntil": "25.05.2026",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   },
   {
     "name": "Jaypee Ebreo",
     "designation": "STOM",
     "empNo": "",
+    "empId": "",
     "authorizations": [
-      "isolationAuthority",
       "skilledPerson",
-      "permitReceiverStandard"
+      "permitReceiverStandard",
+      "permitReceiverAccess"
     ],
-    "remarks": "04.12.2027",
-    "validUntil": ""
+    "validUntil": "04.12.2027",
+    "remarks": "",
+    "canIssue": false,
+    "canReceive": true,
+    "canApprove": false,
+    "canPerform": false
   }
 ]

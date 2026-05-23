@@ -25,18 +25,19 @@
     "dotenv": "^16.4.5",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.1.0",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
     "multer": "^2.1.1",
-    "nodemailer": "^6.9.16",
-    "express-rate-limit": "^8.5.2",
-    "helmet": "^8.1.0"
+    "nodemailer": "^6.9.16"
   },
   "devDependencies": {
     "jest": "^29.7.0",
     "nodemon": "^3.1.14",
-    "supertest": "^7.2.2"
+    "supertest": "^7.2.2",
+    "xlsx": "^0.18.5"
   },
   "jest": {
     "testEnvironment": "node",

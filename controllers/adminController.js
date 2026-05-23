@@ -2,6 +2,8 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
 const bcrypt      = require('bcryptjs');
 const { logRosterEvent } = require('../services/rosterAuditService');
+const { logPtwEvent } = require('../services/ptwAuditService');
+const PtwAuditLog = require('../models/PtwAuditLog');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 
 // ─── Status / PIN / Lock ─────────────────────────────────────────────────────
@@ -340,6 +342,12 @@ exports.getPtwPersonnel = async (req, res) => {
   }
 };
 
+async function ptwActor(req) {
+  if (!req.user?.id) return { email: req.user?.email, name: req.user?.name };
+  const u = await AdminUser.findById(req.user.id).select('name email').lean();
+  return u || { email: req.user?.email, name: req.user?.name };
+}
+
 exports.addPtwPersonnel = async (req, res) => {
   try {
     const body = req.body || {};
@@ -348,6 +356,15 @@ exports.addPtwPersonnel = async (req, res) => {
     if (!config) config = new AdminConfig();
     config.ptwPersonnel.push(body);
     await config.save();
+    const added = config.ptwPersonnel[config.ptwPersonnel.length - 1];
+    const actor = await ptwActor(req);
+    await logPtwEvent({
+      action: 'PTW_PERSON_ADDED',
+      actor,
+      target: added,
+      summary: `Added ${body.name} to PTW authorization list`,
+      metadata: { person: body },
+    });
     res.status(201).json(config.ptwPersonnel);
   } catch (err) {
     res.status(500).json({ message: 'Error adding PTW personnel', error: err.message });
@@ -362,8 +379,17 @@ exports.updatePtwPersonnel = async (req, res) => {
     if (!config) return res.status(404).json({ message: 'Config not found.' });
     const person = config.ptwPersonnel.id(id);
     if (!person) return res.status(404).json({ message: 'PTW personnel not found.' });
+    const before = person.toObject ? person.toObject() : { ...person };
     Object.assign(person, updates);
     await config.save();
+    const actor = await ptwActor(req);
+    await logPtwEvent({
+      action: 'PTW_PERSON_UPDATED',
+      actor,
+      target: person,
+      summary: `Updated PTW authorization for ${person.name}`,
+      metadata: { before, after: updates },
+    });
     res.json(config.ptwPersonnel);
   } catch (err) {
     res.status(500).json({ message: 'Error updating PTW personnel', error: err.message });
@@ -375,10 +401,29 @@ exports.deletePtwPersonnel = async (req, res) => {
     const { id } = req.params;
     let config = await AdminConfig.findOne();
     if (!config) return res.status(404).json({ message: 'Config not found.' });
+    const removed = config.ptwPersonnel.find((p) => p._id.toString() === id);
     config.ptwPersonnel = config.ptwPersonnel.filter(p => p._id.toString() !== id);
     await config.save();
+    const actor = await ptwActor(req);
+    await logPtwEvent({
+      action: 'PTW_PERSON_REMOVED',
+      actor,
+      target: removed,
+      summary: `Removed ${removed?.name || 'person'} from PTW authorization list`,
+      metadata: { removed },
+    });
     res.json(config.ptwPersonnel);
   } catch (err) {
     res.status(500).json({ message: 'Error deleting PTW personnel', error: err.message });
+  }
+};
+
+exports.getPtwAuditLog = async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+    const rows = await PtwAuditLog.find().sort({ createdAt: -1 }).limit(limit).lean();
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching PTW audit log', error: err.message });
   }
 };
