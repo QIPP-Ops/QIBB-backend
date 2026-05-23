@@ -59,6 +59,10 @@ npm run seed       # roster + KPI sample data + admin user
 npm run seed:ptw   # PTW personnel into AdminConfig
 ```
 
+**PTW authorization list:** Regenerate from Excel with `node scripts/parse-ptw-excel.js "<path-to-xlsx>"` (writes `data/ptw-authorization-2026.json`). `npm run seed:ptw` **replaces** `AdminConfig.ptwPersonnel` entirely from that file — it does not merge with existing DB names.
+
+**Production (Azure):** After deploying a backend build that includes an updated `ptw-authorization-2026.json`, run `npm run seed:ptw` on the App Service (or against production `COSMOS_URI`) if the database still holds an older authorization list. The live API reads personnel from MongoDB, not the JSON file on disk.
+
 **Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
 
 Default seeded passwords are defined in `seed.js` only — they are not printed to the console. Change them immediately in non-local environments.
