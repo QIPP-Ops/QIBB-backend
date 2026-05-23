@@ -1,5 +1,7 @@
+const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
+
 function superAdminEmail() {
-  return (process.env.SUPER_ADMIN_EMAIL || 'admin@acwaops.com').trim().toLowerCase();
+  return SUPER_ADMIN_EMAIL;
 }
 
 function isSuperAdmin(req) {

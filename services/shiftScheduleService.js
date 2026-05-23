@@ -68,6 +68,33 @@ function leaveOnDate(leave, dateStr) {
   return d >= s && d <= e;
 }
 
+/**
+ * Resolve effective shift for one employee on a calendar day (rotation + override + leave).
+ */
+function resolveEmployeeShift(employee, dateStr, options = {}) {
+  const { baseDate = '2026-01-01', overrideMap = null } = options;
+  const overrides = overrideMap instanceof Map ? overrideMap : overrideMapFromDocs(overrideMap);
+  const rotationShift = getShiftForDate(employee.crew, dateStr, baseDate);
+  const oKey = `${employee.empId}|${dateStr}`;
+  const isOverride = overrides.has(oKey);
+  const shift = isOverride ? overrides.get(oKey) : rotationShift;
+  const leave = (employee.leaves || []).find((lv) => leaveOnDate(lv, dateStr));
+  return {
+    date: dateStr,
+    shift,
+    rotationShift,
+    isOverride,
+    onLeave: !!leave,
+    leaveType: leave?.type || null,
+    display: leave ? 'L' : shift,
+    onDuty: !leave && (shift === 'D' || shift === 'N'),
+  };
+}
+
+function isEmployeeOnDuty(employee, dateStr, options = {}) {
+  return resolveEmployeeShift(employee, dateStr, options).onDuty;
+}
+
 function isSapLeave(type) {
   return typeof type === 'string' && /sap/i.test(type);
 }
@@ -277,6 +304,9 @@ module.exports = {
   getShiftForDate,
   overrideMapFromDocs,
   buildRosterSchedule,
+  resolveEmployeeShift,
+  isEmployeeOnDuty,
+  leaveOnDate,
   userCanAccessOpsTools,
   MANAGEMENT_JOB_ROLES,
 };

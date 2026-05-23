@@ -419,6 +419,10 @@ exports.deletePtwPersonnel = async (req, res) => {
 };
 
 exports.getPtwAuditLog = async (req, res) => {
+  const { isSuperAdmin } = require('../middleware/superAdmin');
+  if (!isSuperAdmin(req)) {
+    return res.status(403).json({ message: 'Only the designated super administrator may view audit logs.' });
+  }
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
     const rows = await PtwAuditLog.find().sort({ createdAt: -1 }).limit(limit).lean();
