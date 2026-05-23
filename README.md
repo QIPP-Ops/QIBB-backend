@@ -59,6 +59,14 @@ npm run seed       # roster + KPI sample data + admin user
 npm run seed:ptw   # PTW personnel into AdminConfig
 ```
 
+**Super administrator (`admin@acwaops.com`):** upsert without wiping other users:
+
+```bash
+SUPER_ADMIN_PASSWORD='your-password' npm run seed:super-admin
+```
+
+Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in Kudu. Optional override: `SUPER_ADMIN_EMAIL`. Reset password only: `npm run set-password -- admin@acwaops.com "NewPassword"`.
+
 **PTW authorization list:** Regenerate from Excel with `node scripts/parse-ptw-excel.js "<path-to-xlsx>"` (writes `data/ptw-authorization-2026.json`). `npm run seed:ptw` **replaces** `AdminConfig.ptwPersonnel` entirely from that file — it does not merge with existing DB names.
 
 **Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
@@ -77,7 +85,7 @@ Default seeded passwords are defined in `seed.js` only — they are not printed 
 4. `POST /api/auth/login` — returns JWT (requires verified email + approval)
 5. `GET /api/auth/verify` — validates token (send `Authorization: Bearer <token>`)
 
-All operational routes require a valid JWT unless noted otherwise. `/health` is public.
+Most operational routes require a valid JWT. **Public (no auth):** `/health`, `GET /api/plant-data/metrics/date-range`, `GET /api/plant-data/operational-overview` (home dashboard).
 
 ## Python ETL
 

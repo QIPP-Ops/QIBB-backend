@@ -142,8 +142,9 @@ exports.getPendingUsers = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
+    const { filterProtectedAccounts } = require('../utils/protectedAccounts');
     const users = await AdminUser.find().select('-passwordHash');
-    res.json(users);
+    res.json(filterProtectedAccounts(users));
   } catch (err) {
     res.status(500).json({ message: 'Error fetching users', error: err.message });
   }
@@ -182,8 +183,13 @@ exports.approveUser = async (req, res) => {
 exports.rejectUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await AdminUser.findByIdAndDelete(id);
+    const { isProtectedAccountEmail } = require('../utils/protectedAccounts');
+    const user = await AdminUser.findById(id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
+    if (isProtectedAccountEmail(user.email)) {
+      return res.status(403).json({ message: 'This system account cannot be deleted.' });
+    }
+    await AdminUser.findByIdAndDelete(id);
 
     const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
     await logRosterEvent({

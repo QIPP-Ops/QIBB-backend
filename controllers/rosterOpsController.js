@@ -4,6 +4,7 @@ const ShiftOverride = require('../models/ShiftOverride');
 const RosterAuditLog = require('../models/RosterAuditLog');
 const { buildRosterSchedule, overrideMapFromDocs } = require('../services/shiftScheduleService');
 const { logRosterEvent } = require('../services/rosterAuditService');
+const { filterProtectedAccounts } = require('../utils/protectedAccounts');
 
 function fmtDate(d) {
   const x = new Date(d);
@@ -23,7 +24,9 @@ async function loadOverridesForRange(start, end) {
 
 async function buildSchedulePayload(start, end) {
   const config = await AdminConfig.findOne();
-  const employees = await AdminUser.find().select('-passwordHash').lean();
+  const employees = filterProtectedAccounts(
+    await AdminUser.find().select('-passwordHash').lean()
+  );
   const overrideMap = await loadOverridesForRange(start, end);
   const schedule = buildRosterSchedule(employees, {
     startDate: start,

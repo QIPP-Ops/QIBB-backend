@@ -2,6 +2,7 @@ const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { isPlaceholderEmail, sanitizeEmailForClient } = require('../utils/placeholderEmail');
+const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/protectedAccounts');
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
 
@@ -40,7 +41,7 @@ function rosterRowForClient(doc) {
 exports.getRoster = async (req, res) => {
   try {
     const rows = await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }).lean();
-    res.json(rows.map(rosterRowForClient));
+    res.json(filterProtectedAccounts(rows).map(rosterRowForClient));
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
@@ -259,8 +260,12 @@ exports.deleteEmployee = async (req, res) => {
       return res.status(403).json({ message: 'Only administrators can remove personnel.' });
     }
     const actor = await loadActor(req);
-    const user = await AdminUser.findOneAndDelete({ empId: req.params.empId });
+    const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    if (isProtectedAccountEmail(user.email)) {
+      return res.status(403).json({ message: 'This system account cannot be deleted.' });
+    }
+    await AdminUser.deleteOne({ _id: user._id });
 
     await logRosterEvent({
       action: 'USER_REJECTED',

@@ -8,10 +8,12 @@ router.get('/status', protect, c.getStatus);
 router.get('/highlights', protect, c.getHighlights);
 router.post('/ingest', protect, c.runIngestNow);
 
-router.get('/metrics/date-range', protect, c.getMetricDateRange);
+/** Public read-only — powers the unauthenticated home dashboard */
+router.get('/metrics/date-range', c.getMetricDateRange);
+router.get('/operational-overview', c.getOperationalOverview);
+
 router.get('/metrics/series', protect, c.getMetricSeries);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
-router.get('/operational-overview', protect, c.getOperationalOverview);
 router.get('/home-trends', protect, c.getHomeTrends);
 router.get('/metrics', protect, opsLead, c.listMetrics);
 router.post('/metrics', protect, c.upsertMetric);
