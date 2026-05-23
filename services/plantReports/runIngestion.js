@@ -15,8 +15,8 @@ const {
 } = require('./blobReports');
 const { syncTrendsSnapshotFromBlob } = require('./syncTrendsSnapshot');
 
-const MAX_FILES = parseInt(process.env.PLANT_INGEST_MAX_FILES || '80', 10);
-const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10);
+const MAX_FILES = parseInt(process.env.PLANT_INGEST_MAX_FILES || '200', 10);
+const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
 
 async function upsertPoints(points) {
   let n = 0;
@@ -95,6 +95,7 @@ async function runBlobIngestion(forceAll) {
   let highlightsUpserted = 0;
   let filesProcessed = 0;
   const byKind = {};
+  const errors = [];
 
   for (const blob of blobs) {
     try {
@@ -107,7 +108,9 @@ async function runBlobIngestion(forceAll) {
       pointsUpserted += stats.pointsUpserted;
       highlightsUpserted += stats.highlightsUpserted;
     } catch (err) {
-      console.warn(`[plant-ingest] skip blob ${blob.name}:`, err.message);
+      const msg = `${blob.name}: ${err.message}`;
+      console.warn(`[plant-ingest] skip blob ${msg}`);
+      if (errors.length < 8) errors.push(msg);
     }
   }
 
@@ -118,6 +121,7 @@ async function runBlobIngestion(forceAll) {
     pointsUpserted,
     highlightsUpserted,
     byKind,
+    errors,
   };
 }
 
@@ -190,9 +194,9 @@ async function runPlantIngestion(options = {}) {
     const metricsDiscovered = await PlantMetric.countDocuments();
 
     let trendsSnapshot = { ok: false, skipped: true };
-    if (useBlob && batch.filesProcessed > 0) {
+    if (useBlob) {
       try {
-        trendsSnapshot = await syncTrendsSnapshotFromBlob({ maxAgeDays: forceAll ? 365 : MAX_AGE_DAYS });
+        trendsSnapshot = await syncTrendsSnapshotFromBlob({ maxAgeDays: forceAll ? 3650 : MAX_AGE_DAYS });
       } catch (snapErr) {
         console.warn('[plant-ingest] trends snapshot sync failed:', snapErr.message);
         trendsSnapshot = { ok: false, message: snapErr.message };
@@ -214,6 +218,7 @@ async function runPlantIngestion(options = {}) {
           ingestSource: batch.source,
           lastTrendsSnapshotAt: trendsSnapshot.ok ? new Date() : undefined,
           lastTrendsSnapshotFields: trendsSnapshot.fields || [],
+          lastIngestErrors: batch.errors || [],
         },
       }
     );
@@ -227,6 +232,7 @@ async function runPlantIngestion(options = {}) {
       highlightsUpserted: batch.highlightsUpserted,
       metricsDiscovered,
       byKind: batch.byKind,
+      errors: batch.errors,
       trendsSnapshot,
     };
   } catch (err) {

@@ -35,7 +35,7 @@ exports.getStatus = async (_req, res) => {
         blobContainer: CONTAINER,
         blobSasConfigured: blobIngestConfigured(),
         blobAccess: getBlobAccessInfo(),
-        maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10),
+        maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10),
         ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
         lastRunAt: state?.lastRunAt,
         lastSuccessAt: state?.lastSuccessAt,
@@ -198,8 +198,8 @@ exports.getMetricSeries = async (req, res) => {
       metrics: keys,
       from: fromStr,
       to: toStr,
-      minDate: dates[0] || null,
-      maxDate: dates[dates.length - 1] || null,
+      minDate: series[0]?.date ?? fromStr,
+      maxDate: series.length ? series[series.length - 1]?.date : toStr,
     },
   });
 };

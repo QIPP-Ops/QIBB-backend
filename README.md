@@ -61,7 +61,9 @@ npm run seed:ptw   # PTW personnel into AdminConfig
 
 **PTW authorization list:** Regenerate from Excel with `node scripts/parse-ptw-excel.js "<path-to-xlsx>"` (writes `data/ptw-authorization-2026.json`). `npm run seed:ptw` **replaces** `AdminConfig.ptwPersonnel` entirely from that file — it does not merge with existing DB names.
 
-**Production (Azure):** After deploying a backend build that includes an updated `ptw-authorization-2026.json`, run `npm run seed:ptw` on the App Service (or against production `COSMOS_URI`) if the database still holds an older authorization list. The live API reads personnel from MongoDB, not the JSON file on disk.
+**Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
+
+**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365` (default in code), `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, optional `PLANT_INGEST_MAX_FILES=200`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`.
 
 **Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
 

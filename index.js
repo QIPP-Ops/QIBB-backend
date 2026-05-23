@@ -11,8 +11,19 @@ const PORT = process.env.PORT || 5000;
 const { getMongoUri } = require('./config/database');
 
 mongoose.connect(getMongoUri(), { retryWrites: false })
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB connected');
+
+    const { ensurePtwPersonnelSeeded } = require('./services/ptwAutoSeed');
+    try {
+      const ptw = await ensurePtwPersonnelSeeded();
+      if (ptw.seeded) {
+        console.log(`[ptw] auto-seeded ${ptw.count} authorization entries (was ${ptw.previousCount})`);
+      }
+    } catch (ptwErr) {
+      console.warn('[ptw] startup auto-seed skipped:', ptwErr.message);
+    }
+
     startPlantIngestScheduler();
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
@@ -21,7 +32,13 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
       setTimeout(async () => {
         try {
           const { runPlantIngestion } = require('./services/plantReports/runIngestion');
-          const result = await runPlantIngestion({ forceAll: false });
+          const PlantIngestionState = require('./models/PlantIngestionState');
+          const state = await PlantIngestionState.findOne({ key: 'global' }).lean();
+          const needsFullIngest =
+            !state?.lastSuccessAt ||
+            (state.pointsUpserted || 0) === 0 ||
+            (state.filesProcessed || 0) === 0;
+          const result = await runPlantIngestion({ forceAll: needsFullIngest });
           if (result.ok) {
             console.log(
               `[plant-ingest] startup: ${result.filesProcessed} files, ${result.pointsUpserted} points, trends snapshot: ${result.trendsSnapshot?.ok ? 'ok' : 'skipped'}`

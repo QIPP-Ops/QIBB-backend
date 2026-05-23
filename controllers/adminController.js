@@ -336,9 +336,33 @@ exports.getPtwPersonnel = async (req, res) => {
   try {
     let config = await AdminConfig.findOne();
     if (!config) { config = new AdminConfig(); await config.save(); }
-    res.json(config.ptwPersonnel);
+    if (!config.ptwPersonnel?.length) {
+      try {
+        const { ensurePtwPersonnelSeeded } = require('../services/ptwAutoSeed');
+        await ensurePtwPersonnelSeeded();
+        config = await AdminConfig.findOne();
+      } catch (seedErr) {
+        console.warn('[ptw] auto-seed on GET failed:', seedErr.message);
+      }
+    }
+    res.json(config?.ptwPersonnel || []);
   } catch (err) {
     res.status(500).json({ message: 'Error fetching PTW personnel', error: err.message });
+  }
+};
+
+exports.seedPtwAuthorization = async (req, res) => {
+  try {
+    const { ensurePtwPersonnelSeeded } = require('../services/ptwAutoSeed');
+    const result = await ensurePtwPersonnelSeeded({ force: req.body?.force === true });
+    res.json({
+      message: result.seeded
+        ? `PTW list loaded with ${result.count} entries`
+        : `PTW list unchanged (${result.count} entries)`,
+      ...result,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'PTW seed failed', error: err.message });
   }
 };
 

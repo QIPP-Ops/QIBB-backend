@@ -13,6 +13,7 @@ const pinLimiter = rateLimit({
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
 
+router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);
 router.get('/ptw-personnel', protect, c.getPtwPersonnel);
 router.post('/ptw-personnel', protect, admin, c.addPtwPersonnel);

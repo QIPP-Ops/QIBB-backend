@@ -44,7 +44,7 @@ const PICKERS = [
 ];
 
 async function syncTrendsSnapshotFromBlob(options = {}) {
-  const maxAgeDays = options.maxAgeDays || parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '60', 10);
+  const maxAgeDays = options.maxAgeDays || parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
   const blobs = await listReportBlobs({ maxAgeDays });
   if (!blobs.length) {
     return { ok: false, message: 'No Excel files found in blob container report' };

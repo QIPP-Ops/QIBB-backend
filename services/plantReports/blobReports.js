@@ -69,7 +69,8 @@ function isExcelBlob(name) {
  * List Excel blobs in container `report`, newest first.
  */
 async function listReportBlobs(options = {}) {
-  const { maxAgeDays = 14, prefix = '' } = options;
+  const defaultAge = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
+  const { maxAgeDays = defaultAge, prefix = '' } = options;
   const { container } = getReportContainerClient();
   const minTime = Date.now() - maxAgeDays * 86400000;
 
@@ -99,13 +100,31 @@ async function listReportBlobs(options = {}) {
 }
 
 async function downloadBlobBuffer(blobName) {
+  const timeoutMs = parseInt(process.env.BLOB_DOWNLOAD_TIMEOUT_MS || '120000', 10);
   const { container } = getReportContainerClient();
-  const res = await container.getBlobClient(blobName).download();
-  const chunks = [];
-  for await (const chunk of res.readableStreamBody) {
-    chunks.push(chunk);
+
+  const downloadTask = (async () => {
+    const res = await container.getBlobClient(blobName).download();
+    const chunks = [];
+    for await (const chunk of res.readableStreamBody) {
+      chunks.push(chunk);
+    }
+    return Buffer.concat(chunks);
+  })();
+
+  let timer;
+  const timeoutTask = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Blob download timeout after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+
+  try {
+    return await Promise.race([downloadTask, timeoutTask]);
+  } finally {
+    clearTimeout(timer);
   }
-  return Buffer.concat(chunks);
 }
 
 function blobIngestConfigured() {
