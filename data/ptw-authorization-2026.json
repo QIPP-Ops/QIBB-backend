@@ -12,7 +12,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -32,7 +32,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -52,7 +52,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -72,7 +72,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -92,7 +92,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "",
+    "validUntil": "2027-09-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -100,7 +100,7 @@
     "canPerform": true
   },
   {
-    "name": "K.K.N.Srinivasu",
+    "name": "K.K.N. Srinivasu",
     "designation": "SS",
     "empNo": "",
     "empId": "",
@@ -112,7 +112,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -132,7 +132,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -152,7 +152,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -171,7 +171,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "",
+    "validUntil": "2027-03-02",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -190,7 +190,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -206,7 +206,7 @@
       "permitIssuer",
       "isolationAuthority"
     ],
-    "validUntil": "31.12.2027",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -222,7 +222,7 @@
       "permitIssuer",
       "isolationAuthority"
     ],
-    "validUntil": "31.12.2027",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -240,7 +240,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "07.12.2027",
+    "validUntil": "2027-12-07",
     "remarks": "",
     "canIssue": true,
     "canReceive": false,
@@ -255,7 +255,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -270,7 +270,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -279,13 +279,13 @@
   },
   {
     "name": "Abdullah Al Hajri",
-    "designation": "CCR",
+    "designation": "LO",
     "empNo": "",
     "empId": "",
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -293,14 +293,14 @@
     "canPerform": true
   },
   {
-    "name": "Norbie cruze",
-    "designation": "CCR",
+    "name": "Norbie Cruze",
+    "designation": "LO",
     "empNo": "",
     "empId": "",
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "06.12.2027",
+    "validUntil": "2027-12-06",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -315,7 +315,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -323,19 +323,17 @@
     "canPerform": true
   },
   {
-    "name": "M.Afnan Shafi",
+    "name": "M. Afnan Shafi",
     "designation": "LO",
-    "empNo": "",
-    "empId": "",
     "authorizations": [
-      "isolationAuthority"
+      "permitReceiverStandard",
+      "skilledPerson"
     ],
-    "validUntil": "07.12.2027",
-    "remarks": "",
+    "validUntil": "2027-12-07",
     "canIssue": false,
-    "canReceive": false,
+    "canReceive": true,
     "canApprove": false,
-    "canPerform": true
+    "canPerform": false
   },
   {
     "name": "Abdulwahab Alshehab",
@@ -345,7 +343,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -360,7 +358,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "06.12.2027",
+    "validUntil": "2027-12-06",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -375,7 +373,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -390,7 +388,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -405,7 +403,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "30.11.2027",
+    "validUntil": "2027-11-30",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -420,7 +418,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -435,7 +433,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -450,7 +448,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -465,7 +463,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -480,7 +478,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -495,7 +493,7 @@
     "authorizations": [
       "isolationAuthority"
     ],
-    "validUntil": "",
+    "validUntil": "2028-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -512,7 +510,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "06.12.2027",
+    "validUntil": "2027-12-06",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -529,7 +527,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "01.12.2027",
+    "validUntil": "2027-12-01",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -547,7 +545,7 @@
       "permitReceiverAccess",
       "standbyPerson"
     ],
-    "validUntil": "09.12.2027",
+    "validUntil": "2027-12-09",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -564,24 +562,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "",
-    "remarks": "",
-    "canIssue": false,
-    "canReceive": true,
-    "canApprove": false,
-    "canPerform": false
-  },
-  {
-    "name": "Yasser Sendi",
-    "designation": "MMD Tech",
-    "empNo": "",
-    "empId": "",
-    "authorizations": [
-      "skilledPerson",
-      "permitReceiverStandard",
-      "permitReceiverAccess"
-    ],
-    "validUntil": "",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -598,7 +579,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "10.12.2027",
+    "validUntil": "2027-12-10",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -616,7 +597,7 @@
       "permitReceiverAccess",
       "standbyPerson"
     ],
-    "validUntil": "02.12.2027",
+    "validUntil": "2027-12-02",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -624,14 +605,14 @@
     "canPerform": false
   },
   {
-    "name": "M.Alhammadi",
+    "name": "M. Alhammadi",
     "designation": "MMD Tech",
     "empNo": "",
     "empId": "",
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "04.05.2026",
+    "validUntil": "2026-05-04",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -646,7 +627,7 @@
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -661,7 +642,7 @@
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "03.05.2026",
+    "validUntil": "2026-05-03",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -679,7 +660,7 @@
       "permitReceiverAccess",
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -696,7 +677,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "04.12.2027",
+    "validUntil": "2027-12-04",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -715,7 +696,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "05.12.2027",
+    "validUntil": "2027-12-05",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -734,7 +715,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -753,7 +734,7 @@
       "voltageLow",
       "voltageHigh"
     ],
-    "validUntil": "08.12.2027",
+    "validUntil": "2027-12-08",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -773,7 +754,7 @@
       "voltageHigh",
       "standbyPerson"
     ],
-    "validUntil": "08.12.2027",
+    "validUntil": "2027-12-08",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -793,7 +774,7 @@
       "voltageHigh",
       "standbyPerson"
     ],
-    "validUntil": "08.12.2027",
+    "validUntil": "2027-12-08",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -813,7 +794,7 @@
       "voltageHigh",
       "standbyPerson"
     ],
-    "validUntil": "08.12.2027",
+    "validUntil": "2027-12-08",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -830,7 +811,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -847,7 +828,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "01.12.2027",
+    "validUntil": "2027-12-01",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -864,7 +845,7 @@
       "permitReceiverAccess",
       "standbyPerson"
     ],
-    "validUntil": "04.12.2027",
+    "validUntil": "2027-12-04",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -880,7 +861,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "",
+    "validUntil": "2027-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -899,7 +880,7 @@
       "voltageLow",
       "standbyPerson"
     ],
-    "validUntil": "09.12.2027",
+    "validUntil": "2027-12-09",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -918,7 +899,7 @@
       "voltageLow",
       "standbyPerson"
     ],
-    "validUntil": "01.12.2027",
+    "validUntil": "2027-12-01",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -937,7 +918,7 @@
       "voltageLow",
       "standbyPerson"
     ],
-    "validUntil": "07.05.2026",
+    "validUntil": "2026-05-07",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -956,7 +937,7 @@
       "voltageLow",
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -972,7 +953,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -980,14 +961,14 @@
     "canPerform": false
   },
   {
-    "name": "Md. Manjar hussain",
+    "name": "Md. Manjar Hussain",
     "designation": "AYTB",
     "empNo": "",
     "empId": "",
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -1002,7 +983,7 @@
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -1017,7 +998,7 @@
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -1032,7 +1013,7 @@
     "authorizations": [
       "standbyPerson"
     ],
-    "validUntil": "",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": false,
@@ -1040,7 +1021,7 @@
     "canPerform": false
   },
   {
-    "name": "M.Shoib",
+    "name": "M. Shoib",
     "designation": "STOM",
     "empNo": "",
     "empId": "",
@@ -1050,7 +1031,7 @@
       "permitReceiverAccess",
       "voltageLow"
     ],
-    "validUntil": "09.12.2027",
+    "validUntil": "2027-12-09",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -1068,7 +1049,7 @@
       "permitReceiverAccess",
       "standbyPerson"
     ],
-    "validUntil": "25.05.2026",
+    "validUntil": "2026-12-31",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,
@@ -1085,7 +1066,7 @@
       "permitReceiverStandard",
       "permitReceiverAccess"
     ],
-    "validUntil": "04.12.2027",
+    "validUntil": "2027-12-04",
     "remarks": "",
     "canIssue": false,
     "canReceive": true,

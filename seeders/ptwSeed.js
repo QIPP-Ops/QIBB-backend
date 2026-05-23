@@ -21,6 +21,15 @@ if (!Array.isArray(PTW_PERSONNEL) || PTW_PERSONNEL.length === 0) {
   process.exit(1);
 }
 
+const EXPECTED_COUNT = 63;
+if (PTW_PERSONNEL.length !== EXPECTED_COUNT) {
+  console.error(
+    `PTW authorization JSON must contain exactly ${EXPECTED_COUNT} entries (found ${PTW_PERSONNEL.length}). ` +
+      'Regenerate with: node scripts/build-ptw-auth-2026.js'
+  );
+  process.exit(1);
+}
+
 async function seed() {
   await mongoose.connect(process.env.COSMOS_URI, { retryWrites: false });
   const config = (await AdminConfig.findOne()) || new AdminConfig();
