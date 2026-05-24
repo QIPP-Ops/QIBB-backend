@@ -27,12 +27,25 @@ exports.getLatestTrends = async (req, res) => {
 
 exports.getTrendsHistory = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 30;
-    const since = new Date();
-    since.setDate(since.getDate() - days);
+    const fromStr = String(req.query.from || '').trim().slice(0, 10);
+    const toStr = String(req.query.to || '').trim().slice(0, 10);
+    let createdAtFilter;
 
-    const snapshots = await TrendsSnapshot.find({ createdAt: { $gte: since } })
+    if (fromStr && toStr) {
+      createdAtFilter = {
+        $gte: new Date(`${fromStr}T00:00:00.000Z`),
+        $lte: new Date(`${toStr}T23:59:59.999Z`),
+      };
+    } else {
+      const days = Math.min(parseInt(req.query.days, 10) || 365, 1825);
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      createdAtFilter = { $gte: since };
+    }
+
+    const snapshots = await TrendsSnapshot.find({ createdAt: createdAtFilter })
       .sort({ createdAt: 1 })
+      .limit(2000)
       .select('createdAt water energy dailyOps chemistry');
 
     res.json(snapshots);

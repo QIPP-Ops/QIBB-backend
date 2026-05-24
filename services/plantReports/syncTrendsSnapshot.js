@@ -1,6 +1,7 @@
 const path = require('path');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { listReportBlobs, downloadBlobBuffer } = require('./blobReports');
+const { inferDateFromFilename } = require('./excelUtils');
 const {
   parseWaterConsumption,
   parseEnergyReport,
@@ -73,12 +74,37 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
     };
   }
 
-  const snapshot = new TrendsSnapshot(payload);
-  await snapshot.save();
+  const latestDate = picked.reduce((best, p) => {
+    const d = inferDateFromFilename(p.file);
+    return !best || d > best ? d : best;
+  }, null);
+  const at = latestDate ? new Date(`${latestDate}T12:00:00.000Z`) : new Date();
+
+  const dayStart = new Date(at);
+  dayStart.setUTCHours(0, 0, 0, 0);
+  const dayEnd = new Date(at);
+  dayEnd.setUTCHours(23, 59, 59, 999);
+
+  let snapshot = await TrendsSnapshot.findOne({
+    createdAt: { $gte: dayStart, $lte: dayEnd },
+  });
+  if (snapshot) {
+    Object.assign(snapshot, payload);
+    snapshot.markModified('water');
+    snapshot.markModified('energy');
+    snapshot.markModified('dailyOps');
+    snapshot.markModified('chemistry');
+    await snapshot.save();
+  } else {
+    snapshot = new TrendsSnapshot(payload);
+    snapshot.createdAt = at;
+    snapshot.updatedAt = at;
+    await snapshot.save();
+  }
 
   try {
     const { appendFromTrendsSnapshot } = require('../chemistryHistoryService');
-    await appendFromTrendsSnapshot(snapshot);
+    await appendFromTrendsSnapshot(snapshot, at);
   } catch (err) {
     console.warn('[trends-snapshot] chemistry history:', err.message);
   }

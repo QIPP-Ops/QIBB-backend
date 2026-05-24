@@ -71,7 +71,7 @@ Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in 
 
 **Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
 
-**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365` (default in code), `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, optional `PLANT_INGEST_MAX_FILES=200`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`.
+**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=1800000` (30 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, optional `PLANT_INGEST_MAX_FILES=200`, `TREND_BACKFILL_MAX_DAYS=120`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. Blob ingest and dated trend snapshots run automatically on startup and on the scheduler — no manual Trend Studio sync required.
 
 **Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
 

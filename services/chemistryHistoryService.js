@@ -63,9 +63,14 @@ function readingFields(r) {
   };
 }
 
-async function appendFromTrendsSnapshot(snapshot) {
+async function appendFromTrendsSnapshot(snapshot, atOverride) {
   if (!snapshot) return { inserted: 0 };
-  const ts = snapshot.createdAt ? new Date(snapshot.createdAt) : new Date();
+  const ts =
+    atOverride instanceof Date && !Number.isNaN(atOverride.getTime())
+      ? atOverride
+      : snapshot.createdAt
+        ? new Date(snapshot.createdAt)
+        : new Date();
   const chem = snapshot.chemistry;
   if (!chem) return { inserted: 0 };
 
@@ -75,7 +80,7 @@ async function appendFromTrendsSnapshot(snapshot) {
       const parsed = readingFields(r);
       if (!parsed) continue;
       docs.push({
-        parameterKey: `${prefix}_${parsed.parameter}`,
+        parameterKey: buildParameterKey(prefix, [], parsed.parameter),
         tankName: parsed.tankName || prefix,
         value: parsed.value,
         unit: parsed.unit,
@@ -99,8 +104,16 @@ async function appendFromTrendsSnapshot(snapshot) {
   addBlock('HRSG', chem.hrsg);
 
   if (!docs.length) return { inserted: 0 };
-  await ChemistryHistory.insertMany(docs, { ordered: false });
-  return { inserted: docs.length };
+  let inserted = 0;
+  for (const doc of docs) {
+    const res = await ChemistryHistory.updateOne(
+      { parameterKey: doc.parameterKey, timestamp: doc.timestamp },
+      { $set: doc },
+      { upsert: true }
+    );
+    if (res.upsertedCount || res.modifiedCount) inserted += 1;
+  }
+  return { inserted };
 }
 
 async function getHistoryForParameter(parameterKey, opts = {}) {

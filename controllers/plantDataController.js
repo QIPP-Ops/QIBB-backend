@@ -168,12 +168,14 @@ exports.getChemistryWaterOverview = async (req, res) => {
     const fromStr = String(req.query.from || '').trim().slice(0, 10);
     const toStr = String(req.query.to || '').trim().slice(0, 10);
 
-    let since = new Date();
-    since.setDate(since.getDate() - 365);
+    let since = null;
     let until = null;
 
     if (fromStr) {
       since = new Date(`${fromStr}T00:00:00.000Z`);
+    } else {
+      since = new Date();
+      since.setDate(since.getDate() - 365);
     }
     if (toStr) {
       until = new Date(`${toStr}T23:59:59.999Z`);
@@ -185,6 +187,7 @@ exports.getChemistryWaterOverview = async (req, res) => {
     const latest = await TrendsSnapshot.findOne().sort({ createdAt: -1 }).lean();
     const snapshots = await TrendsSnapshot.find({ createdAt: createdAtFilter })
       .sort({ createdAt: 1 })
+      .limit(2000)
       .select('createdAt water chemistry')
       .lean();
 

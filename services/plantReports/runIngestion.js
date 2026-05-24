@@ -14,6 +14,7 @@ const {
   CONTAINER,
 } = require('./blobReports');
 const { syncTrendsSnapshotFromBlob } = require('./syncTrendsSnapshot');
+const { backfillTrendSnapshotsFromBlobs } = require('./backfillTrendSnapshots');
 
 const MAX_FILES = parseInt(process.env.PLANT_INGEST_MAX_FILES || '200', 10);
 const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
@@ -196,12 +197,28 @@ async function runPlantIngestion(options = {}) {
     const metricsDiscovered = await PlantMetric.countDocuments();
 
     let trendsSnapshot = { ok: false, skipped: true };
+    let trendsBackfill = { ok: false, skipped: true };
     if (useBlob) {
       try {
         trendsSnapshot = await syncTrendsSnapshotFromBlob({ maxAgeDays: forceAll ? 3650 : MAX_AGE_DAYS });
       } catch (snapErr) {
         console.warn('[plant-ingest] trends snapshot sync failed:', snapErr.message);
         trendsSnapshot = { ok: false, message: snapErr.message };
+      }
+      try {
+        trendsBackfill = await backfillTrendSnapshotsFromBlobs({
+          maxAgeDays: forceAll ? 3650 : MAX_AGE_DAYS,
+          maxDays: forceAll ? 365 : Math.min(MAX_AGE_DAYS, 120),
+          maxFiles: forceAll ? Math.max(MAX_FILES, 400) : Math.max(MAX_FILES, 160),
+        });
+        if (trendsBackfill.ok) {
+          console.log(
+            `[plant-ingest] trends backfill: ${trendsBackfill.snapshotsUpserted} day(s) from ${trendsBackfill.datesConsidered} date(s)`
+          );
+        }
+      } catch (bfErr) {
+        console.warn('[plant-ingest] trends backfill failed:', bfErr.message);
+        trendsBackfill = { ok: false, message: bfErr.message };
       }
     }
 
@@ -236,6 +253,7 @@ async function runPlantIngestion(options = {}) {
       byKind: batch.byKind,
       errors: batch.errors,
       trendsSnapshot,
+      trendsBackfill,
     };
   } catch (err) {
     await PlantIngestionState.updateOne(
