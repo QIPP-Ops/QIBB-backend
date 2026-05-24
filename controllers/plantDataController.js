@@ -161,6 +161,55 @@ exports.getOperationalOverview = async (req, res) => {
   }
 };
 
+/** Public read-only — latest chemistry/water + snapshot history for home dashboard */
+exports.getChemistryWaterOverview = async (req, res) => {
+  try {
+    const TrendsSnapshot = require('../models/TrendsSnapshot');
+    const fromStr = String(req.query.from || '').trim().slice(0, 10);
+    const toStr = String(req.query.to || '').trim().slice(0, 10);
+
+    let since = new Date();
+    since.setDate(since.getDate() - 365);
+    let until = null;
+
+    if (fromStr) {
+      since = new Date(`${fromStr}T00:00:00.000Z`);
+    }
+    if (toStr) {
+      until = new Date(`${toStr}T23:59:59.999Z`);
+    }
+
+    const createdAtFilter = { $gte: since };
+    if (until) createdAtFilter.$lte = until;
+
+    const latest = await TrendsSnapshot.findOne().sort({ createdAt: -1 }).lean();
+    const snapshots = await TrendsSnapshot.find({ createdAt: createdAtFilter })
+      .sort({ createdAt: 1 })
+      .select('createdAt water chemistry')
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        latest: latest
+          ? {
+              createdAt: latest.createdAt,
+              chemistry: latest.chemistry || null,
+              water: latest.water || null,
+            }
+          : null,
+        snapshots: snapshots.map((s) => ({
+          createdAt: s.createdAt,
+          chemistry: s.chemistry || null,
+          water: s.water || null,
+        })),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getMetricSeries = async (req, res) => {
   const keys = String(req.query.keys || '')
     .split(',')

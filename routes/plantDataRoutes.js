@@ -11,6 +11,7 @@ router.post('/ingest', protect, c.runIngestNow);
 /** Public read-only — powers the unauthenticated home dashboard */
 router.get('/metrics/date-range', c.getMetricDateRange);
 router.get('/operational-overview', c.getOperationalOverview);
+router.get('/chemistry-water-overview', c.getChemistryWaterOverview);
 
 router.get('/metrics/series', protect, c.getMetricSeries);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
