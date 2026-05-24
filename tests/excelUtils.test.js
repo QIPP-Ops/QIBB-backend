@@ -11,4 +11,9 @@ describe('inferDateFromFilename', () => {
     const d = new Date('2025-03-15T10:00:00Z');
     expect(inferDateFromFilename('virtual/path/shift report.xlsx', d)).toBe('2025-03-15');
   });
+
+  it('parses abbreviated month names in RO-HRSG filenames', () => {
+    expect(inferDateFromFilename('RO-HRSG Report - Jan 03, 2026 M.xlsx')).toBe('2026-01-03');
+    expect(inferDateFromFilename('RO-HRSG Report - APRIL 08, 2026 M.xlsx')).toBe('2026-04-08');
+  });
 });

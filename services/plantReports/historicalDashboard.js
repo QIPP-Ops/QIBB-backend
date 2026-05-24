@@ -164,17 +164,21 @@ async function getDateBounds() {
   };
 }
 
+function yearStartIso() {
+  return `${new Date().getFullYear()}-01-01`;
+}
+
 function clampRange(from, to, bounds) {
-  let f = from || bounds.minDate;
+  const defaultFrom = yearStartIso();
+  let f = from || bounds.minDate || defaultFrom;
   let t = to || bounds.maxDate;
   if (!f && bounds.minDate) f = bounds.minDate;
+  if (f && f < defaultFrom) f = defaultFrom;
   if (!t && bounds.maxDate) t = bounds.maxDate;
   if (!f || !t) {
     const end = new Date();
     t = end.toISOString().slice(0, 10);
-    const start = new Date(end);
-    start.setDate(start.getDate() - 90);
-    f = start.toISOString().slice(0, 10);
+    f = defaultFrom;
   }
   if (f > t) [f, t] = [t, f];
   return { from: f, to: t };

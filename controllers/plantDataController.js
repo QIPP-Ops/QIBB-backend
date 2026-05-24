@@ -174,8 +174,8 @@ exports.getChemistryWaterOverview = async (req, res) => {
     if (fromStr) {
       since = new Date(`${fromStr}T00:00:00.000Z`);
     } else {
-      since = new Date();
-      since.setDate(since.getDate() - 365);
+      const y = new Date().getFullYear();
+      since = new Date(`${y}-01-01T00:00:00.000Z`);
     }
     if (toStr) {
       until = new Date(`${toStr}T23:59:59.999Z`);
@@ -226,15 +226,21 @@ exports.getMetricSeries = async (req, res) => {
   let toStr = req.query.to;
 
   if (!fromStr || !toStr) {
-    const days = Math.min(parseInt(req.query.days, 10) || 365, 1825);
-    const since = new Date();
-    since.setDate(since.getDate() - days);
-    fromStr = fromStr || since.toISOString().slice(0, 10);
+    const y = new Date().getFullYear();
+    fromStr = fromStr || `${y}-01-01`;
     toStr = toStr || new Date().toISOString().slice(0, 10);
   }
 
+  const { expandMetricKeysForQuery } = require('../services/plantReports/metricKeys');
+  const queryKeys = expandMetricKeysForQuery(keys);
+  const keyClauses = [{ metricKey: { $in: queryKeys } }];
+  for (const k of keys) {
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    keyClauses.push({ metricKey: { $regex: new RegExp(`^${escaped}_day\\d+$`, 'i') } });
+  }
+
   const rows = await PlantMetricPoint.find({
-    metricKey: { $in: keys },
+    $or: keyClauses,
     reportDate: { $gte: fromStr, $lte: toStr },
   })
     .sort({ reportDate: 1 })
@@ -256,10 +262,24 @@ exports.getMetricSeries = async (req, res) => {
   });
 };
 
+exports.getTrendsCache = async (_req, res) => {
+  try {
+    const { readPlantTrendsCacheFromDisk, buildPlantTrendsCachePayload } = require('../services/plantReports/plantTrendsCache');
+    let data = readPlantTrendsCacheFromDisk();
+    if (!data) {
+      data = await buildPlantTrendsCachePayload();
+    }
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.listMetrics = async (req, res) => {
   const dbUser = await loadDbUser(req);
   const isAdmin = req.user?.role === 'admin';
-  const metrics = await PlantMetric.find().sort({ category: 1, label: 1 }).lean();
+  const { dedupeMetricsForListing } = require('../services/plantReports/metricKeys');
+  const metrics = dedupeMetricsForListing(await PlantMetric.find().lean());
   let visibility = [];
   if (!isAdmin && dbUser) {
     visibility = await PlantMetricVisibility.find({ userId: dbUser._id }).lean();

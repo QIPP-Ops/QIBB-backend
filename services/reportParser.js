@@ -34,15 +34,21 @@ function getValueByLabel(sheet, label, colOffset = 1) {
 
 // ─── Parser 1: Water Consumption (master sheet) ───────────────────────────────
 
-async function parseWaterConsumption(buffer) {
+async function parseWaterConsumption(buffer, options = {}) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
   const sheet = workbook.getWorksheet('master') || workbook.worksheets[0];
   if (!sheet) throw new Error('master sheet not found');
 
+  const reportDateStr = String(options.reportDate || '').slice(0, 10);
+  const reportDay = reportDateStr
+    ? parseInt(reportDateStr.split('-')[2], 10)
+    : new Date().getDate();
+  const targetCol = Number.isFinite(reportDay) && reportDay >= 1 ? reportDay + 1 : new Date().getDate() + 1;
+
   const data = {
-    date: new Date(),
+    date: reportDateStr ? new Date(`${reportDateStr}T12:00:00Z`) : new Date(),
     grConsumption: {},
     totalGrConsumption: null,
     tankLevels: { ST1: null, ST2: null, DT1: null, DT2: null },
@@ -70,17 +76,13 @@ async function parseWaterConsumption(buffer) {
     'Total DM CONSUMPT':   (v) => { data.dmConsumption = v; },
   };
 
-  // Find today's column (day of month = column index offset from col B)
-  const today = new Date().getDate();
-
   sheet.eachRow((row) => {
     const label = row.getCell(1).value;
     if (!label || typeof label !== 'string') return;
     const trimmed = label.trim();
     for (const [key, setter] of Object.entries(labelMap)) {
       if (trimmed.toLowerCase().includes(key.toLowerCase())) {
-        // Col B = day 1, Col C = day 2, etc.
-        const dayCell = row.getCell(today + 1);
+        const dayCell = row.getCell(targetCol);
         const val = safeNum(dayCell?.value);
         if (val !== null) setter(val);
       }

@@ -52,6 +52,22 @@ function inferDateFromFilename(filePath, fallbackDate) {
     return `${month[3]}-${m}-${d}`;
   }
 
+  const abbr = base.match(
+    /\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|SEPT|OCT|NOV|DEC)\.?\s+(\d{1,2})[,.]?\s+(\d{4})/i
+  );
+  if (abbr) {
+    const months = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', sept: '09', oct: '10', nov: '11', dec: '12',
+    };
+    const key = abbr[1].toLowerCase().replace(/\.$/, '').slice(0, 4);
+    const m = months[key.slice(0, 3)] || months[key];
+    if (m) {
+      const d = String(abbr[2]).padStart(2, '0');
+      return `${abbr[3]}-${m}-${d}`;
+    }
+  }
+
   if (fallbackDate) {
     const d = fallbackDate instanceof Date ? fallbackDate : new Date(fallbackDate);
     if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
@@ -70,11 +86,13 @@ function inferDateFromFilename(filePath, fallbackDate) {
 }
 
 function classifyReport(filename) {
-  const n = filename.toLowerCase();
-  if (n.includes('daily_water_consumption') || n.includes('water_consumption')) return 'water';
+  const n = filename.toLowerCase().replace(/[_\s]+/g, ' ');
+  if (n.includes('daily water consumption') || n.includes('water consumption') || n.includes('daily_water')) {
+    return 'water';
+  }
   if (n.includes('operation shift report')) return 'shift';
   if (n.includes('daily operation report')) return 'daily_ops';
-  if (n.includes('ro-hrsg') || n.includes('ro hrsg')) return 'ro_hrsg';
+  if (/ro[\s-]?hrsg/.test(n) || n.includes('ro hrsg')) return 'ro_hrsg';
   if (n.includes('gt') && n.includes('fg filter')) return 'gt_fg_filter';
   if (n.includes('air intake filter')) return 'gt_air_filter';
   if (n.includes('fuel gas daily')) return 'fuel_gas';

@@ -3,6 +3,12 @@ const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { listReportBlobs, downloadBlobBuffer } = require('./blobReports');
 const { inferDateFromFilename } = require('./excelUtils');
 const {
+  matchesRoHrsgReport,
+  matchesWaterReport,
+  matchesEnergyReport,
+  matchesDailyOpsReport,
+} = require('./reportMatchers');
+const {
   parseWaterConsumption,
   parseEnergyReport,
   parseROHRSGReport,
@@ -14,22 +20,22 @@ const {
 const PICKERS = [
   {
     field: 'water',
-    match: (name) => /water_consumption|daily_water/i.test(name),
+    match: matchesWaterReport,
     parse: parseWaterConsumption,
   },
   {
     field: 'energy',
-    match: (name) => /energy|energy-produced|energy_produced/i.test(name),
+    match: matchesEnergyReport,
     parse: parseEnergyReport,
   },
   {
     field: 'chemistry',
-    match: (name) => /ro-hrsg|ro hrsg/i.test(name),
+    match: matchesRoHrsgReport,
     parse: parseROHRSGReport,
   },
   {
     field: 'dailyOps',
-    match: (name) => /daily operation report/i.test(name),
+    match: matchesDailyOpsReport,
     parse: parseDailyOperationReport,
   },
   {
@@ -57,10 +63,11 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
   for (const picker of PICKERS) {
     const hit = blobs.find((b) => picker.match(path.basename(b.name)));
     if (!hit) continue;
+    const reportDate = inferDateFromFilename(hit.name, hit.lastModified);
     try {
       const buf = await downloadBlobBuffer(hit.name);
-      payload[picker.field] = await picker.parse(buf);
-      picked.push({ field: picker.field, file: hit.name });
+      payload[picker.field] = await picker.parse(buf, { reportDate });
+      picked.push({ field: picker.field, file: hit.name, reportDate });
     } catch (err) {
       console.warn(`[trends-snapshot] skip ${hit.name}:`, err.message);
     }
@@ -69,13 +76,13 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
   if (!Object.keys(payload).length) {
     return {
       ok: false,
-      message: 'No matching report filenames for trends snapshot (water, energy, daily ops, etc.)',
+      message: 'No matching report filenames for trends snapshot (water, energy, RO-HRSG, daily ops, etc.)',
       blobsScanned: blobs.length,
     };
   }
 
   const latestDate = picked.reduce((best, p) => {
-    const d = inferDateFromFilename(p.file);
+    const d = p.reportDate || inferDateFromFilename(p.file);
     return !best || d > best ? d : best;
   }, null);
   const at = latestDate ? new Date(`${latestDate}T12:00:00.000Z`) : new Date();

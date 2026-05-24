@@ -71,7 +71,7 @@ Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in 
 
 **Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
 
-**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=1800000` (30 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, optional `PLANT_INGEST_MAX_FILES=200`, `TREND_BACKFILL_MAX_DAYS=120`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. Blob ingest and dated trend snapshots run automatically on startup and on the scheduler — no manual Trend Studio sync required.
+**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=900000` (15 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, `PLANT_INGEST_MAX_FILES=800`, `TREND_BACKFILL_MAX_DAYS=365`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. Blob ingest writes `data/plant-trends-cache.json` (gitignored) and exposes `GET /api/plant-data/trends-cache` for fast frontend loads. RO-HRSG / water filenames are matched case-insensitively; day-column Excel sheets merge into continuous series from January 1.
 
 **Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
 

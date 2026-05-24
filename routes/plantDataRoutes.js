@@ -12,6 +12,7 @@ router.post('/ingest', protect, c.runIngestNow);
 router.get('/metrics/date-range', c.getMetricDateRange);
 router.get('/operational-overview', c.getOperationalOverview);
 router.get('/chemistry-water-overview', c.getChemistryWaterOverview);
+router.get('/trends-cache', c.getTrendsCache);
 
 router.get('/metrics/series', protect, c.getMetricSeries);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);

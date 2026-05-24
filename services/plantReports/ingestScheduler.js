@@ -3,7 +3,7 @@ const { blobIngestConfigured } = require('./blobReports');
 
 const INTERVAL_MS = Math.max(
   15 * 60 * 1000,
-  parseInt(process.env.PLANT_INGEST_INTERVAL_MS || String(30 * 60 * 1000), 10)
+  parseInt(process.env.PLANT_INGEST_INTERVAL_MS || String(15 * 60 * 1000), 10)
 );
 
 let timer = null;

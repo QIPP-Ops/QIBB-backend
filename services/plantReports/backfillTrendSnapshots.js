@@ -3,6 +3,12 @@ const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { listReportBlobs, downloadBlobBuffer } = require('./blobReports');
 const { inferDateFromFilename } = require('./excelUtils');
 const {
+  matchesRoHrsgReport,
+  matchesWaterReport,
+  matchesEnergyReport,
+  matchesDailyOpsReport,
+} = require('./reportMatchers');
+const {
   parseWaterConsumption,
   parseEnergyReport,
   parseROHRSGReport,
@@ -12,22 +18,22 @@ const {
 const FIELD_PICKERS = [
   {
     field: 'water',
-    match: (name) => /water_consumption|daily_water/i.test(name),
+    match: matchesWaterReport,
     parse: parseWaterConsumption,
   },
   {
     field: 'energy',
-    match: (name) => /energy|energy-produced|energy_produced/i.test(name),
+    match: matchesEnergyReport,
     parse: parseEnergyReport,
   },
   {
     field: 'chemistry',
-    match: (name) => /ro-hrsg|ro hrsg/i.test(name),
+    match: matchesRoHrsgReport,
     parse: parseROHRSGReport,
   },
   {
     field: 'dailyOps',
-    match: (name) => /daily operation report/i.test(name),
+    match: matchesDailyOpsReport,
     parse: parseDailyOperationReport,
   },
 ];
@@ -42,6 +48,10 @@ function dayBounds(reportDate) {
   return { dayStart, dayEnd };
 }
 
+function yearStartIso() {
+  return `${new Date().getFullYear()}-01-01`;
+}
+
 /**
  * Build dated TrendsSnapshot rows from blob Excel files (one logical day per report date).
  * Powers chemistry/water history without manual Trend Studio sync.
@@ -49,8 +59,9 @@ function dayBounds(reportDate) {
 async function backfillTrendSnapshotsFromBlobs(options = {}) {
   const maxAgeDays =
     options.maxAgeDays || parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
-  const maxDays = options.maxDays || parseInt(process.env.TREND_BACKFILL_MAX_DAYS || '120', 10);
-  const maxFiles = options.maxFiles || parseInt(process.env.TREND_BACKFILL_MAX_FILES || '160', 10);
+  const maxDays =
+    options.maxDays || parseInt(process.env.TREND_BACKFILL_MAX_DAYS || '365', 10);
+  const maxFiles = options.maxFiles || parseInt(process.env.TREND_BACKFILL_MAX_FILES || '400', 10);
 
   const blobs = await listReportBlobs({ maxAgeDays });
   if (!blobs.length) {
@@ -77,7 +88,12 @@ async function backfillTrendSnapshotsFromBlobs(options = {}) {
     }
   }
 
-  const dates = [...byDate.keys()].sort().reverse().slice(0, maxDays);
+  const jan1 = yearStartIso();
+  const dates = [...byDate.keys()]
+    .filter((d) => d >= jan1)
+    .sort()
+    .reverse()
+    .slice(0, maxDays);
   const { appendFromTrendsSnapshot } = require('../chemistryHistoryService');
 
   let daysProcessed = 0;
@@ -93,7 +109,7 @@ async function backfillTrendSnapshotsFromBlobs(options = {}) {
       if (!picker) continue;
       try {
         const buf = await downloadBlobBuffer(blob.name);
-        payload[field] = await picker.parse(buf);
+        payload[field] = await picker.parse(buf, { reportDate });
       } catch (err) {
         if (errors.length < 8) errors.push(`${name}: ${err.message}`);
       }
