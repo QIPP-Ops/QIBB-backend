@@ -1,19 +1,5 @@
-jest.mock('../models/AdminUser', () => ({
-  findById: jest.fn(() => ({
-    select: jest.fn().mockResolvedValue({
-      _id: '507f1f77bcf86cd799439011',
-      email: 'test@acwapower.com',
-      accessRole: 'viewer',
-      role: 'Shift Supervisor',
-      name: 'Test User',
-      empId: '100001',
-      crew: 'A',
-      color: 'Crew A',
-    }),
-  })),
-}));
-
 const jwt = require('jsonwebtoken');
+const { buildJwtPayload } = require('../utils/jwtAuth');
 const request = require('supertest');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
@@ -36,9 +22,16 @@ describe('auth middleware', () => {
     expect(res.status).toBe(401);
   });
 
-  test('protect accepts valid JWT', async () => {
+  test('protect accepts valid JWT and verify is stateless', async () => {
     const token = jwt.sign(
-      { id: '507f1f77bcf86cd799439011', email: 'test@acwapower.com', role: 'viewer' },
+      buildJwtPayload({
+        _id: '507f1f77bcf86cd799439011',
+        email: 'test@acwapower.com',
+        name: 'Test User',
+        accessRole: 'viewer',
+        crew: 'A',
+        empId: '100001',
+      }),
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
@@ -47,6 +40,9 @@ describe('auth middleware', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
+    expect(res.body.user.email).toBe('test@acwapower.com');
+    expect(res.body.user.role).toBe('user');
+    expect(res.body.user.displayName).toBe('Test User');
   });
 
   test('GET /api/auth/register-options is public', async () => {
@@ -57,7 +53,7 @@ describe('auth middleware', () => {
   });
 
   test('admin middleware blocks non-admin roles', () => {
-    const req = { user: { role: 'viewer' } };
+    const req = { user: { role: 'user' } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
     const next = jest.fn();
     admin(req, res, next);

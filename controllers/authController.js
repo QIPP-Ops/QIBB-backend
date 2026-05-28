@@ -11,6 +11,7 @@ const {
 } = require('../services/emailService');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
+const { buildJwtPayload, JWT_EXPIRES_IN } = require('../utils/jwtAuth');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -28,7 +29,6 @@ async function findUserByEmail(email) {
 
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
-const { userCanAccessOpsTools } = require('../services/shiftScheduleService');
 
 const AUTO_APPROVED_DOMAINS = ['acwapower.com', 'nomac.com', 'acwaops.com'];
 
@@ -241,22 +241,18 @@ exports.login = async (req, res) => {
       });
     }
 
-    const portalRole =
-      normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ? 'admin' : user.accessRole;
+    const payload = buildJwtPayload(user);
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-    const token = jwt.sign({
-      id:    user._id,
-      email: user.email,
-      role:  portalRole,
-      accessRole: portalRole,
-      canOpsLead: Boolean(user.canOpsLead) || portalRole === 'admin',
-      crew: user.crew,
-      name:  user.name,
-      empId: user.empId,
-      crew:  user.crew,
-    }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.json({ token, role: portalRole });
+    res.json({
+      token,
+      role: payload.role,
+      user: {
+        email: payload.email,
+        role: payload.role,
+        displayName: payload.displayName,
+      },
+    });
   } catch (error) {
     res.status(500).json({ message: 'Login failed.', error: error.message });
   }
@@ -374,29 +370,21 @@ exports.adminResetPassword = async (req, res) => {
 
 // ─── Verify Token ─────────────────────────────────────────────────────────────
 
-exports.verify = async (req, res) => {
-  try {
-    const user = await AdminUser.findById(req.user.id).select('-passwordHash');
-    if (!user) return res.status(404).json({ message: 'User not found.' });
-    const portalRole =
-      normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ? 'admin' : user.accessRole;
-
-    res.json({
-      ok: true,
-      user: {
-        id:          user._id,
-        email:       user.email,
-        role:        portalRole,
-        accessRole:  portalRole,
-        jobRole:     user.role,
-        name:        user.name,
-        empId:       user.empId,
-        crew:        user.crew,
-        color:       user.color,
-        canOpsLead:  userCanAccessOpsTools(user),
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Verification failed.', error: err.message });
-  }
+/** Stateless — identity from verified JWT only (no DB session lookup). */
+exports.verify = (req, res) => {
+  const u = req.user;
+  res.json({
+    ok: true,
+    user: {
+      id: u.userId || u.id,
+      email: u.email,
+      role: u.role,
+      accessRole: u.accessRole,
+      displayName: u.displayName || u.name,
+      name: u.displayName || u.name,
+      empId: u.empId,
+      crew: u.crew,
+      canOpsLead: u.canOpsLead === true,
+    },
+  });
 };
