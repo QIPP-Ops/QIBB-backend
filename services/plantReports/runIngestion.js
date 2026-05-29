@@ -24,6 +24,12 @@ async function upsertPoints(points) {
   const { evaluateMetricReading } = require('../chemistryAlarmService');
   for (const p of points) {
     if (p.value == null || !Number.isFinite(p.value)) continue;
+    const displayLabel = p.displayName || p.label;
+    const pointDoc = {
+      ...p,
+      label: displayLabel,
+    };
+    delete pointDoc.displayName;
     const res = await PlantMetricPoint.updateOne(
       {
         metricKey: p.metricKey,
@@ -32,7 +38,7 @@ async function upsertPoints(points) {
         equipmentId: p.equipmentId || '',
         columnKey: p.columnKey || '',
       },
-      { $set: p },
+      { $set: pointDoc },
       { upsert: true }
     );
     if (res.upsertedCount || res.modifiedCount) n += 1;
@@ -42,7 +48,7 @@ async function upsertPoints(points) {
     if (/chem|ro|hrsg|ph|conductivity|silica|oxygen/i.test(ck) || p.category === 'chemistry') {
       evaluateMetricReading({
         metricKey: ck,
-        label: canonicalLabel(p.label, p.metricKey),
+        label: canonicalLabel(displayLabel, p.metricKey),
         value: p.value,
         reportDate: p.reportDate,
       }).catch((err) => console.warn('[chem-alarm]', err.message));
@@ -51,7 +57,7 @@ async function upsertPoints(points) {
       { metricKey: ck },
       {
         $set: {
-          label: canonicalLabel(p.label, p.metricKey),
+          label: canonicalLabel(displayLabel, p.metricKey),
           category: p.category,
           unit: p.unit || '',
           sourceFilePattern: p.sourceFile,

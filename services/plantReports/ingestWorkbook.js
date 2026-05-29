@@ -1,6 +1,8 @@
 const path = require('path');
 const ExcelJS = require('exceljs');
 const { classifyReport, inferDateFromFilename } = require('./excelUtils');
+const { findBestMappingForFile } = require('./fileMappingService');
+const { parseMappedWorkbook } = require('./parseMappedWorkbook');
 const { parseWaterWorkbook } = require('./parsers/waterConsumption');
 const { parseRoHrsgWorkbook } = require('./parsers/roHrsg');
 const { parseDailyOperationWorkbook } = require('./parsers/dailyOperation');
@@ -17,6 +19,20 @@ async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
+
+  const mapping = await findBestMappingForFile(path.basename(sourceName));
+  if (mapping) {
+    const points = parseMappedWorkbook(wb, mapping, reportDate, rel);
+    return {
+      points,
+      highlights: [],
+      skipped: false,
+      kind: 'mapped',
+      reportDate,
+      mappingId: String(mapping._id),
+      mappingName: mapping.name,
+    };
+  }
 
   return parseWorkbook(wb, rel, reportDate, kind);
 }

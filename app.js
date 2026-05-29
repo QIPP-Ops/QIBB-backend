@@ -25,6 +25,8 @@ const personnelRoutes = require('./routes/personnelRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const metricLimitRoutes = require('./routes/metricLimitRoutes');
 const personnelKpiRoutes = require('./routes/personnelKpiRoutes');
+const fileMappingRoutes = require('./routes/fileMappingRoutes');
+const blobRoutes = require('./routes/blobRoutes');
 
 const app = express();
 
@@ -130,6 +132,8 @@ app.use('/api/personnel', personnelRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/metric-limits', metricLimitRoutes);
 app.use('/api/kpi', personnelKpiRoutes);
+app.use('/api/file-mappings', fileMappingRoutes);
+app.use('/api/blob', blobRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

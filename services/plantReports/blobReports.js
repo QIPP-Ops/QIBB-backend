@@ -99,6 +99,39 @@ async function listReportBlobs(options = {}) {
   return blobs;
 }
 
+/**
+ * List all Excel blobs in the report container (admin file mapper).
+ */
+async function listAllExcelBlobs(options = {}) {
+  const defaultAge = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
+  const { maxAgeDays = defaultAge, prefix = '' } = options;
+  const { container } = getReportContainerClient();
+  const minTime = Date.now() - maxAgeDays * 86400000;
+
+  const blobs = [];
+  for await (const item of container.listBlobsFlat({ prefix: prefix || undefined })) {
+    if (!item.name || !isExcelBlob(item.name)) continue;
+    const modified = item.properties?.lastModified
+      ? new Date(item.properties.lastModified).getTime()
+      : 0;
+    if (modified > 0 && modified < minTime) continue;
+    blobs.push({
+      name: item.name,
+      filename: path.basename(item.name),
+      lastModified: item.properties?.lastModified || null,
+      size: item.properties?.contentLength || 0,
+    });
+  }
+
+  blobs.sort((a, b) => {
+    const ta = a.lastModified ? new Date(a.lastModified).getTime() : 0;
+    const tb = b.lastModified ? new Date(b.lastModified).getTime() : 0;
+    return tb - ta;
+  });
+
+  return blobs;
+}
+
 async function downloadBlobBuffer(blobName) {
   const timeoutMs = parseInt(process.env.BLOB_DOWNLOAD_TIMEOUT_MS || '120000', 10);
   const { container } = getReportContainerClient();
@@ -155,6 +188,7 @@ function getBlobAccessInfo() {
 module.exports = {
   CONTAINER,
   listReportBlobs,
+  listAllExcelBlobs,
   downloadBlobBuffer,
   blobIngestConfigured,
   resolveBlobSasUrl,
