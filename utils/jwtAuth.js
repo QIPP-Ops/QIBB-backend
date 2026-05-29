@@ -33,6 +33,7 @@ function buildJwtPayload(user) {
     canOpsLead: Boolean(user.canOpsLead) || portalRole === 'admin',
     crew: user.crew,
     empId: user.empId,
+    jobRole: user.role,
   };
 }
 

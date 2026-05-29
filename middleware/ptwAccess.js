@@ -16,7 +16,11 @@ async function findPtwPersonForUser(user) {
   const email = normalizeEmail(user.email);
   const name = normalizeName(user.name);
 
+  const empId = String(user.empId || '').trim();
+
   return config.ptwPersonnel.find((p) => {
+    if (empId && String(p.empId || '').trim() === empId) return true;
+    if (empId && String(p.empNo || '').trim() === empId) return true;
     if (p.email && normalizeEmail(p.email) === email) return true;
     if (p.name && normalizeName(p.name) === name) return true;
     return false;
