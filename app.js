@@ -22,6 +22,8 @@ const plantDataRoutes = require('./routes/plantDataRoutes');
 const chemistryRoutes = require('./routes/chemistryRoutes');
 const trainingRoutes = require('./routes/trainingRoutes');
 const personnelRoutes = require('./routes/personnelRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const metricLimitRoutes = require('./routes/metricLimitRoutes');
 
 const app = express();
 
@@ -124,6 +126,8 @@ app.use('/api/plant-data', plantDataRoutes);
 app.use('/api/chemistry', chemistryRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/personnel', personnelRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/metric-limits', metricLimitRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });
