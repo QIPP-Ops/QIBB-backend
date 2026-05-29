@@ -21,6 +21,7 @@ const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10
 
 async function upsertPoints(points) {
   let n = 0;
+  const { evaluateMetricReading } = require('../chemistryAlarmService');
   for (const p of points) {
     if (p.value == null || !Number.isFinite(p.value)) continue;
     const res = await PlantMetricPoint.updateOne(
@@ -38,6 +39,14 @@ async function upsertPoints(points) {
 
     const { canonicalMetricKey, canonicalLabel } = require('./metricKeys');
     const ck = canonicalMetricKey(p.metricKey);
+    if (/chem|ro|hrsg|ph|conductivity|silica|oxygen/i.test(ck) || p.category === 'chemistry') {
+      evaluateMetricReading({
+        metricKey: ck,
+        label: canonicalLabel(p.label, p.metricKey),
+        value: p.value,
+        reportDate: p.reportDate,
+      }).catch((err) => console.warn('[chem-alarm]', err.message));
+    }
     await PlantMetric.updateOne(
       { metricKey: ck },
       {
@@ -256,6 +265,15 @@ async function runPlantIngestion(options = {}) {
         },
       }
     );
+
+    try {
+      const { notifyIngestComplete } = require('../notificationService');
+      await notifyIngestComplete(
+        `${batch.filesProcessed} files, ${batch.pointsUpserted} points upserted (${batch.source})`
+      );
+    } catch (notifyErr) {
+      console.warn('[plant-ingest] notify skipped:', notifyErr.message);
+    }
 
     return {
       ok: true,
