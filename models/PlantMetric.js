@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const PlantMetricSchema = new mongoose.Schema({
   metricKey: { type: String, required: true, unique: true },
   label: { type: String, required: true },
+  displayName: { type: String, default: '' },
   category: { type: String, default: 'general' },
   unit: { type: String, default: '' },
   sourceFilePattern: { type: String, default: '' },

@@ -22,8 +22,10 @@ router.post('/metrics', protect, c.upsertMetric);
 router.delete('/metrics/:metricKey', protect, c.deleteMetric);
 router.patch('/metrics/visibility', protect, c.setMetricVisibility);
 
+router.get('/metric-display-names', c.getMetricDisplayNames);
 router.get('/custom-trends', protect, opsLead, c.listCustomTrends);
 router.post('/custom-trends', protect, opsLead, c.saveCustomTrend);
+router.patch('/custom-trends/:id', protect, opsLead, c.patchCustomTrend);
 router.delete('/custom-trends/:id', protect, opsLead, c.deleteCustomTrend);
 
 router.get('/management-access', protect, c.listManagementTrendAccess);

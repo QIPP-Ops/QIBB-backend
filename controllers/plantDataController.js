@@ -419,16 +419,50 @@ exports.saveCustomTrend = async (req, res) => {
   res.json({ success: true, data: doc });
 };
 
-exports.deleteCustomTrend = async (req, res) => {
+async function assertCanEditCustomTrend(req, trend) {
   const dbUser = await loadDbUser(req);
   const isAdmin = req.user?.role === 'admin';
-  const trend = await CustomTrend.findById(req.params.id);
-  if (!trend) return res.status(404).json({ message: 'Not found' });
+  if (!trend) return { ok: false, status: 404, message: 'Not found' };
   if (!isAdmin && String(trend.createdBy) !== String(dbUser._id)) {
-    return res.status(403).json({ message: 'Forbidden' });
+    return { ok: false, status: 403, message: 'Forbidden' };
   }
+  return { ok: true, dbUser, isAdmin };
+}
+
+exports.patchCustomTrend = async (req, res) => {
+  const trend = await CustomTrend.findById(req.params.id);
+  const auth = await assertCanEditCustomTrend(req, trend);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
+
+  const { name } = req.body || {};
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ message: 'name is required' });
+  }
+
+  const doc = await CustomTrend.findByIdAndUpdate(
+    req.params.id,
+    { $set: { name: String(name).trim() } },
+    { new: true }
+  );
+  res.json({ success: true, data: doc });
+};
+
+exports.deleteCustomTrend = async (req, res) => {
+  const trend = await CustomTrend.findById(req.params.id);
+  const auth = await assertCanEditCustomTrend(req, trend);
+  if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
   await CustomTrend.deleteOne({ _id: trend._id });
   res.json({ success: true });
+};
+
+exports.getMetricDisplayNames = async (_req, res) => {
+  try {
+    const { buildMetricDisplayNameMap } = require('../services/plantReports/metricDisplayNames');
+    const map = await buildMetricDisplayNameMap();
+    res.json({ success: true, data: map });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.setManagementTrendAccess = async (req, res) => {

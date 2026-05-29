@@ -53,11 +53,13 @@ async function upsertPoints(points) {
         reportDate: p.reportDate,
       }).catch((err) => console.warn('[chem-alarm]', err.message));
     }
+    const resolvedLabel = canonicalLabel(displayLabel, p.metricKey);
     await PlantMetric.updateOne(
       { metricKey: ck },
       {
         $set: {
-          label: canonicalLabel(displayLabel, p.metricKey),
+          label: resolvedLabel,
+          displayName: String(p.displayName || displayLabel || '').trim() || resolvedLabel,
           category: p.category,
           unit: p.unit || '',
           sourceFilePattern: p.sourceFile,

@@ -1,5 +1,6 @@
 const { buildHistoricalDashboard, getDateBounds } = require('./historicalDashboard');
 const PlantMetricPoint = require('../../models/PlantMetricPoint');
+const PlantIngestionState = require('../../models/PlantIngestionState');
 const { PlantMetric } = require('../../models/PlantMetric');
 const { expandDayColumnSeries } = require('./seriesTimeline');
 
@@ -182,9 +183,18 @@ async function buildOperationalOverview(query = {}) {
   const kpiSeries = mergeExtendedKpiRows(seriesMap);
   const dashboard = await buildHistoricalDashboard({ from, to });
 
+  const ingestState = await PlantIngestionState.findOne({ key: 'global' }).lean();
+  const lastDataAt = bounds.maxDate || null;
+  const lastIngestAt = ingestState?.lastSuccessAt
+    ? new Date(ingestState.lastSuccessAt).toISOString()
+    : null;
+
   return {
     plantCapacityMw: PLANT_CAPACITY_MW,
     dateRange: { from, to, ...bounds },
+    lastDataAt,
+    lastIngestAt,
+    lastSync: lastIngestAt,
     kpiSeries,
     latest: buildLatestSnapshot(kpiSeries),
     panels: dashboard.panels,
