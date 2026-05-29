@@ -10,6 +10,7 @@ const NotificationSchema = new mongoose.Schema(
         'chemistry_alarm',
         'quiz_assigned',
         'quiz_completed',
+        'quiz_prize_claimed',
         'leave_conflict',
         'roster_lock',
         'roster_unlock',

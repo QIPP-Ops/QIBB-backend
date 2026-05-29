@@ -11,6 +11,7 @@ const RECIPIENT_MATRIX = {
   chemistry_alarm: { member: true, supervisor: true, admin: 'immediate' },
   quiz_assigned: { member: true, supervisor: false, admin: false },
   quiz_completed: { member: false, supervisor: false, admin: true },
+  quiz_prize_claimed: { member: false, supervisor: false, admin: true },
   leave_conflict: { member: false, supervisor: false, admin: true },
   roster_lock: { member: true, supervisor: true, admin: true },
   roster_unlock: { member: true, supervisor: true, admin: true },
@@ -222,26 +223,41 @@ async function notifyIngestComplete(summary) {
   }
 }
 
-async function notifyQuizAssigned(userId, quizTitle) {
+async function notifyQuizAssigned(userId, quizTitle, metadata = {}) {
   await createNotification({
     type: 'quiz_assigned',
     recipientUserId: userId,
     title: 'Quiz assigned',
     body: `You have been assigned: ${quizTitle}`,
     link: `${getFrontendBaseUrlSafe()}/trainings`,
+    metadata: { quizTitle, ...metadata },
     dedupeKey: `quiz-assigned:${userId}:${quizTitle}`,
     sendEmail: true,
   });
 }
 
-async function notifyQuizCompleted(adminId, userName, quizTitle) {
+async function notifyQuizCompleted(adminId, userName, quizTitle, metadata = {}) {
   await createNotification({
     type: 'quiz_completed',
     recipientUserId: adminId,
     title: 'Quiz completed',
     body: `${userName} completed ${quizTitle}`,
     link: `${getFrontendBaseUrlSafe()}/trainings`,
+    metadata: { quizTitle, userName, ...metadata },
     dedupeKey: `quiz-done:${adminId}:${userName}:${quizTitle}`,
+    sendEmail: false,
+  });
+}
+
+async function notifyQuizPrizeClaimed(adminId, userName, quizTitle) {
+  await createNotification({
+    type: 'quiz_prize_claimed',
+    recipientUserId: adminId,
+    title: 'Prize claimed',
+    body: `${userName} claimed their prize for ${quizTitle}`,
+    link: `${getFrontendBaseUrlSafe()}/trainings`,
+    metadata: { quizTitle, userName },
+    dedupeKey: `quiz-prize:${adminId}:${userName}:${quizTitle}`,
     sendEmail: false,
   });
 }
@@ -282,5 +298,6 @@ module.exports = {
   notifyIngestComplete,
   notifyQuizAssigned,
   notifyQuizCompleted,
+  notifyQuizPrizeClaimed,
   notifyLeaveConflict,
 };

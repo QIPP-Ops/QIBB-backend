@@ -17,3 +17,4 @@ coverage/
 
 # Generated on ingest (served via GET /plant-data/trends-cache)
 data/plant-trends-cache.json
+data/quizzes/
