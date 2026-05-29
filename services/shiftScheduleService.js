@@ -308,6 +308,8 @@ module.exports = {
   resolveEmployeeShift,
   isEmployeeOnDuty,
   leaveOnDate,
+  fmtDate,
+  parseDateOnly,
   userCanAccessOpsTools,
   MANAGEMENT_JOB_ROLES,
 };

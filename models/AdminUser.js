@@ -37,6 +37,8 @@ const AdminUserSchema = new mongoose.Schema({
 
   // ─── Auth & Access ────────────────────────────────────────────────────────
   accessRole:        { type: String, enum: ['admin', 'viewer', 'management'], default: 'viewer' },
+  /** Super-admin controlled: leave conflicts, chemistry alarms, daily digest */
+  receiveEmailNotifications: { type: Boolean, default: false },
   canOpsLead:        { type: Boolean, default: false },
   compensateDayBalance: { type: Number, default: 0 },
   isApproved:        { type: Boolean, default: false },

@@ -99,18 +99,10 @@ exports.addLeave = async (req, res) => {
     });
 
     try {
-      const { buildRosterSchedule } = require('../services/shiftScheduleService');
-      const { notifyLeaveConflict } = require('../services/notificationService');
-      const config = await AdminConfig.findOne().lean();
+      const { processLeaveSaved } = require('../services/leaveConflictService');
       const employees = await AdminUser.find().select('-passwordHash').lean();
-      const schedule = buildRosterSchedule(employees, {
-        startDate: startStr,
-        endDate: endStr,
-        baseDate: config?.shiftCycleBaseDate || '2026-01-01',
-      });
-      if (schedule.conflictCount > 0 && schedule.conflicts[0]) {
-        await notifyLeaveConflict(schedule.conflicts[0].message);
-      }
+      const savedLeave = user.leaves[user.leaves.length - 1];
+      await processLeaveSaved(user.toObject ? user.toObject() : user, savedLeave, employees);
     } catch (conflictErr) {
       console.warn('[leave] conflict notify skipped:', conflictErr.message);
     }

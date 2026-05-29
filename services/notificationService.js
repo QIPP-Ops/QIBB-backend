@@ -1,8 +1,9 @@
 const Notification = require('../models/Notification');
 const AdminUser = require('../models/AdminUser');
 const { sendMail, emailTemplate, isEmailConfigured } = require('./emailService');
+const { sendAdminBulkEmail } = require('./adminEmailService');
+const { isShiftReportEmailRemindersEnabled } = require('./systemSettingsService');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
-const { hasPortalAdminAccess } = require('../middleware/superAdmin');
 const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
 
 /** Recipient matrix per notification type. */
@@ -30,13 +31,13 @@ function isSupervisorRole(role) {
 }
 
 async function listAdmins() {
-  return AdminUser.find({ accessRole: 'admin', approved: true }).select('_id email name empId').lean();
+  return AdminUser.find({ accessRole: 'admin', isApproved: true }).select('_id email name empId').lean();
 }
 
 async function findSupervisorsForCrew(crew) {
   if (!crew) return [];
   return AdminUser.find({
-    approved: true,
+    isApproved: true,
     crew,
     $or: [
       { role: { $in: [...MANAGEMENT_JOB_ROLES] } },
@@ -103,6 +104,7 @@ async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, 
   const type = 'shift_missing';
   const matrix = RECIPIENT_MATRIX[type];
   const base = getFrontendBaseUrlSafe();
+  const shiftEmailsEnabled = await isShiftReportEmailRemindersEnabled();
 
   if (matrix.member && member?._id) {
     await createNotification({
@@ -112,7 +114,7 @@ async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, 
       body: `You haven't submitted your ${shiftLabel} shift report for ${shiftDate}.`,
       link: `${base}/personnel`,
       dedupeKey: `shift-missing:self:${member.empId}:${shiftDate}:${shiftLabel}`,
-      sendEmail: true,
+      sendEmail: shiftEmailsEnabled,
     });
   }
 
@@ -125,7 +127,7 @@ async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, 
         body: `${member.name} has not submitted the ${shiftLabel} shift report for ${shiftDate}.`,
         link: `${base}/management`,
         dedupeKey: `shift-missing:sic:${sup.empId}:${member.empId}:${shiftDate}:${shiftLabel}`,
-        sendEmail: true,
+        sendEmail: shiftEmailsEnabled,
       });
     }
   }
@@ -140,7 +142,7 @@ async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, 
         body: adminDigest,
         link: `${base}/management`,
         dedupeKey: `shift-missing:digest:${shiftDate}:${shiftLabel}:${admin.empId}`,
-        sendEmail: true,
+        sendEmail: shiftEmailsEnabled,
       });
     }
   }
@@ -181,19 +183,24 @@ async function notifyChemistryAlarm({ chemists, supervisors, admins, metricLabel
       body,
       link: `${base}/chemistry`,
       dedupeKey: `chem-alarm:admin:${u.empId}:${metricLabel}:${reportDate}`,
-      sendEmail: true,
+      sendEmail: false,
     });
   }
+
+  await sendAdminBulkEmail({
+    subject: `Chemistry Alarm — ${metricLabel} out of range`,
+    bodyHtml: `<p>${body}</p><p><a href="${base}/chemistry">Open chemistry dashboard</a></p>`,
+  });
 }
 
-async function notifyRosterLockChange(locked) {
+async function notifyRosterLockChange(locked, actorName = 'Administrator') {
   const type = locked ? 'roster_lock' : 'roster_unlock';
   const title = locked ? 'System roster locked' : 'System roster unlocked';
   const body = locked
     ? 'The administrator has locked the roster. Leave planner edits are disabled.'
     : 'The roster is unlocked. Leave planner edits are enabled again.';
   const base = getFrontendBaseUrlSafe();
-  const users = await AdminUser.find({ approved: true }).select('_id empId').lean();
+  const users = await AdminUser.find({ isApproved: true }).select('_id empId').lean();
   for (const u of users) {
     await createNotification({
       type,
@@ -205,6 +212,13 @@ async function notifyRosterLockChange(locked) {
       sendEmail: false,
     });
   }
+
+  const stateLabel = locked ? 'Locked' : 'Unlocked';
+  await sendAdminBulkEmail({
+    subject: `Roster ${stateLabel} by ${actorName}`,
+    bodyHtml: `<p>The system roster was <strong>${stateLabel.toLowerCase()}</strong> by ${actorName}.</p>`,
+    superAdminOnly: true,
+  });
 }
 
 async function notifyIngestComplete(summary) {
@@ -260,6 +274,12 @@ async function notifyQuizPrizeClaimed(adminId, userName, quizTitle) {
     dedupeKey: `quiz-prize:${adminId}:${userName}:${quizTitle}`,
     sendEmail: false,
   });
+
+  await sendAdminBulkEmail({
+    subject: `Prize Claim — ${userName} completed ${quizTitle}`,
+    bodyHtml: `<p><strong>${userName}</strong> claimed their prize after completing <strong>${quizTitle}</strong>.</p>`,
+    superAdminOnly: true,
+  });
 }
 
 async function notifyLeaveConflict(message) {
@@ -272,7 +292,7 @@ async function notifyLeaveConflict(message) {
       body: message,
       link: `${getFrontendBaseUrlSafe()}/leave`,
       dedupeKey: `leave-conflict:${admin.empId}:${message.slice(0, 80)}`,
-      sendEmail: true,
+      sendEmail: false,
     });
   }
 }

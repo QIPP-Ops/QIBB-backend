@@ -31,7 +31,7 @@ async function evaluateMetricReading({ metricKey, label, value, reportDate }) {
   if (!kind || kind === 'ok') return null;
 
   const chemists = await AdminUser.find({
-    approved: true,
+    isApproved: true,
     role: /chemist/i,
   })
     .select('_id empId name crew email')

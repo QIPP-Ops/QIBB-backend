@@ -65,7 +65,9 @@ exports.setLock = async (req, res) => {
     await config.save();
     try {
       const { notifyRosterLockChange } = require('../services/notificationService');
-      await notifyRosterLockChange(!!locked);
+      const actor = await AdminUser.findById(req.user?.id).select('name email').lean();
+      const actorName = actor?.name || actor?.email || 'Administrator';
+      await notifyRosterLockChange(!!locked, actorName);
     } catch (notifyErr) {
       console.warn('[lock] notification skipped:', notifyErr.message);
     }

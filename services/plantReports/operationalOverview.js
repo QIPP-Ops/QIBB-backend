@@ -202,4 +202,8 @@ async function buildOperationalOverview(query = {}) {
   };
 }
 
-module.exports = { buildOperationalOverview, PLANT_CAPACITY_MW };
+module.exports = {
+  buildOperationalOverview,
+  PLANT_CAPACITY_MW,
+  seriesForGeneration,
+};

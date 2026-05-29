@@ -4,6 +4,43 @@ const { classifyValue } = require('../services/chemistryAlarmService');
 const MetricLimit = require('../models/MetricLimit');
 const PlantMetricPoint = require('../models/PlantMetricPoint');
 
+describe('shift report email reminder gate', () => {
+  test('notifyShiftMissing skips emails when setting disabled', async () => {
+    jest.resetModules();
+    jest.doMock('../services/systemSettingsService', () => ({
+      isShiftReportEmailRemindersEnabled: jest.fn().mockResolvedValue(false),
+    }));
+    jest.doMock('../models/Notification', () => ({
+      findOne: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(null) }),
+      create: jest.fn().mockImplementation((doc) => Promise.resolve({ ...doc, save: jest.fn() })),
+    }));
+    jest.doMock('../models/AdminUser', () => ({
+      findById: jest.fn().mockResolvedValue({ email: 'member@test.com', name: 'M' }),
+      find: jest.fn().mockReturnValue({ select: () => ({ lean: () => Promise.resolve([]) }) }),
+    }));
+    jest.doMock('../services/emailService', () => ({
+      sendMail: jest.fn(),
+      emailTemplate: (t, b) => `${t}${b}`,
+      isEmailConfigured: () => true,
+    }));
+    jest.doMock('../services/adminEmailService', () => ({
+      sendAdminBulkEmail: jest.fn().mockResolvedValue({ sent: 0 }),
+    }));
+
+    const { notifyShiftMissing } = require('../services/notificationService');
+    const { sendMail } = require('../services/emailService');
+
+    await notifyShiftMissing({
+      member: { _id: '1', empId: 'E1', name: 'M', crew: 'A' },
+      shiftDate: '2026-01-15',
+      shiftLabel: 'Day',
+      supervisors: [],
+    });
+
+    expect(sendMail).not.toHaveBeenCalled();
+  });
+});
+
 describe('notification recipient matrix', () => {
   test('shift missing matrix allows member, supervisor, admin digest', () => {
     const { RECIPIENT_MATRIX } = require('../services/notificationService');

@@ -2,6 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const c = require('../controllers/adminController');
+const settings = require('../controllers/systemSettingsController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -12,6 +13,11 @@ const pinLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
+
+router.get('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.getShiftReportEmailReminders);
+router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.patchShiftReportEmailReminders);
+router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
+router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);

@@ -51,7 +51,7 @@ async function employeesOnShift(dateStr, shiftCode) {
   const config = await AdminConfig.findOne().lean();
   const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
   const overrides = overrideMapFromDocs(await ShiftOverride.find({ date: dateStr }).lean());
-  const employees = await AdminUser.find({ approved: true }).select('-passwordHash').lean();
+  const employees = await AdminUser.find({ isApproved: true }).select('-passwordHash').lean();
 
   return employees.filter((emp) => {
     const slot = resolveEmployeeShift(emp, dateStr, { baseDate, overrideMap: overrides });
