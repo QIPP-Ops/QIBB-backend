@@ -13,7 +13,7 @@ exports.checkEditingLock = async (req, res, next) => {
     }
     if (config.editingLocked) {
       return res.status(403).json({
-        message: 'System is currently locked for editing by administrator.',
+        message: 'The roster is currently locked by the administrator.',
       });
     }
     next();

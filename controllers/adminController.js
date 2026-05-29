@@ -63,6 +63,12 @@ exports.setLock = async (req, res) => {
     if (!config) config = new AdminConfig();
     config.editingLocked = !!locked;
     await config.save();
+    try {
+      const { notifyRosterLockChange } = require('../services/notificationService');
+      await notifyRosterLockChange(!!locked);
+    } catch (notifyErr) {
+      console.warn('[lock] notification skipped:', notifyErr.message);
+    }
     res.json({ message: `Editing lock set to ${!!locked}`, editingLocked: config.editingLocked });
   } catch (err) {
     res.status(500).json({ message: 'Error toggling lock', error: err.message });

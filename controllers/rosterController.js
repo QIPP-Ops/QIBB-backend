@@ -98,6 +98,23 @@ exports.addLeave = async (req, res) => {
       metadata: { leave: leaveData, appliedBy: actor?.email || 'unknown' },
     });
 
+    try {
+      const { buildRosterSchedule } = require('../services/shiftScheduleService');
+      const { notifyLeaveConflict } = require('../services/notificationService');
+      const config = await AdminConfig.findOne().lean();
+      const employees = await AdminUser.find().select('-passwordHash').lean();
+      const schedule = buildRosterSchedule(employees, {
+        startDate: startStr,
+        endDate: endStr,
+        baseDate: config?.shiftCycleBaseDate || '2026-01-01',
+      });
+      if (schedule.conflictCount > 0 && schedule.conflicts[0]) {
+        await notifyLeaveConflict(schedule.conflicts[0].message);
+      }
+    } catch (conflictErr) {
+      console.warn('[leave] conflict notify skipped:', conflictErr.message);
+    }
+
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
