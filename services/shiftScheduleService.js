@@ -154,6 +154,7 @@ function buildRosterSchedule(employees, options = {}) {
       role: emp.role,
       color: emp.color || emp.seniority || 'crew-grey',
       seniority: emp.seniority || emp.color || 'crew-grey',
+      compensateDayBalance: emp.compensateDayBalance ?? 0,
       cells,
     };
   });

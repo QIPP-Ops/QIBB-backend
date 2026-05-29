@@ -341,6 +341,14 @@ exports.adminResetPassword = async (req, res) => {
     const user = await AdminUser.findOne({ _id: id });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
+    const { isPlaceholderEmail } = require('../utils/placeholderEmail');
+    if (isPlaceholderEmail(user.email)) {
+      return res.status(400).json({
+        message:
+          'This member has no real email address. The password reset cannot be delivered. Please update their email first.',
+      });
+    }
+
     const tempPassword = crypto.randomBytes(5).toString('hex');
     user.passwordHash = await bcrypt.hash(tempPassword, 10);
     await user.save();

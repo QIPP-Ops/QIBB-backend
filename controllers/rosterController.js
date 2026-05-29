@@ -1,7 +1,7 @@
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
-const { isPlaceholderEmail, sanitizeEmailForClient } = require('../utils/placeholderEmail');
+const { isPlaceholderEmail, sanitizeEmailForClient, isValidEmailFormat } = require('../utils/placeholderEmail');
 const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/protectedAccounts');
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
@@ -251,6 +251,21 @@ exports.updateEmployee = async (req, res) => {
       ['opsGroupLabel', 'opsTreeParentEmpId', 'opsTreeRelation', 'opsTreeOrder', 'assignedTo'].forEach((k) => {
         if (rest[k] !== undefined) safeBody[k] = rest[k];
       });
+    }
+
+    if (isAdmin && email !== undefined) {
+      const trimmed = String(email).trim().toLowerCase();
+      if (!trimmed) {
+        return res.status(400).json({ message: 'Email is required.' });
+      }
+      if (!isValidEmailFormat(trimmed)) {
+        return res.status(400).json({ message: 'Email must contain @ and a domain.' });
+      }
+      const dup = await AdminUser.findOne({ email: trimmed, empId: { $ne: req.params.empId } });
+      if (dup) {
+        return res.status(400).json({ message: 'Email is already in use.' });
+      }
+      safeBody.email = trimmed;
     }
 
     const user = await AdminUser.findOneAndUpdate(
