@@ -1,0 +1,12 @@
+# Excluded from Azure zip deploy / Kudu sync (belt-and-suspenders; CI also strips these).
+.git/
+.github/
+tests/
+coverage/
+*.md
+env
+.env
+.env.*
+data/plant-trends-cache.json
+data/quizzes/
+uploads/

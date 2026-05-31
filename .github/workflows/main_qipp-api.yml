@@ -6,6 +6,11 @@ on:
       - main
   workflow_dispatch:
 
+# Only one deploy to qipp-api at a time (409/504 if zip deploy overlaps or SCM is busy).
+concurrency:
+  group: qipp-api-production-deploy
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,9 +24,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run tests
         run: npm test
@@ -29,7 +35,12 @@ jobs:
           JWT_SECRET: test-jwt-secret-at-least-32-chars-long
           COSMOS_URI: mongodb://127.0.0.1:27017/qipp-ci-test
 
-      - name: Zip for deployment
+      - name: Prepare production-only node_modules
+        run: |
+          rm -rf node_modules
+          npm ci --omit=dev
+
+      - name: Zip lean deployment package
         run: |
           zip -r release.zip . \
             -x "*.git*" \
@@ -38,7 +49,15 @@ jobs:
             -x ".env.*" \
             -x "*/.env" \
             -x "*/.env.*" \
-            -x "coverage/*"
+            -x "coverage/*" \
+            -x "tests/*" \
+            -x ".github/*" \
+            -x "*.md" \
+            -x "data/plant-trends-cache.json" \
+            -x "data/quizzes/*" \
+            -x "uploads/*"
+          ls -lh release.zip
+          unzip -l release.zip | tail -1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -66,9 +85,53 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CA71DF4C79E042D9A8C61D8F46C5C6F1 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_32286830F7AA4C78843472706989ECAA }}
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure Web App (attempt 1)
+        id: deploy1
+        timeout-minutes: 15
+        uses: azure/webapps-deploy@v3
+        continue-on-error: true
+        with:
+          app-name: 'qipp-api'
+          slot-name: 'Production'
+          package: release.zip
+
+      - name: Wait before deploy retry
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 90
+
+      - name: Deploy to Azure Web App (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        timeout-minutes: 15
+        uses: azure/webapps-deploy@v3
+        continue-on-error: true
+        with:
+          app-name: 'qipp-api'
+          slot-name: 'Production'
+          package: release.zip
+
+      - name: Wait before final deploy retry
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 90
+
+      - name: Deploy to Azure Web App (attempt 3)
+        id: deploy3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        timeout-minutes: 15
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'qipp-api'
           slot-name: 'Production'
           package: release.zip
+
+      - name: Fail if deploy did not succeed
+        if: >-
+          steps.deploy1.outcome == 'failure' &&
+          (steps.deploy2.outcome == 'failure' || steps.deploy2.outcome == 'skipped') &&
+          (steps.deploy3.outcome == 'failure' || steps.deploy3.outcome == 'skipped')
+        run: |
+          echo "::error::All deploy attempts failed (504 Gateway Timeout often means SCM was busy or the zip was too large)."
+          echo "Retry this workflow, or check Azure Portal → qipp-api → Deployment Center for stuck deployments."
+          echo "If SCM is stuck: restart the App Service, toggle SCM Basic Auth off/on, then redeploy."
+          echo "Recommended app setting: WEBSITE_RUN_FROM_PACKAGE=1 (Configuration → Application settings)."
+          exit 1
