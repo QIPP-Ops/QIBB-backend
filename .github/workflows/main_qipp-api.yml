@@ -1,5 +1,8 @@
 # Deploy QIBB-backend to Azure App Service (qipp-api).
 #
+# If qipp-api is Stopped in Azure Portal: click Start there OR re-run this workflow.
+# The deploy job runs Start app after deploy with if: always() so a failed deploy still starts the app.
+#
 # GitHub secrets (repo → Settings → Secrets and variables → Actions):
 #   AZUREAPPSERVICE_CLIENTID_*     — service principal client ID (from Azure deploy credential)
 #   AZUREAPPSERVICE_TENANTID_*     — Azure AD tenant ID
@@ -154,11 +157,17 @@ jobs:
 
       # Stop the app so live node + plant ingest do not contend with SCM/Kudu during zip deploy.
       # index.js defers PLANT_INGEST_ON_STARTUP until 12s after listen(); ingest does not block Kudu.
-      - name: Stop app before deploy
+      - name: Stop app before deploy (skip if already stopped)
         run: |
-          az webapp stop \
-            --name qipp-api \
-            --resource-group "${{ steps.app.outputs.resource-group }}"
+          APP_NAME=qipp-api
+          RG="${{ steps.app.outputs.resource-group }}"
+          STATE=$(az webapp show --name "$APP_NAME" --resource-group "$RG" --query state -o tsv)
+          echo "Current app state: $STATE"
+          if [ "$STATE" = "Stopped" ]; then
+            echo "App already stopped; skipping stop and settle wait."
+            exit 0
+          fi
+          az webapp stop --name "$APP_NAME" --resource-group "$RG"
           echo "Waiting 20s for SCM/Kudu to settle..."
           sleep 20
 
@@ -251,9 +260,12 @@ jobs:
       - name: Start app after deploy
         if: always()
         run: |
+          echo "Ensuring qipp-api is started (runs even when deploy fails)..."
           az webapp start \
             --name qipp-api \
             --resource-group "${{ steps.app.outputs.resource-group }}"
+          STATE=$(az webapp show --name qipp-api --resource-group "${{ steps.app.outputs.resource-group }}" --query state -o tsv)
+          echo "App state after start: $STATE"
 
       - name: Wait for health endpoint
         if: success()
