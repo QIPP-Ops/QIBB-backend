@@ -1,7 +1,8 @@
 # Deploy QIBB-backend to Azure App Service (qipp-api).
 #
 # If qipp-api is Stopped in Azure Portal: click Start there OR re-run this workflow.
-# The deploy job runs Start app after deploy with if: always() so a failed deploy still starts the app.
+# Deploy flow: stop app → async zip (--track-status false) → Kudu poll until complete →
+# always start app → optional health check. Never wait for "Starting the site..." while stopped.
 #
 # GitHub secrets (repo → Settings → Secrets and variables → Actions):
 #   AZUREAPPSERVICE_CLIENTID_*     — service principal client ID (from Azure deploy credential)
@@ -214,12 +215,16 @@ jobs:
 
           deploy_once() {
             echo "Initiating async zip deploy (timeout 1800000 ms)..."
+            # --track-status false: CLI 2.61+ polls deploymentStatus API until the site
+            # starts; with the app stopped that loops forever on "Starting the site...".
+            # We poll Kudu for zip deploy complete only, then start the app ourselves.
             JSON=$(az webapp deploy \
               --name "$APP_NAME" \
               --resource-group "$RG" \
               --src-path release.zip \
               --type zip \
               --async true \
+              --track-status false \
               --timeout 1800000 \
               -o json)
             echo "$JSON" | jq '.'
@@ -268,17 +273,18 @@ jobs:
           echo "App state after start: $STATE"
 
       - name: Wait for health endpoint
-        if: success()
+        if: always() && steps.deploy.outcome == 'success'
         run: |
           URL="https://qipp-api.azurewebsites.net/health"
-          for i in $(seq 1 36); do
+          MAX_ATTEMPTS=30
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
-            echo "Attempt $i: HTTP $code"
+            echo "Attempt $i/${MAX_ATTEMPTS}: HTTP $code"
             if [ "$code" = "200" ]; then
               echo "App is healthy"
               exit 0
             fi
             sleep 10
           done
-          echo "::warning::Health check did not return 200 within 6 minutes (app may still be warming up)."
+          echo "::warning::Health check did not return 200 within 5 minutes (app may still be warming up)."
           exit 0
