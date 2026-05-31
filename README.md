@@ -108,7 +108,24 @@ npm test
 
 ## Deploy
 
-Production runs on Azure App Service (`qipp-api`). Set secrets in **App Settings** (never commit `.env`). Configure CORS via `FRONTEND_URL` (defaults include `https://qippop.azurewebsites.net` and `http://localhost:3000`).
+Production runs on Azure App Service (`qipp-api`). GitHub Actions workflow: `.github/workflows/main_qipp-api.yml` (push to `main` or manual dispatch).
+
+**GitHub Actions secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `AZUREAPPSERVICE_CLIENTID_*` | Service principal client ID (from Azure → Deployment Center → GitHub) |
+| `AZUREAPPSERVICE_TENANTID_*` | Azure AD tenant ID |
+| `AZUREAPPSERVICE_SUBSCRIPTIONID_*` | Azure subscription ID |
+| `AZURE_RESOURCE_GROUP` | *(optional)* Resource group name if auto-resolve fails |
+
+OIDC federated login is used (`azure/login@v2`); a legacy `AZURE_CREDENTIALS` JSON secret is **not** required when the three `AZUREAPPSERVICE_*` secrets above exist.
+
+The workflow builds a lean zip (production `node_modules` only, no tests/docs/etl/scripts), sets `WEBSITE_RUN_FROM_PACKAGE=1`, stops the app during deploy, uses `az webapp deploy --async true` with Kudu polling (30 min timeout), then restarts the app. Target zip size: **&lt;30 MB**; hard fail if **&gt;100 MB**.
+
+Set runtime secrets in Azure **App Settings** (never commit `.env`). Configure CORS via `FRONTEND_URL` (defaults include `https://qippop.azurewebsites.net` and `http://localhost:3000`).
+
+If deploys fail with 504: restart `qipp-api` in Azure Portal, disable any duplicate Azure DevOps deployment pipeline, verify App Service Plan tier / Kudu disk quota, then re-run the workflow.
 
 ## Security notes
 

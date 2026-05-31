@@ -3,10 +3,16 @@
 .github/
 tests/
 coverage/
+docs/
+etl/
+scripts/
+seeders/
 *.md
 env
 .env
 .env.*
+seed.js
+set-admin-password.*
 data/plant-trends-cache.json
 data/quizzes/
 uploads/

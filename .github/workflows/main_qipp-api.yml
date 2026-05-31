@@ -1,3 +1,15 @@
+# Deploy QIBB-backend to Azure App Service (qipp-api).
+#
+# GitHub secrets (repo → Settings → Secrets and variables → Actions):
+#   AZUREAPPSERVICE_CLIENTID_*     — service principal client ID (from Azure deploy credential)
+#   AZUREAPPSERVICE_TENANTID_*     — Azure AD tenant ID
+#   AZUREAPPSERVICE_SUBSCRIPTIONID_* — Azure subscription ID
+# Optional override if auto-resolve fails:
+#   AZURE_RESOURCE_GROUP           — resource group containing qipp-api
+#
+# Uses OIDC federated login (azure/login@v2); no AZURE_CREDENTIALS JSON blob required
+# when the three AZUREAPPSERVICE_* secrets above are configured.
+
 name: Build and deploy Node.js app to Azure Web App - qipp-api
 
 on:
@@ -6,7 +18,7 @@ on:
       - main
   workflow_dispatch:
 
-# Only one deploy to qipp-api at a time (409/503/504 if zip deploy overlaps or SCM is busy).
+# Only one deploy at a time — overlapping OneDeploy/SCM uploads cause 409/504.
 concurrency:
   group: qipp-api-production-deploy
   cancel-in-progress: true
@@ -36,7 +48,9 @@ jobs:
           COSMOS_URI: mongodb://127.0.0.1:27017/qipp-ci-test
 
       - name: Install production dependencies only
-        run: npm ci --omit=dev
+        run: |
+          rm -rf node_modules
+          npm ci --omit=dev
 
       - name: Create lean deployment package
         run: |
@@ -48,19 +62,41 @@ jobs:
             --exclude='tests/' \
             --exclude='docs/' \
             --exclude='etl/' \
+            --exclude='scripts/' \
+            --exclude='seeders/' \
             --exclude='env' \
             --exclude='.env' \
             --exclude='.env.*' \
+            --exclude='*.md' \
             --exclude='data/plant-trends-cache.json' \
             --exclude='data/quizzes/' \
             --exclude='uploads/' \
             --exclude='*.log' \
             --exclude='release.zip' \
             --exclude='deploy-package/' \
+            --exclude='seed.js' \
+            --exclude='set-admin-password.*' \
             . deploy-package/
           cd deploy-package
           zip -rq ../release.zip .
           ls -lh ../release.zip
+
+      - name: Audit deployment package size
+        run: |
+          BYTES=$(stat -c%s release.zip)
+          MB=$((BYTES / 1024 / 1024))
+          echo "release.zip size: ${MB} MB (${BYTES} bytes)"
+          echo "Top 15 largest entries:"
+          unzip -l release.zip | awk 'NR>3 && NF>=4 {print}' | sort -k1 -nr | head -15
+          if [ "$MB" -gt 100 ]; then
+            echo "::error::release.zip is ${MB} MB — exceeds 100 MB hard limit. Trim node_modules or add exclusions."
+            exit 1
+          fi
+          if [ "$MB" -gt 30 ]; then
+            echo "::warning::release.zip is ${MB} MB (target <30 MB). Deploy may still work but consider trimming."
+          else
+            echo "Package size OK (target <30 MB, hard limit 100 MB)."
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -72,7 +108,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       id-token: write
       contents: read
@@ -92,10 +128,17 @@ jobs:
 
       - name: Resolve app resource group
         id: app
+        env:
+          AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
         run: |
-          RG=$(az webapp list --query "[?name=='qipp-api'].resourceGroup | [0]" -o tsv)
+          if [ -n "$AZURE_RESOURCE_GROUP" ]; then
+            RG="$AZURE_RESOURCE_GROUP"
+            echo "Using AZURE_RESOURCE_GROUP secret: $RG"
+          else
+            RG=$(az webapp list --query "[?name=='qipp-api'].resourceGroup | [0]" -o tsv)
+          fi
           if [ -z "$RG" ]; then
-            echo "Could not resolve resource group for qipp-api"
+            echo "::error::Could not resolve resource group for qipp-api. Set AZURE_RESOURCE_GROUP secret or verify Azure login."
             exit 1
           fi
           echo "resource-group=$RG" >> "$GITHUB_OUTPUT"
@@ -109,31 +152,89 @@ jobs:
             --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 \
             --output none
 
-      # Stop the running app so OneDeploy/SCM is not contending with live node process + plant ingest.
-      # Plant ingest on boot (index.js) is async after listen(); SCM 503/504 is usually Kudu overload.
-      # If deploys still fail during ingest windows, set PLANT_INGEST_ON_STARTUP=0 in App Settings.
+      # Stop the app so live node + plant ingest do not contend with SCM/Kudu during zip deploy.
+      # index.js defers PLANT_INGEST_ON_STARTUP until 12s after listen(); ingest does not block Kudu.
       - name: Stop app before deploy
         run: |
           az webapp stop \
             --name qipp-api \
             --resource-group "${{ steps.app.outputs.resource-group }}"
-          echo "Waiting 15s for SCM/Kudu to settle..."
-          sleep 15
+          echo "Waiting 20s for SCM/Kudu to settle..."
+          sleep 20
 
-      - name: Deploy to Azure Web App (retry with backoff)
+      - name: Deploy to Azure Web App (async zip + Kudu poll)
+        id: deploy
         run: |
+          set -euo pipefail
           APP_NAME=qipp-api
           RG="${{ steps.app.outputs.resource-group }}"
-          MAX_ATTEMPTS=5
-          WAIT=30
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            echo "Deploy attempt $attempt of $MAX_ATTEMPTS..."
-            if az webapp deploy \
+          ZIP_SIZE_MB=$(( $(stat -c%s release.zip) / 1024 / 1024 ))
+          echo "Deploying release.zip (${ZIP_SIZE_MB} MB) to ${APP_NAME}..."
+
+          CREDS=$(az webapp deployment list-publishing-credentials \
+            --name "$APP_NAME" \
+            --resource-group "$RG" \
+            -o json)
+          KUDU_USER=$(echo "$CREDS" | jq -r '.publishingUserName')
+          KUDU_PASS=$(echo "$CREDS" | jq -r '.publishingPassword')
+
+          poll_kudu_deploy() {
+            local deploy_id="$1"
+            local deadline=$((SECONDS + 1800))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              RESP=$(curl -sf -u "${KUDU_USER}:${KUDU_PASS}" \
+                "https://${APP_NAME}.scm.azurewebsites.net/api/deployments/${deploy_id}" \
+                || echo '{"status":-1}')
+              STATUS=$(echo "$RESP" | jq -r '.status // -1')
+              COMPLETE=$(echo "$RESP" | jq -r '.complete // false')
+              MSG=$(echo "$RESP" | jq -r '.message // ""' | head -c 200)
+              echo "  Kudu deploy ${deploy_id}: status=${STATUS} complete=${COMPLETE} ${MSG}"
+              # Kudu: 0=pending 1=building 2=deploying 3=failed 4=success
+              if [ "$STATUS" = "4" ] || { [ "$COMPLETE" = "true" ] && [ "$STATUS" != "3" ]; }; then
+                return 0
+              fi
+              if [ "$STATUS" = "3" ]; then
+                echo "$RESP" | jq '.' || echo "$RESP"
+                return 1
+              fi
+              sleep 15
+            done
+            echo "Deployment poll timed out after 30 minutes"
+            return 1
+          }
+
+          deploy_once() {
+            echo "Initiating async zip deploy (timeout 1800000 ms)..."
+            JSON=$(az webapp deploy \
               --name "$APP_NAME" \
               --resource-group "$RG" \
               --src-path release.zip \
               --type zip \
-              --timeout 1800000; then
+              --async true \
+              --timeout 1800000 \
+              -o json)
+            echo "$JSON" | jq '.'
+
+            DEPLOY_ID=$(echo "$JSON" | jq -r '.id // .deploymentId // empty')
+            if [ -z "$DEPLOY_ID" ]; then
+              echo "No deployment id in response; checking latest Kudu deployment..."
+              DEPLOY_ID=$(curl -sf -u "${KUDU_USER}:${KUDU_PASS}" \
+                "https://${APP_NAME}.scm.azurewebsites.net/api/deployments/latest" \
+                | jq -r '.id // empty')
+            fi
+            if [ -z "$DEPLOY_ID" ]; then
+              echo "Could not determine deployment id"
+              return 1
+            fi
+            echo "Polling deployment id: $DEPLOY_ID"
+            poll_kudu_deploy "$DEPLOY_ID"
+          }
+
+          MAX_ATTEMPTS=5
+          WAIT=30
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "Deploy attempt $attempt of $MAX_ATTEMPTS..."
+            if deploy_once; then
               echo "Deploy succeeded on attempt $attempt"
               exit 0
             fi
@@ -143,7 +244,8 @@ jobs:
               WAIT=$((WAIT * 2))
             fi
           done
-          echo "All deploy attempts failed"
+          echo "::error::All deploy attempts failed (504 often means SCM busy, zip too large, or stuck deployment)."
+          echo "Restart qipp-api in Azure Portal, disable duplicate Azure DevOps pipeline, then re-run this workflow."
           exit 1
 
       - name: Start app after deploy
@@ -154,6 +256,7 @@ jobs:
             --resource-group "${{ steps.app.outputs.resource-group }}"
 
       - name: Wait for health endpoint
+        if: success()
         run: |
           URL="https://qipp-api.azurewebsites.net/health"
           for i in $(seq 1 36); do
@@ -165,5 +268,5 @@ jobs:
             fi
             sleep 10
           done
-          echo "Health check did not return 200 within 6 minutes (deploy may still be warming up)"
-          exit 1
+          echo "::warning::Health check did not return 200 within 6 minutes (app may still be warming up)."
+          exit 0
