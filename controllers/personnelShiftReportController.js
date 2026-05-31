@@ -4,11 +4,10 @@ const ShiftReportAuditLog = require('../models/ShiftReportAuditLog');
 const { logShiftReportEvent } = require('../services/shiftReportAuditService');
 const { getEmployeeDutyStatus, fmtDate } = require('../services/onDutyService');
 
-const { hasPortalAdminAccess } = require('../middleware/superAdmin');
-
-function isPortalAdmin(req) {
-  return hasPortalAdminAccess(req);
-}
+const {
+  canAccessShiftReport,
+  canEditShiftReport,
+} = require('../utils/rosterLeavePermissions');
 
 function actorFromReq(req) {
   return {
@@ -47,14 +46,13 @@ exports.listShiftReports = async (req, res) => {
       return res.status(400).json({ message: 'empId query parameter is required.' });
     }
 
-    const isAdmin = isPortalAdmin(req);
-    if (!isAdmin && req.user?.empId !== empId) {
-      return res.status(403).json({ message: 'You can only view your own shift reports.' });
-    }
-
     const employee = await loadEmployee(empId);
     if (!employee) {
       return res.status(404).json({ message: 'Employee not found.' });
+    }
+
+    if (!canAccessShiftReport(req, employee)) {
+      return res.status(403).json({ message: 'You can only view shift reports for your crew.' });
     }
 
     const duty = await getEmployeeDutyStatus(employee, date);
@@ -65,7 +63,7 @@ exports.listShiftReports = async (req, res) => {
       data: {
         reports,
         duty,
-        canEdit: isAdmin || (req.user?.empId === empId && duty.onDuty),
+        canEdit: canEditShiftReport(req, employee, duty),
       },
     });
   } catch (err) {
@@ -85,13 +83,9 @@ exports.createShiftReport = async (req, res) => {
     } = req.body || {};
 
     const empId = String(bodyEmpId || req.user?.empId || '').trim();
-    const isAdmin = isPortalAdmin(req);
 
     if (!empId) {
       return res.status(400).json({ message: 'empId is required.' });
-    }
-    if (!isAdmin && req.user?.empId !== empId) {
-      return res.status(403).json({ message: 'You can only submit shift reports for yourself.' });
     }
 
     const employee = await loadEmployee(empId);
@@ -100,6 +94,9 @@ exports.createShiftReport = async (req, res) => {
     }
 
     const duty = await assertOnDuty(employee, date);
+    if (!canEditShiftReport(req, employee, duty)) {
+      return res.status(403).json({ message: 'You cannot submit this shift report.' });
+    }
     const shift = duty.shift;
     if (shift !== 'D' && shift !== 'N') {
       return res.status(403).json({ message: 'No active day/night shift for this date.' });
@@ -154,14 +151,13 @@ exports.updateShiftReport = async (req, res) => {
       return res.status(404).json({ message: 'Employee not found.' });
     }
 
-    const isAdmin = isPortalAdmin(req);
-    const isOwner = req.user?.empId === doc.empId;
-
-    if (!isAdmin && !isOwner) {
+    const duty = await getEmployeeDutyStatus(employee, doc.date);
+    if (!canEditShiftReport(req, employee, duty)) {
       return res.status(403).json({ message: 'You cannot edit this shift report.' });
     }
 
-    if (!isAdmin) {
+    const isOwner = req.user?.empId === doc.empId;
+    if (isOwner) {
       await assertOnDuty(employee, doc.date);
     }
 
@@ -183,7 +179,7 @@ exports.updateShiftReport = async (req, res) => {
       target: employee,
       shiftReportId: doc._id,
       summary: `Shift report updated for ${employee.name} (${doc.empId}) — ${doc.date} ${doc.shift}`,
-      metadata: { patch, adminEdit: isAdmin },
+      metadata: { patch, adminEdit: req.user?.empId !== doc.empId },
     });
 
     res.json({ success: true, data: doc });

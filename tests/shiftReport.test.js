@@ -55,6 +55,7 @@ function tokenFor(user) {
       role: user.role || 'viewer',
       accessRole: user.role || 'viewer',
       empId: user.empId || 'EMP-100',
+      crew: user.crew || 'A',
       name: user.name || 'Test',
     },
     process.env.JWT_SECRET,
@@ -83,11 +84,63 @@ describe('personnel shift reports', () => {
   });
 
   test('GET /api/personnel/shift-reports rejects other empId for member', async () => {
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          ...employee,
+          empId: 'EMP-OTHER',
+          crew: 'A',
+        }),
+      }),
+    });
     const token = tokenFor({ empId: 'EMP-100', role: 'viewer' });
     const res = await request(app)
       .get('/api/personnel/shift-reports?empId=EMP-OTHER&date=2026-01-05')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);
+  });
+
+  test('GET /api/personnel/shift-reports rejects other crew for admin', async () => {
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          ...employee,
+          empId: 'EMP-OTHER',
+          crew: 'B',
+        }),
+      }),
+    });
+    const token = tokenFor({
+      empId: 'EMP-100',
+      role: 'admin',
+      email: 'admin@acwapower.com',
+    });
+    const res = await request(app)
+      .get('/api/personnel/shift-reports?empId=EMP-OTHER&date=2026-01-05')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('GET /api/personnel/shift-reports allows same crew for admin', async () => {
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue({
+          ...employee,
+          empId: 'EMP-200',
+          crew: 'A',
+        }),
+      }),
+    });
+    const token = tokenFor({
+      empId: 'EMP-100',
+      role: 'admin',
+      crew: 'A',
+      email: 'admin@acwapower.com',
+    });
+    const res = await request(app)
+      .get('/api/personnel/shift-reports?empId=EMP-200&date=2026-01-05')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
   });
 
   test('GET /api/personnel/shift-reports returns duty status for own empId', async () => {
