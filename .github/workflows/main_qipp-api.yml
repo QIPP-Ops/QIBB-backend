@@ -6,7 +6,7 @@ on:
       - main
   workflow_dispatch:
 
-# Only one deploy to qipp-api at a time (409/504 if zip deploy overlaps or SCM is busy).
+# Only one deploy to qipp-api at a time (409/503/504 if zip deploy overlaps or SCM is busy).
 concurrency:
   group: qipp-api-production-deploy
   cancel-in-progress: true
@@ -21,12 +21,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '22.x'
-          cache: 'npm'
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install dependencies (CI)
         run: npm ci
 
       - name: Run tests
@@ -35,39 +35,44 @@ jobs:
           JWT_SECRET: test-jwt-secret-at-least-32-chars-long
           COSMOS_URI: mongodb://127.0.0.1:27017/qipp-ci-test
 
-      - name: Prepare production-only node_modules
-        run: |
-          rm -rf node_modules
-          npm ci --omit=dev
+      - name: Install production dependencies only
+        run: npm ci --omit=dev
 
-      - name: Zip lean deployment package
+      - name: Create lean deployment package
         run: |
-          zip -r release.zip . \
-            -x "*.git*" \
-            -x "env" \
-            -x ".env" \
-            -x ".env.*" \
-            -x "*/.env" \
-            -x "*/.env.*" \
-            -x "coverage/*" \
-            -x "tests/*" \
-            -x ".github/*" \
-            -x "*.md" \
-            -x "data/plant-trends-cache.json" \
-            -x "data/quizzes/*" \
-            -x "uploads/*"
-          ls -lh release.zip
-          unzip -l release.zip | tail -1
+          mkdir -p deploy-package
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='coverage/' \
+            --exclude='tests/' \
+            --exclude='docs/' \
+            --exclude='etl/' \
+            --exclude='env' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='data/plant-trends-cache.json' \
+            --exclude='data/quizzes/' \
+            --exclude='uploads/' \
+            --exclude='*.log' \
+            --exclude='release.zip' \
+            --exclude='deploy-package/' \
+            . deploy-package/
+          cd deploy-package
+          zip -rq ../release.zip .
+          ls -lh ../release.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
           path: release.zip
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
@@ -85,53 +90,80 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CA71DF4C79E042D9A8C61D8F46C5C6F1 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_32286830F7AA4C78843472706989ECAA }}
 
-      - name: Deploy to Azure Web App (attempt 1)
-        id: deploy1
-        timeout-minutes: 15
-        uses: azure/webapps-deploy@v3
-        continue-on-error: true
-        with:
-          app-name: 'qipp-api'
-          slot-name: 'Production'
-          package: release.zip
-
-      - name: Wait before deploy retry
-        if: steps.deploy1.outcome == 'failure'
-        run: sleep 90
-
-      - name: Deploy to Azure Web App (attempt 2)
-        id: deploy2
-        if: steps.deploy1.outcome == 'failure'
-        timeout-minutes: 15
-        uses: azure/webapps-deploy@v3
-        continue-on-error: true
-        with:
-          app-name: 'qipp-api'
-          slot-name: 'Production'
-          package: release.zip
-
-      - name: Wait before final deploy retry
-        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
-        run: sleep 90
-
-      - name: Deploy to Azure Web App (attempt 3)
-        id: deploy3
-        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
-        timeout-minutes: 15
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'qipp-api'
-          slot-name: 'Production'
-          package: release.zip
-
-      - name: Fail if deploy did not succeed
-        if: >-
-          steps.deploy1.outcome == 'failure' &&
-          (steps.deploy2.outcome == 'failure' || steps.deploy2.outcome == 'skipped') &&
-          (steps.deploy3.outcome == 'failure' || steps.deploy3.outcome == 'skipped')
+      - name: Resolve app resource group
+        id: app
         run: |
-          echo "::error::All deploy attempts failed (504 Gateway Timeout often means SCM was busy or the zip was too large)."
-          echo "Retry this workflow, or check Azure Portal → qipp-api → Deployment Center for stuck deployments."
-          echo "If SCM is stuck: restart the App Service, toggle SCM Basic Auth off/on, then redeploy."
-          echo "Recommended app setting: WEBSITE_RUN_FROM_PACKAGE=1 (Configuration → Application settings)."
+          RG=$(az webapp list --query "[?name=='qipp-api'].resourceGroup | [0]" -o tsv)
+          if [ -z "$RG" ]; then
+            echo "Could not resolve resource group for qipp-api"
+            exit 1
+          fi
+          echo "resource-group=$RG" >> "$GITHUB_OUTPUT"
+          echo "Deploying to qipp-api in resource group: $RG"
+
+      - name: Configure deployment app settings
+        run: |
+          az webapp config appsettings set \
+            --name qipp-api \
+            --resource-group "${{ steps.app.outputs.resource-group }}" \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 \
+            --output none
+
+      # Stop the running app so OneDeploy/SCM is not contending with live node process + plant ingest.
+      # Plant ingest on boot (index.js) is async after listen(); SCM 503/504 is usually Kudu overload.
+      # If deploys still fail during ingest windows, set PLANT_INGEST_ON_STARTUP=0 in App Settings.
+      - name: Stop app before deploy
+        run: |
+          az webapp stop \
+            --name qipp-api \
+            --resource-group "${{ steps.app.outputs.resource-group }}"
+          echo "Waiting 15s for SCM/Kudu to settle..."
+          sleep 15
+
+      - name: Deploy to Azure Web App (retry with backoff)
+        run: |
+          APP_NAME=qipp-api
+          RG="${{ steps.app.outputs.resource-group }}"
+          MAX_ATTEMPTS=5
+          WAIT=30
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "Deploy attempt $attempt of $MAX_ATTEMPTS..."
+            if az webapp deploy \
+              --name "$APP_NAME" \
+              --resource-group "$RG" \
+              --src-path release.zip \
+              --type zip \
+              --timeout 1800000; then
+              echo "Deploy succeeded on attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Deploy failed; waiting ${WAIT}s before retry..."
+              sleep "$WAIT"
+              WAIT=$((WAIT * 2))
+            fi
+          done
+          echo "All deploy attempts failed"
+          exit 1
+
+      - name: Start app after deploy
+        if: always()
+        run: |
+          az webapp start \
+            --name qipp-api \
+            --resource-group "${{ steps.app.outputs.resource-group }}"
+
+      - name: Wait for health endpoint
+        run: |
+          URL="https://qipp-api.azurewebsites.net/health"
+          for i in $(seq 1 36); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "000")
+            echo "Attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "App is healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Health check did not return 200 within 6 minutes (deploy may still be warming up)"
           exit 1
