@@ -11,6 +11,7 @@ router.delete('/:empId', protect, admin, c.deleteEmployee);
 router.post('/leave', protect, checkEditingLock, c.addLeave);
 router.delete('/leave/:employeeId/:leaveId', protect, checkEditingLock, c.removeLeave);
 router.patch('/:empId/compensate-balance', protect, c.patchCompensateBalance);
+router.patch('/:empId/leave-balances', protect, c.patchLeaveBalances);
 
 router.post('/:empId/kpi', protect, c.addKpi);
 router.patch('/:empId/kpi/:kpiId', protect, c.updateKpi);

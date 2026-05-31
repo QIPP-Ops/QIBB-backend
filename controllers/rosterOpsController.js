@@ -24,9 +24,11 @@ async function loadOverridesForRange(start, end) {
 
 async function buildSchedulePayload(start, end) {
   const config = await AdminConfig.findOne();
-  const employees = filterProtectedAccounts(
-    await AdminUser.find().select('-passwordHash').lean()
-  );
+    const { sortRosterEmployees } = require('../utils/rosterRowSort');
+    const allEmployees = filterProtectedAccounts(
+      await AdminUser.find().select('-passwordHash').lean()
+    );
+    const employees = sortRosterEmployees(allEmployees);
   const overrideMap = await loadOverridesForRange(start, end);
   const schedule = buildRosterSchedule(employees, {
     startDate: start,

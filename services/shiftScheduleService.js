@@ -95,8 +95,17 @@ function isEmployeeOnDuty(employee, dateStr, options = {}) {
   return resolveEmployeeShift(employee, dateStr, options).onDuty;
 }
 
-function isSapLeave(type) {
-  return typeof type === 'string' && /sap/i.test(type);
+const { normalizeLeaveType } = require('../constants/leaveTypes');
+const { sortRosterEmployees } = require('../utils/rosterRowSort');
+
+function leaveStyleFlags(type) {
+  const t = normalizeLeaveType(type);
+  return {
+    leaveType: t,
+    isAnnualLeave: t === 'Annual Leave',
+    isBankLeave: t === 'Bank Leave',
+    isPlannedLeave: t === 'Planned' || /^applied on sap$/i.test(String(type || '')),
+  };
 }
 
 /**
@@ -127,21 +136,26 @@ function buildRosterSchedule(employees, options = {}) {
     cur.setDate(cur.getDate() + 1);
   }
 
-  const rows = employees.map((emp) => {
+  const sortedEmployees = sortRosterEmployees(employees);
+
+  const rows = sortedEmployees.map((emp) => {
     const cells = dates.map((dateStr) => {
       const rotationShift = getShiftForDate(emp.crew, dateStr, baseDate);
       const oKey = `${emp.empId}|${dateStr}`;
       const isOverride = overrides.has(oKey);
       const shift = isOverride ? overrides.get(oKey) : rotationShift;
       const leave = (emp.leaves || []).find((lv) => leaveOnDate(lv, dateStr));
+      const style = leave ? leaveStyleFlags(leave.type) : {};
       return {
         date: dateStr,
         shift,
         rotationShift,
         isOverride,
         onLeave: !!leave,
-        leaveType: leave?.type || null,
-        isSapLeave: leave ? isSapLeave(leave.type) : false,
+        leaveType: leave ? style.leaveType || leave.type : null,
+        isAnnualLeave: !!leave && style.isAnnualLeave,
+        isBankLeave: !!leave && style.isBankLeave,
+        isPlannedLeave: !!leave && style.isPlannedLeave,
         display: leave ? 'L' : shift,
       };
     });
@@ -152,9 +166,13 @@ function buildRosterSchedule(employees, options = {}) {
       email: emp.email,
       crew: emp.crew,
       role: emp.role,
+      jobRole: emp.role,
+      group: emp.opsGroupLabel || '',
       color: emp.color || emp.seniority || 'crew-grey',
       seniority: emp.seniority || emp.color || 'crew-grey',
       compensateDayBalance: emp.compensateDayBalance ?? 0,
+      annualLeaveBalance: emp.annualLeaveBalance ?? 0,
+      bankLeaveBalance: emp.bankLeaveBalance ?? 0,
       cells,
     };
   });

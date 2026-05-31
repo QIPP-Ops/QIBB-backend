@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const c = require('../controllers/adminController');
 const settings = require('../controllers/systemSettingsController');
+const leaveAccrual = require('../controllers/leaveAccrualController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -13,6 +14,10 @@ const pinLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
+
+router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);
+router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);
+router.patch('/leave-accrual/:empId', protect, requireSuperAdmin, leaveAccrual.patchAccrualRates);
 
 router.get('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.getShiftReportEmailReminders);
 router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.patchShiftReportEmailReminders);

@@ -1,0 +1,52 @@
+const { runDailyLeaveAccrual } = require('../services/leaveAccrualService');
+
+/** 00:05 UTC daily */
+const CRON_UTC = '5 0 * * *';
+
+let started = false;
+let lastRunKey = '';
+
+function parseCronMinuteHour(cronExpr) {
+  const parts = String(cronExpr).trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  const minute = parseInt(parts[0], 10);
+  const hour = parseInt(parts[1], 10);
+  if (Number.isNaN(minute) || Number.isNaN(hour)) return null;
+  return { minute, hour };
+}
+
+function startLeaveAccrualCron(cronExpr = CRON_UTC) {
+  if (started) return;
+  started = true;
+
+  const schedule = parseCronMinuteHour(cronExpr);
+  if (!schedule) {
+    console.error('[leave-accrual] invalid cron expression:', cronExpr);
+    return;
+  }
+
+  const tick = async () => {
+    const now = new Date();
+    if (now.getUTCHours() !== schedule.hour || now.getUTCMinutes() !== schedule.minute) return;
+    const runKey = now.toISOString().slice(0, 16);
+    if (lastRunKey === runKey) return;
+    lastRunKey = runKey;
+
+    try {
+      const result = await runDailyLeaveAccrual(now);
+      console.log(
+        `[leave-accrual] ${result.asOf || 'n/a'}: ${result.updated}/${result.processed} employee(s) updated`
+      );
+    } catch (err) {
+      console.error('[leave-accrual] failed:', err.message);
+    }
+  };
+
+  setInterval(tick, 60 * 1000);
+  console.log(`[leave-accrual] scheduler registered (${cronExpr} UTC)`);
+}
+
+module.exports = {
+  CRON_UTC,
+  startLeaveAccrualCron,
+};

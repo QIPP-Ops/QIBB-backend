@@ -5,7 +5,12 @@ const { isPlaceholderEmail, sanitizeEmailForClient, isValidEmailFormat } = requi
 const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/protectedAccounts');
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
-const { hasPortalAdminAccess } = require('../middleware/superAdmin');
+const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
+const {
+  isAnnualLeaveType,
+  isBankLeaveType,
+} = require('../constants/leaveTypes');
+const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -41,13 +46,26 @@ function rosterRowForClient(doc) {
 
 exports.getRoster = async (req, res) => {
   try {
-    const rows = await AdminUser.find().select('-passwordHash').sort({ crew: 1, role: 1 }).lean();
+    const { sortRosterEmployees } = require('../utils/rosterRowSort');
+    const rows = sortRosterEmployees(
+      await AdminUser.find().select('-passwordHash').lean()
+    );
     res.json(filterProtectedAccounts(rows).map(rosterRowForClient));
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 
 exports.addLeave = async (req, res) => {
-  const { employeeId, empId, leave, start, end, type, workingDays, totalDays } = req.body;
+  const {
+    employeeId,
+    empId,
+    leave,
+    start,
+    end,
+    type,
+    workingDays,
+    totalDays,
+    appliedOnSap,
+  } = req.body;
   const targetId = employeeId || empId;
   if (!targetId) return res.status(400).json({ message: 'employeeId (or empId) is required.' });
 
@@ -61,13 +79,38 @@ exports.addLeave = async (req, res) => {
       return res.status(403).json({ message: 'You can only apply leave for your own account.' });
     }
 
-    const leaveData = leave || { start, end, type, workingDays, totalDays };
+    const leaveData = leave || { start, end, type, workingDays, totalDays, appliedOnSap };
     if (!leaveData.start || !leaveData.end) {
       return res.status(400).json({ message: 'Leave start and end dates are required.' });
     }
     leaveData.start = new Date(leaveData.start);
     leaveData.end = new Date(leaveData.end);
+    leaveData.appliedOnSap = leaveData.appliedOnSap === true;
     const leaveTypeStr = String(leaveData.type || 'Planned');
+    const spanDays =
+      typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
+        ? leaveData.totalDays
+        : daysBetweenInclusive(leaveData.start, leaveData.end);
+
+    if (isAnnualLeaveType(leaveTypeStr)) {
+      const bal = user.annualLeaveBalance ?? 0;
+      if (bal < spanDays) {
+        return res.status(400).json({
+          message: `Insufficient annual leave balance (${bal} available, ${spanDays} required).`,
+        });
+      }
+      user.annualLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+    }
+    if (isBankLeaveType(leaveTypeStr)) {
+      const bal = user.bankLeaveBalance ?? 0;
+      if (bal < spanDays) {
+        return res.status(400).json({
+          message: `Insufficient bank leave balance (${bal} available, ${spanDays} required).`,
+        });
+      }
+      user.bankLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+    }
+
     if (/compensat/i.test(leaveTypeStr)) {
       const span =
         typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0
@@ -316,6 +359,19 @@ exports.removeLeave = async (req, res) => {
     }
 
     const removed = user.leaves.id(leaveId);
+    if (removed) {
+      const leaveTypeStr = String(removed.type || 'Planned');
+      const span =
+        typeof removed.totalDays === 'number' && removed.totalDays > 0
+          ? removed.totalDays
+          : daysBetweenInclusive(removed.start, removed.end);
+      if (isAnnualLeaveType(leaveTypeStr)) {
+        user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
+      }
+      if (isBankLeaveType(leaveTypeStr)) {
+        user.bankLeaveBalance = Math.round(((user.bankLeaveBalance ?? 0) + span) * 10000) / 10000;
+      }
+    }
     user.leaves = user.leaves.filter((l) => l._id.toString() !== leaveId);
     await user.save();
 
@@ -377,6 +433,49 @@ exports.deleteKpi = async (req, res) => {
     await user.save();
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+exports.patchLeaveBalances = async (req, res) => {
+  try {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only the designated super administrator may edit leave balances.',
+      });
+    }
+    const { empId } = req.params;
+    const target = await AdminUser.findOne({ empId });
+    if (!target) return res.status(404).json({ message: 'Personnel not found' });
+
+    const { annualLeaveBalance, bankLeaveBalance } = req.body;
+    const actor = await loadActor(req);
+    const prevAnnual = target.annualLeaveBalance ?? 0;
+    const prevBank = target.bankLeaveBalance ?? 0;
+
+    if (annualLeaveBalance !== undefined) {
+      target.annualLeaveBalance = Number(annualLeaveBalance) || 0;
+    }
+    if (bankLeaveBalance !== undefined) {
+      target.bankLeaveBalance = Number(bankLeaveBalance) || 0;
+    }
+    await target.save();
+
+    await logRosterEvent({
+      action: 'LEAVE_BALANCE_SET',
+      actor,
+      target,
+      summary: `Leave balances for ${target.name} (${empId}): annual ${prevAnnual}→${target.annualLeaveBalance}, bank ${prevBank}→${target.bankLeaveBalance}`,
+      metadata: {
+        previousAnnual: prevAnnual,
+        previousBank: prevBank,
+        annualLeaveBalance: target.annualLeaveBalance,
+        bankLeaveBalance: target.bankLeaveBalance,
+      },
+    });
+
+    res.json(target);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 exports.patchCompensateBalance = async (req, res) => {
