@@ -240,6 +240,12 @@ exports.login = async (req, res) => {
         code: 'PENDING_APPROVAL',
       });
     }
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message: 'Your account access has been revoked. Contact an administrator.',
+        code: 'ACCESS_REVOKED',
+      });
+    }
 
     const payload = buildJwtPayload(user);
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -336,9 +342,9 @@ exports.resetPassword = async (req, res) => {
 // ─── Admin Force-Reset Password ───────────────────────────────────────────────
 
 exports.adminResetPassword = async (req, res) => {
-  const { id } = req.params;
+  const userId = req.params.userId || req.params.id;
   try {
-    const user = await AdminUser.findOne({ _id: id });
+    const user = await AdminUser.findOne({ _id: userId });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     const { isPlaceholderEmail } = require('../utils/placeholderEmail');
@@ -346,11 +352,14 @@ exports.adminResetPassword = async (req, res) => {
       return res.status(400).json({
         message:
           'This member has no real email address. The password reset cannot be delivered. Please update their email first.',
+        code: 'PLACEHOLDER_EMAIL',
       });
     }
 
     const tempPassword = crypto.randomBytes(5).toString('hex');
     user.passwordHash = await bcrypt.hash(tempPassword, 10);
+    user.resetToken = null;
+    user.resetTokenExpires = null;
     await user.save();
 
     let emailSent = false;
@@ -360,19 +369,50 @@ exports.adminResetPassword = async (req, res) => {
         emailSent = true;
       } catch (emailErr) {
         console.error('Temp password email failed:', emailErr.message);
+        return res.status(503).json({
+          message: 'Could not send password reset email. Check SMTP settings and try again.',
+          code: 'RESET_EMAIL_FAILED',
+        });
       }
+    } else {
+      return res.status(503).json({
+        message: 'Email is not configured on the server. Cannot send password reset.',
+        code: 'SMTP_NOT_CONFIGURED',
+      });
     }
 
     res.json({
-      message: emailSent
-        ? `Temporary password emailed to ${user.email}.`
-        : `Temporary password set. Copy it from this response — email was not sent.`,
-      emailSent,
-      tempPassword,
+      message: `Password reset sent to ${user.email}.`,
+      emailSent: true,
       email: user.email,
     });
   } catch (error) {
     res.status(500).json({ message: 'Admin reset failed.', error: error.message });
+  }
+};
+
+// ─── Admin Revoke / Restore Access ───────────────────────────────────────────
+
+exports.adminRevokeAccess = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await AdminUser.findOne({ _id: userId });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    if (normalizeEmail(user.email) === normalizeEmail(SUPER_ADMIN_EMAIL)) {
+      return res.status(403).json({ message: 'The super administrator account cannot be revoked.' });
+    }
+
+    user.isActive = user.isActive === false;
+    await user.save();
+
+    res.json({
+      message: user.isActive ? 'Access restored.' : 'Access revoked.',
+      isActive: user.isActive,
+      userId: user._id,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update access.', error: error.message });
   }
 };
 

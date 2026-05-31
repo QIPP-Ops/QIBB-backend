@@ -51,6 +51,8 @@ const AdminUserSchema = new mongoose.Schema({
   bankLeaveCap: { type: Number, default: null },
   lastLeaveAccrualDate: { type: Date, default: null },
   isApproved:        { type: Boolean, default: false },
+  /** When false, login is blocked (super-admin revoke). Defaults true for existing users. */
+  isActive:          { type: Boolean, default: true },
   fullName:          { type: String, default: '' },
   position:          { type: String, default: '' },
   joiningDate:       { type: Date, default: null },

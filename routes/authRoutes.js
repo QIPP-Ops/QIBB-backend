@@ -2,6 +2,7 @@ const express        = require('express');
 const router         = express.Router();
 const authController = require('../controllers/authController');
 const { protect, admin } = require('../middleware/auth');
+const { requireSuperAdmin } = require('../middleware/superAdmin');
 
 router.get('/register-options',                   authController.getRegisterOptions);
 router.post('/register',                          authController.register);
@@ -16,7 +17,9 @@ router.post('/resend-otp',                        authController.resendOtp);
 router.post('/forgot-password',                   authController.forgotPassword);
 router.post('/reset-password',                    authController.resetPassword);
 
-// ─── Admin Force-Reset ───────────────────────────────────────────────────────
-router.post('/admin-reset/:id', protect, admin,   authController.adminResetPassword);
+// ─── Admin Force-Reset & Access Control ──────────────────────────────────────
+router.post('/admin/reset-password/:userId', protect, admin, authController.adminResetPassword);
+router.patch('/admin/revoke-access/:userId', protect, requireSuperAdmin, authController.adminRevokeAccess);
+router.post('/admin-reset/:id', protect, admin, authController.adminResetPassword);
 
 module.exports = router;
