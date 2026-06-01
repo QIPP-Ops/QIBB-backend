@@ -5,6 +5,7 @@ const c = require('../controllers/adminController');
 const audit = require('../controllers/auditLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
+const ingestAdmin = require('../controllers/ingestAdminController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -15,6 +16,9 @@ const pinLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
+
+router.get('/ingest-status', protect, admin, ingestAdmin.getIngestStatus);
+router.post('/ingest/trigger', protect, requireSuperAdmin, ingestAdmin.triggerIngest);
 
 router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);
 router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);

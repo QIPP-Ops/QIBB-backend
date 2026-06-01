@@ -7,6 +7,7 @@ const { startShiftReportReminderScheduler } = require('./services/shiftReportRem
 const { startDailyDigestCron } = require('./jobs/dailyDigestCron');
 const { startLeaveAccrualCron } = require('./jobs/leaveAccrualCron');
 const { startMonthlyLeaveSummaryCron } = require('./jobs/monthlyLeaveSummaryCron');
+const { startIngestCron } = require('./jobs/ingestCron');
 
 validateEnv();
 
@@ -33,6 +34,7 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     startDailyDigestCron();
     startLeaveAccrualCron();
     startMonthlyLeaveSummaryCron();
+    startIngestCron();
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
     const { blobIngestConfigured } = require('./services/plantReports/blobReports');

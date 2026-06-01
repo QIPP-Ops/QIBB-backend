@@ -317,4 +317,16 @@ async function runPlantIngestion(options = {}) {
   }
 }
 
-module.exports = { runPlantIngestion };
+/**
+ * Ingest one blob through workbook parse + DB upsert (used by ingest cron).
+ */
+async function ingestBlobFile(blob) {
+  const buffer = await downloadBlobBuffer(blob.name);
+  const result = await ingestWorkbookFromBuffer(buffer, blob.name, {
+    lastModified: blob.lastModified,
+  });
+  const stats = await processIngestResult(result);
+  return { result, stats };
+}
+
+module.exports = { runPlantIngestion, ingestBlobFile, processIngestResult };
