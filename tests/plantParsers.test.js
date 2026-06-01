@@ -273,3 +273,112 @@ describe('PARSER 1: Operation Shift Report', () => {
   });
 });
 
+describe('PARSER 9: Daily Operation Report', () => {
+  test('extracts plant KPIs, per-unit values, ambient metrics, and observations', () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Daily Operation');
+
+    ws.getCell('A1').value = 'Plant Gross Generation (MWh)';
+    ws.getCell('B1').value = 1200;
+    ws.getCell('A2').value = 'Plant Net Dispatch (MWh)';
+    ws.getCell('B2').value = 1150;
+    ws.getCell('A3').value = 'PLF %';
+    ws.getCell('B3').value = 92.5;
+    ws.getCell('A4').value = 'Commercial Availability %';
+    ws.getCell('B4').value = 95.2;
+    ws.getCell('A5').value = 'Auxiliary (MWh)';
+    ws.getCell('B5').value = 40;
+    ws.getCell('A6').value = 'Import (MWh)';
+    ws.getCell('B6').value = 4;
+    ws.getCell('A7').value = 'Fuel Gas (tons)';
+    ws.getCell('B7').value = 320;
+    ws.getCell('A8').value = 'Heat Rate (kJ/kWh)';
+    ws.getCell('B8').value = 7200;
+    ws.getCell('A9').value = 'Net Efficiency %';
+    ws.getCell('B9').value = 50;
+    ws.getCell('A10').value = 'Total Plant Load (MW)';
+    ws.getCell('B10').value = 780;
+
+    ws.getCell('A12').value = 'Group';
+    ws.getCell('B12').value = 'Unit';
+    ws.getCell('C12').value = 'Average MW';
+    ws.getCell('D12').value = 'Total GenDay MWHR';
+    ws.getCell('E12').value = 'MFEQH Hours';
+    ws.getCell('A13').value = 'G1';
+    ws.getCell('B13').value = 'GT11';
+    ws.getCell('C13').value = 120;
+    ws.getCell('D13').value = 2500;
+    ws.getCell('E13').value = 23.9;
+    ws.getCell('A14').value = 'G2';
+    ws.getCell('B14').value = 'ST-60';
+    ws.getCell('C14').value = 72;
+    ws.getCell('D14').value = 1300;
+    ws.getCell('E14').value = '#REF!';
+
+    ws.getCell('A16').value = 'Max. Amb. Temp';
+    ws.getCell('B16').value = 45.2;
+    ws.getCell('A17').value = 'Min. Amb. Temp';
+    ws.getCell('B17').value = 29.1;
+    ws.getCell('A18').value = 'Max. RH';
+    ws.getCell('B18').value = 85;
+    ws.getCell('A19').value = 'MIN. RH';
+    ws.getCell('B19').value = 30;
+
+    ws.getCell('A20').value = 'SW Tank 1';
+    ws.getCell('B20').value = 510;
+    ws.getCell('A21').value = 'SW Tank 2';
+    ws.getCell('B21').value = 505;
+    ws.getCell('A22').value = 'DM Tank 1';
+    ws.getCell('B22').value = 410;
+    ws.getCell('A23').value = 'DM Tank 2';
+    ws.getCell('B23').value = 'ERRORREF';
+
+    ws.getCell('A25').value = 'Major Observations';
+    ws.getCell('A26').value = 'Gas quality stable and no unit trip events.';
+
+    const { parse } = require('../services/plantReports/parsers/parser9_dailyOperationReport');
+    const res = parse({ wb, filename: 'Daily Operation Report 26.03.2026.xlsx', sourceFile: 'd.xlsx' });
+
+    expect(res.skipped).toBe(false);
+    expect(res.reportDate).toBe('2026-03-26');
+
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_plant_gross_gen_mwh' && p.value === 1200)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_gt11_avg_mw' && p.value === 120)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_gt11_daily_mwh' && p.value === 2500)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_st60_mfeqh_hours' && p.value == null)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_ambient_temp_max_c' && p.value === 45.2)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_humidity_min_pct' && p.value === 30)
+    ).toBeTruthy();
+    expect(
+      res.points.find((p) => p.metricKey === 'daily_op_dm_tank2_m3' && p.value == null)
+    ).toBeTruthy();
+    expect(res.highlights.length).toBeGreaterThan(0);
+  });
+
+  test('skips file when plant gross generation is zero', () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Daily Operation');
+    ws.getCell('A1').value = 'Plant Gross Generation (MWh)';
+    ws.getCell('B1').value = 0;
+    ws.getCell('A2').value = 'Plant Net Dispatch (MWh)';
+    ws.getCell('B2').value = 1000;
+
+    const { parse } = require('../services/plantReports/parsers/parser9_dailyOperationReport');
+    const res = parse({ wb, filename: 'Daily Operation Report 27.03.2026.xlsx', sourceFile: 'd2.xlsx' });
+
+    expect(res.skipped).toBe(true);
+    expect(res.points).toHaveLength(0);
+  });
+});
+

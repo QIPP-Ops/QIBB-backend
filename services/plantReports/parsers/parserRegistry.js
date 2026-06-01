@@ -62,6 +62,12 @@ function buildRegistry() {
       patterns: ['TIMERS*COUNTERS*.xlsx', 'TIMERS-COUNTERS*.xlsx'],
       load: () => require('./parser8_timersCounters'),
     },
+    {
+      id: 'parser9_daily_operation_report',
+      display: 'Daily Operation Report',
+      patterns: ['Daily*Operation*Report*.xlsx'],
+      load: () => require('./parser9_dailyOperationReport'),
+    },
   ];
 
   // Expand into match records with specificity.
