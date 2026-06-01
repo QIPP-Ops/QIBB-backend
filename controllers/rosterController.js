@@ -578,3 +578,35 @@ exports.exportIcs = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.patchPersonnelInline = async (req, res) => {
+  try {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only admin@acwaops.com may edit personnel profile fields.',
+      });
+    }
+    const { empId } = req.params;
+    const editable = ['name', 'empId', 'role', 'crew', 'opsGroupLabel', 'email', 'position'];
+    const patch = {};
+    for (const key of editable) {
+      if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+    }
+    if (patch.email !== undefined) {
+      const trimmed = String(patch.email || '').trim().toLowerCase();
+      if (!trimmed || !isValidEmailFormat(trimmed)) {
+        return res.status(400).json({ message: 'Valid email is required.' });
+      }
+      patch.email = trimmed;
+    }
+    const user = await AdminUser.findOneAndUpdate(
+      { empId },
+      { $set: patch },
+      { new: true, runValidators: true }
+    ).select('-passwordHash');
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

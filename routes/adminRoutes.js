@@ -27,15 +27,15 @@ router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);
 router.get('/ptw-personnel', protect, c.getPtwPersonnel);
-router.post('/ptw-personnel', protect, admin, c.addPtwPersonnel);
-router.put('/ptw-personnel/:id', protect, admin, c.updatePtwPersonnel);
-router.patch('/ptw-personnel/:id', protect, admin, c.updatePtwPersonnel);
-router.delete('/ptw-personnel/:id', protect, admin, c.deletePtwPersonnel);
+router.post('/ptw-personnel', protect, requireSuperAdmin, c.addPtwPersonnel);
+router.put('/ptw-personnel/:id', protect, requireSuperAdmin, c.updatePtwPersonnel);
+router.patch('/ptw-personnel/:id', protect, requireSuperAdmin, c.updatePtwPersonnel);
+router.delete('/ptw-personnel/:id', protect, requireSuperAdmin, c.deletePtwPersonnel);
 
 router.get('/ptw', protect, c.getPtwPersonnel);
-router.post('/ptw', protect, admin, c.addPtwPersonnel);
-router.patch('/ptw/:id', protect, admin, c.updatePtwPersonnel);
-router.delete('/ptw/:id', protect, admin, c.deletePtwPersonnel);
+router.post('/ptw', protect, requireSuperAdmin, c.addPtwPersonnel);
+router.patch('/ptw/:id', protect, requireSuperAdmin, c.updatePtwPersonnel);
+router.delete('/ptw/:id', protect, requireSuperAdmin, c.deletePtwPersonnel);
 
 router.get('/status', protect, c.getStatus);
 router.get('/config', protect, admin, c.getConfig);
@@ -45,9 +45,11 @@ router.post('/set-lock', protect, admin, c.setLock);
 router.put('/lock', protect, admin, c.setLock);
 
 router.post('/crews', protect, admin, c.addCrew);
-router.delete('/crews/:crew', protect, admin, c.removeCrew);
-router.post('/roles', protect, admin, c.addRole);
-router.delete('/roles/:role', protect, admin, c.removeRole);
+router.patch('/crews/:crewId', protect, requireSuperAdmin, c.patchCrew);
+router.delete('/crews/:crew', protect, requireSuperAdmin, c.removeCrew);
+router.post('/roles', protect, requireSuperAdmin, c.addRole);
+router.patch('/roles/:roleId', protect, requireSuperAdmin, c.patchRole);
+router.delete('/roles/:role', protect, requireSuperAdmin, c.removeRole);
 
 router.post('/crew', protect, admin, c.addCrew);
 router.delete('/crew/:crew', protect, admin, c.removeCrew);

@@ -108,6 +108,27 @@ exports.removeCrew = async (req, res) => {
   }
 };
 
+exports.patchCrew = async (req, res) => {
+  try {
+    const current = decodeURIComponent(String(req.params.crewId || ''));
+    const next = (req.body?.name || '').toString().trim();
+    if (!current || !next) return res.status(400).json({ message: 'Crew id and name are required.' });
+    let config = await AdminConfig.findOne();
+    if (!config) config = new AdminConfig();
+    const idx = config.availableCrews.findIndex((c) => c === current);
+    if (idx >= 0) {
+      config.availableCrews[idx] = next;
+    } else if (!config.availableCrews.includes(next)) {
+      config.availableCrews.push(next);
+    }
+    config.availableCrews = [...new Set(config.availableCrews.map((c) => String(c).trim()).filter(Boolean))];
+    await config.save();
+    res.json(config.availableCrews);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating crew', error: err.message });
+  }
+};
+
 exports.addRole = async (req, res) => {
   try {
     const role = (req.body.role || req.body.name || '').toString().trim();
@@ -134,6 +155,27 @@ exports.removeRole = async (req, res) => {
     res.json(config.availableRoles);
   } catch (err) {
     res.status(500).json({ message: 'Error removing role', error: err.message });
+  }
+};
+
+exports.patchRole = async (req, res) => {
+  try {
+    const current = decodeURIComponent(String(req.params.roleId || ''));
+    const next = (req.body?.name || '').toString().trim();
+    if (!current || !next) return res.status(400).json({ message: 'Role id and name are required.' });
+    let config = await AdminConfig.findOne();
+    if (!config) config = new AdminConfig();
+    const idx = config.availableRoles.findIndex((r) => r === current);
+    if (idx >= 0) {
+      config.availableRoles[idx] = next;
+    } else if (!config.availableRoles.includes(next)) {
+      config.availableRoles.push(next);
+    }
+    config.availableRoles = [...new Set(config.availableRoles.map((r) => String(r).trim()).filter(Boolean))];
+    await config.save();
+    res.json(config.availableRoles);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating role', error: err.message });
   }
 };
 

@@ -1,6 +1,8 @@
 const PTW = require('../models/ptw');
+const AdminConfig = require('../models/AdminConfig');
 const { PERMIT_TYPE_LABELS } = require('../constants/permitTypes');
 const { findPtwPersonForUser, hasAuth } = require('../middleware/ptwAccess');
+const { isSuperAdmin } = require('../middleware/superAdmin');
 
 function pushHistory(permit, entry) {
   if (!permit.history) permit.history = [];
@@ -223,6 +225,11 @@ exports.updatePermitStatus = async (req, res) => {
         note: jhaNotes || '',
       });
     } else {
+      if (!isSuperAdmin(req)) {
+        return res.status(403).json({
+          message: 'Only admin@acwaops.com may edit permit fields.',
+        });
+      }
       const allowed = ['location', 'description', 'contractor', 'validFrom', 'validTo', 'workOrderNumber'];
       for (const key of allowed) {
         if (rest[key] !== undefined) permit[key] = rest[key];
@@ -246,5 +253,88 @@ exports.deletePermit = async (req, res) => {
     res.json({ message: 'Permit deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.patchPermitFields = async (req, res) => {
+  try {
+    const permit = await PTW.findById(req.params.id);
+    if (!permit) return res.status(404).json({ message: 'Permit not found' });
+
+    const body = req.body || {};
+    const editable = [
+      'permitId',
+      'type',
+      'status',
+      'location',
+      'description',
+      'workOrderNumber',
+      'contractor',
+      'createdBy',
+      'jhaNotes',
+    ];
+
+    for (const key of editable) {
+      if (body[key] !== undefined) permit[key] = body[key];
+    }
+    if (body.validFrom !== undefined) permit.validFrom = body.validFrom ? new Date(body.validFrom) : null;
+    if (body.validTo !== undefined) permit.validTo = body.validTo ? new Date(body.validTo) : null;
+
+    if (permit.type && !PERMIT_TYPE_LABELS.includes(permit.type)) {
+      return res.status(400).json({ message: 'Invalid permit type.' });
+    }
+
+    pushHistory(permit, {
+      by: req.user?.name,
+      action: 'inline_edit',
+      note: 'Permit fields updated by super admin',
+    });
+
+    await permit.save();
+    res.json(permit);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.patchAuthorizationPerson = async (req, res) => {
+  try {
+    const config = (await AdminConfig.findOne()) || new AdminConfig();
+    const person = config.ptwPersonnel.id(req.params.personId);
+    if (!person) return res.status(404).json({ message: 'Authorization person not found.' });
+    Object.assign(person, req.body || {});
+    await config.save();
+    res.json(person);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.createAuthorizationPerson = async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (!String(body.name || '').trim()) {
+      return res.status(400).json({ message: 'Name is required.' });
+    }
+    const config = (await AdminConfig.findOne()) || new AdminConfig();
+    config.ptwPersonnel.push(body);
+    await config.save();
+    res.status(201).json(config.ptwPersonnel[config.ptwPersonnel.length - 1]);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.deleteAuthorizationPerson = async (req, res) => {
+  try {
+    const config = await AdminConfig.findOne();
+    if (!config) return res.status(404).json({ message: 'Config not found.' });
+    config.ptwPersonnel = config.ptwPersonnel.filter(
+      (p) => p._id.toString() !== String(req.params.personId)
+    );
+    await config.save();
+    res.json({ message: 'Authorization person removed.' });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
