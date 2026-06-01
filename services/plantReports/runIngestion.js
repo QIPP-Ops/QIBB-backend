@@ -7,6 +7,7 @@ const { PlantMetric } = require('../../models/PlantMetric');
 const { walkExcel } = require('./extractOpsHighlights');
 const { classifyReport } = require('./excelUtils');
 const { ingestWorkbook, ingestWorkbookFromBuffer } = require('./ingestWorkbook');
+const { getParserForFilename } = require('./parsers/parserRegistry');
 const {
   listReportBlobs,
   downloadBlobBuffer,
@@ -77,8 +78,12 @@ function selectLocalFiles(allFiles) {
   const minMtime = Date.now() - MAX_AGE_DAYS * 86400000;
   return allFiles
     .filter((f) => {
-      const kind = classifyReport(path.basename(f));
-      if (kind === 'other') return false;
+      const base = path.basename(f);
+      // Prefer parser registry recognition; fall back to legacy classification
+      // to avoid breaking existing correctly-parsed files.
+      const hasParser = Boolean(getParserForFilename(base));
+      const kind = hasParser ? 'registry' : classifyReport(base);
+      if (!hasParser && kind === 'other') return false;
       try {
         return fs.statSync(f).mtimeMs >= minMtime;
       } catch {
@@ -109,7 +114,10 @@ async function runBlobIngestion(forceAll) {
   const maxAge = forceAll ? 3650 : MAX_AGE_DAYS;
   const limit = forceAll ? Math.max(MAX_FILES, 800) : MAX_FILES;
   const allBlobs = await listReportBlobs({ maxAgeDays: maxAge });
-  const recognized = allBlobs.filter((b) => classifyReport(path.basename(b.name)) !== 'other');
+  const recognized = allBlobs.filter((b) => {
+    const base = path.basename(b.name);
+    return Boolean(getParserForFilename(base)) || classifyReport(base) !== 'other';
+  });
   const blobs = recognized.slice(0, limit);
 
   let pointsUpserted = 0;
@@ -153,7 +161,10 @@ async function runLocalIngestion(reportsRoot, forceAll) {
   const allFiles = walkExcel(reportsRoot);
   const files = forceAll
     ? allFiles
-        .filter((f) => classifyReport(path.basename(f)) !== 'other')
+        .filter((f) => {
+          const base = path.basename(f);
+          return Boolean(getParserForFilename(base)) || classifyReport(base) !== 'other';
+        })
         .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
         .slice(0, Math.max(MAX_FILES, 200))
     : selectLocalFiles(allFiles).slice(0, MAX_FILES);

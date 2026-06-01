@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const { classifyReport, inferDateFromFilename } = require('./excelUtils');
 const { findBestMappingForFile } = require('./fileMappingService');
 const { parseMappedWorkbook } = require('./parseMappedWorkbook');
+const { getParserForFilename } = require('./parsers/parserRegistry');
 const { parseWaterWorkbook } = require('./parsers/waterConsumption');
 const { parseRoHrsgWorkbook } = require('./parsers/roHrsg');
 const { parseDailyOperationWorkbook } = require('./parsers/dailyOperation');
@@ -34,6 +35,21 @@ async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
     };
   }
 
+  // Dedicated parser registry (most-specific filename match wins).
+  const parser = getParserForFilename(path.basename(sourceName));
+  if (parser) {
+    const res = parser.parse({ wb, filename: path.basename(sourceName), sourceFile: rel });
+    return {
+      points: res.points || [],
+      highlights: res.highlights || [],
+      skipped: Boolean(res.skipped),
+      kind: res.kind || kind,
+      reportDate: res.reportDate || reportDate,
+      parserId: parser.id,
+      parserPattern: parser.pattern,
+    };
+  }
+
   return parseWorkbook(wb, rel, reportDate, kind);
 }
 
@@ -44,6 +60,20 @@ async function ingestWorkbook(filePath, reportsRoot) {
 
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(filePath);
+
+  const parser = getParserForFilename(path.basename(filePath));
+  if (parser) {
+    const res = parser.parse({ wb, filename: path.basename(filePath), sourceFile: rel });
+    return {
+      points: res.points || [],
+      highlights: res.highlights || [],
+      skipped: Boolean(res.skipped),
+      kind: res.kind || kind,
+      reportDate: res.reportDate || reportDate,
+      parserId: parser.id,
+      parserPattern: parser.pattern,
+    };
+  }
 
   return parseWorkbook(wb, rel, reportDate, kind);
 }
