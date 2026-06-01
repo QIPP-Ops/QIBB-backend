@@ -2,6 +2,7 @@ const express = require('express');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const c = require('../controllers/adminController');
+const audit = require('../controllers/auditLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
 const { protect, admin } = require('../middleware/auth');
@@ -24,6 +25,7 @@ router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, set
 router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
 router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
 router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
+router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);

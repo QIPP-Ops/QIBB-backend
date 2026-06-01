@@ -11,6 +11,8 @@ const {
   isBankLeaveType,
 } = require('../constants/leaveTypes');
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -140,6 +142,15 @@ exports.addLeave = async (req, res) => {
       summary: `${user.name} (${user.empId}): leave ${leaveData.type || 'Planned'} ${startStr} → ${endStr}`,
       metadata: { leave: leaveData, appliedBy: actor?.email || 'unknown' },
     });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_CREATED,
+      targetType: 'leave',
+      targetId: user.leaves[user.leaves.length - 1]?._id?.toString(),
+      targetName: `${user.name} leave`,
+      after: leaveData,
+      req,
+    });
 
     try {
       const { processLeaveSaved } = require('../services/leaveConflictService');
@@ -214,6 +225,15 @@ exports.createEmployee = async (req, res) => {
       target: user,
       summary: `Admin added ${user.name} (${user.empId}) to crew ${user.crew}`,
       metadata: { created: true },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.EMPLOYEE_CREATED,
+      targetType: 'employee',
+      targetId: user.empId,
+      targetName: user.name,
+      after: user.toObject ? user.toObject() : user,
+      req,
     });
 
     const out = user.toObject();
@@ -303,6 +323,7 @@ exports.updateEmployee = async (req, res) => {
       safeBody.email = trimmed;
     }
 
+    const existing = await AdminUser.findOne({ empId: req.params.empId }).select('-passwordHash');
     const user = await AdminUser.findOneAndUpdate(
       { empId: req.params.empId },
       { $set: safeBody },
@@ -317,6 +338,28 @@ exports.updateEmployee = async (req, res) => {
       summary: `${isAdmin ? 'Admin' : 'Management'} updated profile for ${user.name} (${user.empId})`,
       metadata: { fields: Object.keys(safeBody) },
     });
+    await logAction({
+      actor,
+      action: safeBody.email !== undefined ? AUDIT_ACTIONS.EMPLOYEE_EMAIL_UPDATED : AUDIT_ACTIONS.EMPLOYEE_UPDATED,
+      targetType: 'employee',
+      targetId: user.empId,
+      targetName: user.name,
+      before: existing?.toObject ? existing.toObject() : existing,
+      after: user?.toObject ? user.toObject() : user,
+      req,
+    });
+    if (safeBody.accessRole !== undefined || safeBody.role !== undefined || safeBody.crew !== undefined) {
+      await logAction({
+        actor,
+        action: AUDIT_ACTIONS.ROLE_CHANGED,
+        targetType: 'employee',
+        targetId: user.empId,
+        targetName: user.name,
+        before: { accessRole: existing?.accessRole, role: existing?.role, crew: existing?.crew },
+        after: { accessRole: user?.accessRole, role: user?.role, crew: user?.crew },
+        req,
+      });
+    }
 
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -340,6 +383,15 @@ exports.deleteEmployee = async (req, res) => {
       actor,
       target: user,
       summary: `Removed personnel record ${user.name} (${user.empId})`,
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.EMPLOYEE_DELETED,
+      targetType: 'employee',
+      targetId: user.empId,
+      targetName: user.name,
+      before: user.toObject ? user.toObject() : user,
+      req,
     });
 
     res.json({ message: 'Deleted' });
@@ -381,6 +433,15 @@ exports.removeLeave = async (req, res) => {
       target: user,
       summary: `Leave removed for ${user.name} (${user.empId})`,
       metadata: { leaveId, removed },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_DELETED,
+      targetType: 'leave',
+      targetId: leaveId,
+      targetName: `${user.name} leave`,
+      before: removed?.toObject ? removed.toObject() : removed,
+      req,
     });
 
     res.json(user);
@@ -471,6 +532,16 @@ exports.patchLeaveBalances = async (req, res) => {
         bankLeaveBalance: target.bankLeaveBalance,
       },
     });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_BALANCE_EDITED,
+      targetType: 'employee',
+      targetId: target.empId,
+      targetName: target.name,
+      before: { annualLeaveBalance: prevAnnual, bankLeaveBalance: prevBank },
+      after: { annualLeaveBalance: target.annualLeaveBalance, bankLeaveBalance: target.bankLeaveBalance },
+      req,
+    });
 
     res.json(target);
   } catch (error) {
@@ -500,6 +571,16 @@ exports.patchCompensateBalance = async (req, res) => {
       target,
       summary: `Compensate balance for ${target.name} (${empId}): ${prev} → ${target.compensateDayBalance}`,
       metadata: { previous: prev, next: target.compensateDayBalance },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_BALANCE_EDITED,
+      targetType: 'employee',
+      targetId: target.empId,
+      targetName: target.name,
+      before: { compensateDayBalance: prev },
+      after: { compensateDayBalance: target.compensateDayBalance },
+      req,
     });
     res.json(target);
   } catch (error) {

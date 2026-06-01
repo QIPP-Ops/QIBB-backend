@@ -3,6 +3,8 @@ const AdminConfig = require('../models/AdminConfig');
 const { PERMIT_TYPE_LABELS } = require('../constants/permitTypes');
 const { findPtwPersonForUser, hasAuth } = require('../middleware/ptwAccess');
 const { isSuperAdmin } = require('../middleware/superAdmin');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 function pushHistory(permit, entry) {
   if (!permit.history) permit.history = [];
@@ -128,6 +130,15 @@ exports.createPermit = async (req, res) => {
     });
 
     const saved = await permit.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_PERMIT_CREATED,
+      targetType: 'ptw_permit',
+      targetId: saved._id?.toString(),
+      targetName: saved.permitId,
+      after: saved.toObject ? saved.toObject() : saved,
+      req,
+    });
     res.status(201).json(saved);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -139,6 +150,7 @@ exports.updatePermitStatus = async (req, res) => {
     const person = req.ptwPerson;
     const isAdmin = req.user?.role === 'admin';
     const permit = await PTW.findById(req.params.id);
+    const before = permit ? (permit.toObject ? permit.toObject() : permit) : null;
     if (!permit) return res.status(404).json({ message: 'Permit not found' });
 
     const { action, permitReceivers, jhaNotes, ...rest } = req.body || {};
@@ -237,6 +249,16 @@ exports.updatePermitStatus = async (req, res) => {
     }
 
     await permit.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_PERMIT_UPDATED,
+      targetType: 'ptw_permit',
+      targetId: permit._id?.toString(),
+      targetName: permit.permitId,
+      before,
+      after: permit.toObject ? permit.toObject() : permit,
+      req,
+    });
     res.json(permit);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -250,6 +272,15 @@ exports.deletePermit = async (req, res) => {
     }
     const permit = await PTW.findByIdAndDelete(req.params.id);
     if (!permit) return res.status(404).json({ message: 'Permit not found' });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_PERMIT_DELETED,
+      targetType: 'ptw_permit',
+      targetId: permit._id?.toString(),
+      targetName: permit.permitId,
+      before: permit.toObject ? permit.toObject() : permit,
+      req,
+    });
     res.json({ message: 'Permit deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -304,6 +335,15 @@ exports.patchAuthorizationPerson = async (req, res) => {
     if (!person) return res.status(404).json({ message: 'Authorization person not found.' });
     Object.assign(person, req.body || {});
     await config.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_UPDATED,
+      targetType: 'ptw_auth_person',
+      targetId: person._id?.toString(),
+      targetName: person.name,
+      after: person.toObject ? person.toObject() : person,
+      req,
+    });
     res.json(person);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -319,7 +359,17 @@ exports.createAuthorizationPerson = async (req, res) => {
     const config = (await AdminConfig.findOne()) || new AdminConfig();
     config.ptwPersonnel.push(body);
     await config.save();
-    res.status(201).json(config.ptwPersonnel[config.ptwPersonnel.length - 1]);
+    const added = config.ptwPersonnel[config.ptwPersonnel.length - 1];
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_ADDED,
+      targetType: 'ptw_auth_person',
+      targetId: added?._id?.toString(),
+      targetName: added?.name,
+      after: added,
+      req,
+    });
+    res.status(201).json(added);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -329,10 +379,20 @@ exports.deleteAuthorizationPerson = async (req, res) => {
   try {
     const config = await AdminConfig.findOne();
     if (!config) return res.status(404).json({ message: 'Config not found.' });
+    const removed = config.ptwPersonnel.find((p) => p._id.toString() === String(req.params.personId));
     config.ptwPersonnel = config.ptwPersonnel.filter(
       (p) => p._id.toString() !== String(req.params.personId)
     );
     await config.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_DELETED,
+      targetType: 'ptw_auth_person',
+      targetId: removed?._id?.toString(),
+      targetName: removed?.name,
+      before: removed,
+      req,
+    });
     res.json({ message: 'Authorization person removed.' });
   } catch (error) {
     res.status(400).json({ message: error.message });

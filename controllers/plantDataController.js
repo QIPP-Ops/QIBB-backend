@@ -15,6 +15,8 @@ const {
 } = require('../services/plantReports/blobReports');
 const { userCanAccessOpsTools } = require('../services/shiftScheduleService');
 const AdminUser = require('../models/AdminUser');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 async function loadDbUser(req) {
   return AdminUser.findById(req.user.id).select('-passwordHash');
@@ -88,6 +90,15 @@ exports.runIngestNow = async (req, res) => {
   try {
     const forceAll = req.query.forceAll === '1' || req.body?.forceAll === true;
     const result = await runPlantIngestion({ forceAll });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.MANUAL_INGEST_TRIGGERED,
+      targetType: 'ingest',
+      targetId: 'plant_ingest',
+      targetName: 'Plant ingestion',
+      after: { forceAll },
+      req,
+    });
     res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -405,6 +416,8 @@ exports.saveCustomTrend = async (req, res) => {
   };
 
   let doc;
+  const isUpdate = Boolean(id);
+  const beforeDoc = isUpdate ? await CustomTrend.findById(id).lean() : null;
   if (id) {
     if (!isAdmin) {
       const existing = await CustomTrend.findById(id);
@@ -416,6 +429,16 @@ exports.saveCustomTrend = async (req, res) => {
   } else {
     doc = await CustomTrend.create(payload);
   }
+  await logAction({
+    actor: req.user,
+    action: isUpdate ? AUDIT_ACTIONS.TREND_RENAMED : AUDIT_ACTIONS.TREND_CREATED,
+    targetType: 'custom_trend',
+    targetId: doc._id?.toString(),
+    targetName: doc.name,
+    before: beforeDoc,
+    after: doc.toObject ? doc.toObject() : doc,
+    req,
+  });
   res.json({ success: true, data: doc });
 };
 
@@ -444,6 +467,16 @@ exports.patchCustomTrend = async (req, res) => {
     { $set: { name: String(name).trim() } },
     { new: true }
   );
+  await logAction({
+    actor: req.user,
+    action: AUDIT_ACTIONS.TREND_RENAMED,
+    targetType: 'custom_trend',
+    targetId: doc._id?.toString(),
+    targetName: doc.name,
+    before: trend.toObject ? trend.toObject() : trend,
+    after: doc.toObject ? doc.toObject() : doc,
+    req,
+  });
   res.json({ success: true, data: doc });
 };
 
@@ -452,6 +485,15 @@ exports.deleteCustomTrend = async (req, res) => {
   const auth = await assertCanEditCustomTrend(req, trend);
   if (!auth.ok) return res.status(auth.status).json({ message: auth.message });
   await CustomTrend.deleteOne({ _id: trend._id });
+  await logAction({
+    actor: req.user,
+    action: AUDIT_ACTIONS.TREND_DELETED,
+    targetType: 'custom_trend',
+    targetId: trend._id?.toString(),
+    targetName: trend.name,
+    before: trend.toObject ? trend.toObject() : trend,
+    req,
+  });
   res.json({ success: true });
 };
 

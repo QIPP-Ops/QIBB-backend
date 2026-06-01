@@ -12,6 +12,8 @@ const {
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 const { buildJwtPayload, JWT_EXPIRES_IN } = require('../utils/jwtAuth');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -104,6 +106,15 @@ exports.register = async (req, res) => {
     });
 
     await user.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PASSWORD_RESET,
+      targetType: 'employee',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      after: { email: user.email },
+      req,
+    });
 
     await logRosterEvent({
       action: 'USER_REGISTERED',
@@ -403,8 +414,19 @@ exports.adminRevokeAccess = async (req, res) => {
       return res.status(403).json({ message: 'The super administrator account cannot be revoked.' });
     }
 
+    const beforeActive = user.isActive;
     user.isActive = user.isActive === false;
     await user.save();
+    await logAction({
+      actor: req.user,
+      action: user.isActive ? AUDIT_ACTIONS.ACCESS_RESTORED : AUDIT_ACTIONS.ACCESS_REVOKED,
+      targetType: 'employee',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      before: { isActive: beforeActive },
+      after: { isActive: user.isActive },
+      req,
+    });
 
     res.json({
       message: user.isActive ? 'Access restored.' : 'Access revoked.',

@@ -6,6 +6,8 @@ const {
   listPortalAdminsForToggle,
   setReceiveEmailNotifications,
 } = require('../services/adminEmailService');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 exports.getShiftReportEmailReminders = async (req, res) => {
   try {
@@ -20,6 +22,15 @@ exports.patchShiftReportEmailReminders = async (req, res) => {
   try {
     const enabled = req.body?.value !== undefined ? Boolean(req.body.value) : Boolean(req.body.enabled);
     await setShiftReportEmailRemindersEnabled(enabled);
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.NOTIFICATION_SETTINGS_CHANGED,
+      targetType: 'settings',
+      targetId: 'shiftReportEmailReminders',
+      targetName: 'Shift report reminders',
+      after: { enabled },
+      req,
+    });
     res.json({ key: 'shiftReportEmailReminders', value: enabled });
   } catch (err) {
     res.status(500).json({ message: 'Error updating setting', error: err.message });
@@ -55,6 +66,15 @@ exports.patchAdminEmailNotifications = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Admin user not found.' });
     }
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.NOTIFICATION_SETTINGS_CHANGED,
+      targetType: 'admin_user',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      after: { receiveEmailNotifications: Boolean(user.receiveEmailNotifications) },
+      req,
+    });
 
     res.json({
       userId: user._id,

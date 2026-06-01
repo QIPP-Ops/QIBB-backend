@@ -1,6 +1,8 @@
 const AdminUser = require('../models/AdminUser');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -73,6 +75,18 @@ exports.patchAccrualRates = async (req, res) => {
         bankLeaveBalance: user.bankLeaveBalance,
       },
     });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_ACCRUAL_CHANGED,
+      targetType: 'employee',
+      targetId: user.empId,
+      targetName: user.name,
+      after: {
+        annualLeaveAccrualRate: user.annualLeaveAccrualRate,
+        bankLeaveAccrualRate: user.bankLeaveAccrualRate,
+      },
+      req,
+    });
 
     res.json({ success: true, data: user });
   } catch (err) {
@@ -110,6 +124,15 @@ exports.bulkPatchAccrualRates = async (req, res) => {
       target: null,
       summary: `Bulk leave accrual rates applied to ${empIds.length} employee(s)`,
       metadata: { empIds, ...update },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_ACCRUAL_CHANGED,
+      targetType: 'accrual_bulk',
+      targetId: empIds.join(','),
+      targetName: `${empIds.length} employees`,
+      after: update,
+      req,
     });
 
     res.json({ success: true, modified: result.modifiedCount });

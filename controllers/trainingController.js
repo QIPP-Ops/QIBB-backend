@@ -14,6 +14,8 @@ const {
 } = require('../services/notificationService');
 const { isValidHtml } = require('../utils/validateHtml');
 const quizStorage = require('../services/quizStorage');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
 const seedPath = path.join(__dirname, '../data/completed-courses-seed.json');
@@ -174,6 +176,19 @@ exports.uploadQuiz = async (req, res) => {
     }
 
     await quiz.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.QUIZ_UPLOADED,
+      targetType: 'quiz',
+      targetId: quiz._id?.toString(),
+      targetName: quiz.title,
+      after: {
+        title: quiz.title,
+        prizeDescription,
+        prizeImageUrl: quiz.prizeImageUrl,
+      },
+      req,
+    });
     res.status(201).json({
       success: true,
       quiz: {
@@ -256,6 +271,15 @@ exports.deleteQuiz = async (req, res) => {
     await QuizAssignment.deleteMany({ quizId });
     await Quiz.deleteOne({ _id: quizId });
     await quizStorage.deleteQuizFiles(quizId, keys);
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.QUIZ_DELETED,
+      targetType: 'quiz',
+      targetId: quiz._id?.toString(),
+      targetName: quiz.title,
+      before: quiz.toObject ? quiz.toObject() : quiz,
+      req,
+    });
 
     res.json({ success: true });
   } catch (err) {
@@ -338,6 +362,15 @@ exports.assignQuiz = async (req, res) => {
       await notifyQuizAssigned(user._id, quiz.title, { quizId: String(quiz._id) });
       assigned += 1;
     }
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.QUIZ_ASSIGNED,
+      targetType: 'quiz',
+      targetId: quiz._id?.toString(),
+      targetName: quiz.title,
+      after: { assignedCount: assigned, crew: crew || null, dueDate: due },
+      req,
+    });
 
     res.status(201).json({
       success: true,

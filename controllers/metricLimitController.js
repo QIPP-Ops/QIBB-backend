@@ -1,4 +1,6 @@
 const MetricLimit = require('../models/MetricLimit');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 exports.listMetricLimits = async (req, res) => {
   try {
@@ -25,6 +27,7 @@ exports.upsertMetricLimit = async (req, res) => {
 
     const numOrNull = (v) => (v == null || v === '' ? null : Number(v));
 
+    const previous = await MetricLimit.findOne({ metricKey: String(metricKey).trim() }).lean();
     const doc = await MetricLimit.findOneAndUpdate(
       { metricKey: String(metricKey).trim() },
       {
@@ -41,6 +44,16 @@ exports.upsertMetricLimit = async (req, res) => {
       },
       { upsert: true, new: true }
     );
+    await logAction({
+      actor: req.user,
+      action: previous ? AUDIT_ACTIONS.METRIC_LIMIT_CHANGED : AUDIT_ACTIONS.METRIC_LIMIT_SET,
+      targetType: 'metric_limit',
+      targetId: doc.metricKey,
+      targetName: doc.label || doc.metricKey,
+      before: previous,
+      after: doc.toObject ? doc.toObject() : doc,
+      req,
+    });
     res.json(doc);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -50,7 +63,17 @@ exports.upsertMetricLimit = async (req, res) => {
 exports.deleteMetricLimit = async (req, res) => {
   try {
     const { metricKey } = req.params;
+    const previous = await MetricLimit.findOne({ metricKey }).lean();
     await MetricLimit.deleteOne({ metricKey });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.METRIC_LIMIT_CHANGED,
+      targetType: 'metric_limit',
+      targetId: metricKey,
+      targetName: previous?.label || metricKey,
+      before: previous,
+      req,
+    });
     res.json({ message: 'Metric limit removed.' });
   } catch (err) {
     res.status(500).json({ message: err.message });

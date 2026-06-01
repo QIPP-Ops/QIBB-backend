@@ -7,6 +7,8 @@ const { logRosterEvent } = require('../services/rosterAuditService');
 const { logPtwEvent } = require('../services/ptwAuditService');
 const PtwAuditLog = require('../models/PtwAuditLog');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
+const { logAction } = require('../services/auditLogService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 // ─── Status / PIN / Lock ─────────────────────────────────────────────────────
 
@@ -157,6 +159,7 @@ exports.setLock = async (req, res) => {
     const { locked } = req.body;
     let config = await AdminConfig.findOne();
     if (!config) config = new AdminConfig();
+    const beforeLocked = !!config.editingLocked;
     config.editingLocked = !!locked;
     await config.save();
     try {
@@ -167,6 +170,16 @@ exports.setLock = async (req, res) => {
     } catch (notifyErr) {
       console.warn('[lock] notification skipped:', notifyErr.message);
     }
+    await logAction({
+      actor: req.user,
+      action: config.editingLocked ? AUDIT_ACTIONS.ROSTER_LOCKED : AUDIT_ACTIONS.ROSTER_UNLOCKED,
+      targetType: 'system',
+      targetId: 'editingLocked',
+      targetName: 'Roster editing lock',
+      before: { editingLocked: beforeLocked },
+      after: { editingLocked: config.editingLocked },
+      req,
+    });
     res.json({ message: `Editing lock set to ${!!locked}`, editingLocked: config.editingLocked });
   } catch (err) {
     res.status(500).json({ message: 'Error toggling lock', error: err.message });
@@ -219,6 +232,16 @@ exports.patchCrew = async (req, res) => {
     }
     config.availableCrews = [...new Set(config.availableCrews.map((c) => String(c).trim()).filter(Boolean))];
     await config.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.CREW_RENAMED,
+      targetType: 'crew',
+      targetId: current,
+      targetName: next,
+      before: { name: current },
+      after: { name: next },
+      req,
+    });
     res.json(config.availableCrews);
   } catch (err) {
     res.status(500).json({ message: 'Error updating crew', error: err.message });
@@ -234,6 +257,15 @@ exports.addRole = async (req, res) => {
     if (!config.availableRoles.includes(role)) {
       config.availableRoles.push(role);
       await config.save();
+      await logAction({
+        actor: req.user,
+        action: AUDIT_ACTIONS.SYSTEM_ROLE_ADDED,
+        targetType: 'system_role',
+        targetId: role,
+        targetName: role,
+        after: { role },
+        req,
+      });
     }
     res.json(config.availableRoles);
   } catch (err) {
@@ -248,6 +280,15 @@ exports.removeRole = async (req, res) => {
     if (!config) return res.status(404).json({ message: 'Config not found.' });
     config.availableRoles = config.availableRoles.filter(r => r !== role);
     await config.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.SYSTEM_ROLE_DELETED,
+      targetType: 'system_role',
+      targetId: role,
+      targetName: role,
+      before: { role },
+      req,
+    });
     res.json(config.availableRoles);
   } catch (err) {
     res.status(500).json({ message: 'Error removing role', error: err.message });
@@ -269,6 +310,16 @@ exports.patchRole = async (req, res) => {
     }
     config.availableRoles = [...new Set(config.availableRoles.map((r) => String(r).trim()).filter(Boolean))];
     await config.save();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.SYSTEM_ROLE_RENAMED,
+      targetType: 'system_role',
+      targetId: current,
+      targetName: next,
+      before: { role: current },
+      after: { role: next },
+      req,
+    });
     res.json(config.availableRoles);
   } catch (err) {
     res.status(500).json({ message: 'Error updating role', error: err.message });
@@ -344,6 +395,15 @@ exports.rejectUser = async (req, res) => {
       target: user,
       summary: `Rejected registration for ${user.email}`,
     });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.ADMIN_REMOVED,
+      targetType: 'admin_user',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      before: { email: user.email, accessRole: user.accessRole },
+      req,
+    });
 
     res.json({ message: 'User rejected and removed.' });
   } catch (err) {
@@ -394,6 +454,16 @@ exports.updateUserRole = async (req, res) => {
       target: user,
       summary: `Portal access for ${user.name} (${user.empId}): ${parts.join(', ')}`,
       metadata: patch,
+    });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.ROLE_CHANGED,
+      targetType: 'employee',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      before: { accessRole: target.accessRole, canOpsLead: target.canOpsLead },
+      after: { accessRole: user.accessRole, canOpsLead: user.canOpsLead },
+      req,
     });
 
     res.json({ message: 'User role updated.', user });
@@ -541,6 +611,15 @@ exports.addPtwPersonnel = async (req, res) => {
       summary: `Added ${body.name} to PTW authorization list`,
       metadata: { person: body },
     });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_ADDED,
+      targetType: 'ptw_auth_person',
+      targetId: added?._id?.toString(),
+      targetName: added?.name,
+      after: added,
+      req,
+    });
     res.status(201).json(config.ptwPersonnel);
   } catch (err) {
     res.status(500).json({ message: 'Error adding PTW personnel', error: err.message });
@@ -566,6 +645,16 @@ exports.updatePtwPersonnel = async (req, res) => {
       summary: `Updated PTW authorization for ${person.name}`,
       metadata: { before, after: updates },
     });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_UPDATED,
+      targetType: 'ptw_auth_person',
+      targetId: person?._id?.toString(),
+      targetName: person?.name,
+      before,
+      after: person.toObject ? person.toObject() : person,
+      req,
+    });
     res.json(config.ptwPersonnel);
   } catch (err) {
     res.status(500).json({ message: 'Error updating PTW personnel', error: err.message });
@@ -587,6 +676,15 @@ exports.deletePtwPersonnel = async (req, res) => {
       target: removed,
       summary: `Removed ${removed?.name || 'person'} from PTW authorization list`,
       metadata: { removed },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.PTW_AUTH_PERSON_DELETED,
+      targetType: 'ptw_auth_person',
+      targetId: removed?._id?.toString(),
+      targetName: removed?.name,
+      before: removed,
+      req,
     });
     res.json(config.ptwPersonnel);
   } catch (err) {
