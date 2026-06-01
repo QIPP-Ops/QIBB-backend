@@ -170,6 +170,76 @@ describe('PARSER 8: Timers & Counters', () => {
     const d2 = res.points.find((p) => p.reportDate === '2026-01-02');
     expect(d2.value).toBe(50);
   });
+
+  test('extracts compiled monthly metrics and plant total', () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('COMPILED SUMMARY');
+    ws.getCell('A1').value = 'Unit Number';
+    ws.getCell('B1').value = 'Avg MW';
+    ws.getCell('C1').value = 'Total GenDay MWHR';
+    ws.getCell('D1').value = 'MFEQH Hours';
+    ws.getCell('E1').value = 'Daily Auxiliary Consumption';
+
+    ws.getCell('A2').value = 'GT-11';
+    ws.getCell('B2').value = 121.5;
+    ws.getCell('C2').value = 2000;
+    ws.getCell('D2').value = 700;
+    ws.getCell('E2').value = 41.2;
+
+    ws.getCell('A3').value = 'ST60';
+    ws.getCell('B3').value = 75;
+    ws.getCell('C3').value = 1500;
+    ws.getCell('D3').value = 500;
+    ws.getCell('E3').value = 30.1;
+
+    ws.getCell('A4').value = 'Total Plant';
+    ws.getCell('C4').value = 3500;
+
+    const { parse } = require('../services/plantReports/parsers/parser8_timersCounters');
+    const res = parse({ wb, filename: 'TIMERS-COUNTERS-30-01-2026.xlsx', sourceFile: 'tc.xlsx' });
+
+    expect(res.skipped).toBe(false);
+    expect(res.points).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_gt11_avg_mw',
+          label: 'GT-11 Monthly Average MW',
+          reportDate: '2026-01-31',
+          value: 121.5,
+        }),
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_gt11_total_gen_mwh',
+          label: 'GT-11 Monthly Total Generation (MWh)',
+          reportDate: '2026-01-31',
+          value: 2000,
+        }),
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_gt11_mfeqh_hours',
+          label: 'GT-11 MFEQH Hours',
+          reportDate: '2026-01-31',
+          value: 700,
+        }),
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_gt11_daily_aux_mwh',
+          label: 'GT-11 Daily Auxiliary Consumption (MWh)',
+          reportDate: '2026-01-31',
+          value: 41.2,
+        }),
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_st60_total_gen_mwh',
+          label: 'ST-60 Monthly Total Generation (MWh)',
+          reportDate: '2026-01-31',
+          value: 1500,
+        }),
+        expect.objectContaining({
+          metricKey: 'timers_counters_compiled_total_gen_mwh',
+          label: 'Monthly Total Plant Generation (MWh)',
+          reportDate: '2026-01-31',
+          value: 3500,
+        }),
+      ])
+    );
+  });
 });
 
 describe('PARSER 1: Operation Shift Report', () => {
