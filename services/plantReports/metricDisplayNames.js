@@ -28,6 +28,18 @@ async function buildMetricDisplayNameMap() {
     if (label && !/^col\d+$/i.test(label)) map[m.metricKey] = map[m.metricKey] || label;
   }
 
+  try {
+    const TrendDisplayConfig = require('../../models/TrendDisplayConfig');
+    const cfg = await TrendDisplayConfig.findOne({ singleton: 'default' }).lean();
+    const overrides = cfg?.metricLabels || {};
+    for (const [key, label] of Object.entries(overrides)) {
+      const dn = String(label || '').trim();
+      if (dn) map[key] = dn;
+    }
+  } catch {
+    /* optional when DB unavailable */
+  }
+
   return map;
 }
 

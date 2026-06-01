@@ -13,7 +13,9 @@ const LeaveSchema = new mongoose.Schema({
 const KpiGoalSchema = new mongoose.Schema({
   title:       { type: String, required: true },
   description: { type: String, default: '' },
+  weight:      { type: Number, default: 0, min: 0, max: 100 },
   progress:    { type: Number, default: 0, min: 0, max: 100 },
+  adminScore:  { type: Number, min: 0, max: 100 },
   locked:      { type: Boolean, default: false },
   visible:     { type: Boolean, default: true },
   targetDate:  { type: Date },
@@ -30,6 +32,7 @@ const AdminUserSchema = new mongoose.Schema({
   email:        { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
   name:         { type: String, required: true },
+  profilePhotoUrl: { type: String, default: '' },
   empId:        { type: String, required: true, unique: true },
   crew:         { type: String, required: true },
   role:         { type: String, required: true },
@@ -86,6 +89,14 @@ const AdminUserSchema = new mongoose.Schema({
   leaves:            [LeaveSchema],
   kpis:              [KpiGoalSchema],
   kpiEditingAllowed: { type: Boolean, default: true },
+  kpiSubmissionStatus: {
+    type: String,
+    enum: ['draft', 'submitted', 'reviewed'],
+    default: 'draft',
+  },
+  kpiReviewNotes:  { type: String, default: '' },
+  kpiSubmittedAt:  { type: Date, default: null },
+  kpiReviewedAt:   { type: Date, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminUser', AdminUserSchema);

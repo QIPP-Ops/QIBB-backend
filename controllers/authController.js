@@ -440,10 +440,80 @@ exports.adminRevokeAccess = async (req, res) => {
 
 // ─── Verify Token ─────────────────────────────────────────────────────────────
 
-/** Stateless — identity from verified JWT only (no DB session lookup). */
+/** Authenticated user changes own password. */
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current and new password are required.' });
+  }
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+  }
+
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const user = await AdminUser.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) return res.status(401).json({ message: 'Current password is incorrect.' });
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.resetToken = null;
+    user.resetTokenExpires = null;
+    await user.save();
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PASSWORD_RESET,
+      targetType: 'employee',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      req,
+    });
+
+    res.json({ message: 'Password updated successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Password change failed.', error: error.message });
+  }
+};
+
+/** Update own profile (avatar URL / base64). */
+exports.updateProfile = async (req, res) => {
+  try {
+    const userId = req.user?.userId || req.user?.id;
+    const user = await AdminUser.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    const { profilePhotoUrl } = req.body;
+    if (profilePhotoUrl !== undefined) {
+      const url = String(profilePhotoUrl || '').trim();
+      if (url.length > 500_000) {
+        return res.status(400).json({ message: 'Profile photo is too large.' });
+      }
+      user.profilePhotoUrl = url;
+    }
+
+    await user.save();
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        profilePhotoUrl: user.profilePhotoUrl,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Profile update failed.', error: error.message });
+  }
+};
+
+/** Stateless — identity from verified JWT; optional profile photo when DB is up. */
 exports.verify = (req, res) => {
   const u = req.user;
-  res.json({
+  const mongoose = require('mongoose');
+  const payload = {
     ok: true,
     user: {
       id: u.userId || u.id,
@@ -455,6 +525,25 @@ exports.verify = (req, res) => {
       empId: u.empId,
       crew: u.crew,
       canOpsLead: u.canOpsLead === true,
+      profilePhotoUrl: '',
     },
-  });
+  };
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.json(payload);
+  }
+
+  const userId = u.userId || u.id;
+  if (!userId) {
+    return res.json(payload);
+  }
+
+  AdminUser.findById(userId).select('profilePhotoUrl').lean()
+    .then((row) => {
+      if (row?.profilePhotoUrl) payload.user.profilePhotoUrl = row.profilePhotoUrl;
+      res.json(payload);
+    })
+    .catch(() => {
+      res.json(payload);
+    });
 };

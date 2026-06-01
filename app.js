@@ -27,6 +27,7 @@ const metricLimitRoutes = require('./routes/metricLimitRoutes');
 const personnelKpiRoutes = require('./routes/personnelKpiRoutes');
 const blobRoutes = require('./routes/blobRoutes');
 const ingestRoutes = require('./routes/ingestRoutes');
+const kpiGoalsRoutes = require('./routes/kpiGoalsRoutes');
 
 const app = express();
 
@@ -132,6 +133,7 @@ app.use('/api/personnel', personnelRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/metric-limits', metricLimitRoutes);
 app.use('/api/kpi', personnelKpiRoutes);
+app.use('/api/kpi-goals', kpiGoalsRoutes);
 app.use('/api/blob', blobRoutes);
 app.use('/api/ingest', ingestRoutes);
 

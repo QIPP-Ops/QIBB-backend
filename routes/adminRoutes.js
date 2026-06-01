@@ -6,6 +6,8 @@ const audit = require('../controllers/auditLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
 const ingestAdmin = require('../controllers/ingestAdminController');
+const trendDisplay = require('../controllers/trendDisplayController');
+const authController = require('../controllers/authController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -29,6 +31,8 @@ router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, set
 router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
 router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
 router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
+router.get('/trend-display', protect, trendDisplay.getTrendDisplay);
+router.patch('/trend-display', protect, requireSuperAdmin, trendDisplay.patchTrendDisplay);
 router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
@@ -78,5 +82,6 @@ router.put('/users/:id/role', protect, admin, c.updateUserRole);
 router.patch('/users/:id/role', protect, admin, c.updateUserRole);
 router.delete('/users/:id/reject', protect, admin, c.rejectUser);
 router.delete('/users/:id', protect, admin, c.rejectUser);
+router.post('/users/:id/reset-password', protect, requireSuperAdmin, authController.adminResetPassword);
 
 module.exports = router;

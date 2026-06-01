@@ -16,10 +16,12 @@ router.post('/resend-otp',                        authController.resendOtp);
 // ─── Password Reset ──────────────────────────────────────────────────────────
 router.post('/forgot-password',                   authController.forgotPassword);
 router.post('/reset-password',                    authController.resetPassword);
+router.post('/change-password', protect,          authController.changePassword);
+router.patch('/profile', protect,                 authController.updateProfile);
 
 // ─── Admin Force-Reset & Access Control ──────────────────────────────────────
-router.post('/admin/reset-password/:userId', protect, admin, authController.adminResetPassword);
+router.post('/admin/reset-password/:userId', protect, requireSuperAdmin, authController.adminResetPassword);
 router.patch('/admin/revoke-access/:userId', protect, requireSuperAdmin, authController.adminRevokeAccess);
-router.post('/admin-reset/:id', protect, admin, authController.adminResetPassword);
+router.post('/admin-reset/:id', protect, requireSuperAdmin, authController.adminResetPassword);
 
 module.exports = router;

@@ -456,24 +456,34 @@ exports.removeLeave = async (req, res) => {
 exports.updateKpi = async (req, res) => {
   try {
     const { empId, kpiId } = req.params;
+    const { canEditEmployeeKpi } = require('./kpiGoalsController');
     const user = await AdminUser.findOne({ empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
     const config = await AdminConfig.findOne();
     const isAdmin = hasPortalAdminAccess(req);
+    const isSelf = canEditEmployeeKpi(req, empId) && !isAdmin;
     const globalAllowed = config?.globalKpiEditingAllowed !== false;
+    if (!isAdmin && !isSelf) {
+      return res.status(403).json({ message: 'Not authorized to edit KPIs for this employee.' });
+    }
     if (!isAdmin && (!globalAllowed || !user.kpiEditingAllowed))
       return res.status(403).json({ message: 'KPI editing is locked.' });
     const kpi = user.kpis.id(kpiId);
     if (!kpi) return res.status(404).json({ message: 'KPI not found' });
     if (!isAdmin && kpi.locked)
       return res.status(403).json({ message: 'This KPI is locked by admin.' });
-    const { progress, title, description, locked, visible, targetDate } = req.body;
+    const { progress, title, description, locked, visible, targetDate, weight } = req.body;
     if (progress !== undefined) kpi.progress = progress;
+    if (weight !== undefined) kpi.weight = Math.min(100, Math.max(0, Number(weight) || 0));
     if (isAdmin) {
       if (title       !== undefined) kpi.title       = title;
       if (description !== undefined) kpi.description = description;
       if (locked      !== undefined) kpi.locked      = locked;
       if (visible     !== undefined) kpi.visible     = visible;
+      if (targetDate  !== undefined) kpi.targetDate  = targetDate;
+    } else if (isSelf) {
+      if (title       !== undefined) kpi.title       = title;
+      if (description !== undefined) kpi.description = description;
       if (targetDate  !== undefined) kpi.targetDate  = targetDate;
     }
     await user.save();
@@ -483,9 +493,16 @@ exports.updateKpi = async (req, res) => {
 
 exports.addKpi = async (req, res) => {
   try {
-    const user = await AdminUser.findOne({ empId: req.params.empId });
+    const { empId } = req.params;
+    const { canEditEmployeeKpi } = require('./kpiGoalsController');
+    if (!canEditEmployeeKpi(req, empId)) {
+      return res.status(403).json({ message: 'Not authorized to edit KPIs for this employee.' });
+    }
+    const user = await AdminUser.findOne({ empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
-    user.kpis.push(req.body);
+    const body = { ...req.body };
+    if (body.weight !== undefined) body.weight = Math.min(100, Math.max(0, Number(body.weight) || 0));
+    user.kpis.push(body);
     await user.save();
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
