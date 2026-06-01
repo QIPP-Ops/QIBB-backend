@@ -6,6 +6,7 @@ const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/p
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
+const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
 const {
   isAnnualLeaveType,
   isBankLeaveType,
@@ -52,7 +53,11 @@ exports.getRoster = async (req, res) => {
     const rows = sortRosterEmployees(
       await AdminUser.find().select('-passwordHash').lean()
     );
-    res.json(filterProtectedAccounts(rows).map(rosterRowForClient));
+    res.json(
+      filterProtectedAccounts(rows)
+        .map(rosterRowForClient)
+        .map((row) => redactLeaveBalancesForClient(row, req))
+    );
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
 

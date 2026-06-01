@@ -5,6 +5,7 @@ const RosterAuditLog = require('../models/RosterAuditLog');
 const { buildRosterSchedule, overrideMapFromDocs } = require('../services/shiftScheduleService');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
+const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
 
 function fmtDate(d) {
   const x = new Date(d);
@@ -39,6 +40,14 @@ async function buildSchedulePayload(start, end) {
   return schedule;
 }
 
+function scheduleForClient(schedule, req) {
+  if (!schedule?.rows) return schedule;
+  return {
+    ...schedule,
+    rows: schedule.rows.map((row) => redactLeaveBalancesForClient(row, req)),
+  };
+}
+
 exports.getSchedule = async (req, res) => {
   try {
     const days = Math.min(parseInt(req.query.days, 10) || 48, 366);
@@ -51,7 +60,7 @@ exports.getSchedule = async (req, res) => {
       : new Date(start.getTime() + (days - 1) * 86400000);
 
     const schedule = await buildSchedulePayload(start, end);
-    res.json({ success: true, data: schedule });
+    res.json({ success: true, data: scheduleForClient(schedule, req) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -63,7 +72,8 @@ exports.getCoverage = async (req, res) => {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const end = new Date(start.getTime() + (days - 1) * 86400000);
-    const { coverage, conflictCount } = await buildSchedulePayload(start, end);
+    const payload = await buildSchedulePayload(start, end);
+    const { coverage, conflictCount } = payload;
     res.json({ success: true, data: { coverage, conflictCount } });
   } catch (err) {
     res.status(500).json({ message: err.message });
