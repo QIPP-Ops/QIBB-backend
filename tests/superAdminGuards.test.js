@@ -44,4 +44,11 @@ describe('super-admin write guards', () => {
       .send({ name: 'Alpha' });
     expect(res.status).toBe(403);
   });
+
+  test('GET /api/admin/trend-sources blocks non super admin', async () => {
+    const res = await request(app)
+      .get('/api/admin/trend-sources')
+      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwaops.com')}`);
+    expect(res.status).toBe(403);
+  });
 });

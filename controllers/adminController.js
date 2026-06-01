@@ -1,5 +1,7 @@
 const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
+const PlantMetricPoint = require('../models/PlantMetricPoint');
+const { PlantMetric, CustomTrend } = require('../models/PlantMetric');
 const bcrypt      = require('bcryptjs');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { logPtwEvent } = require('../services/ptwAuditService');
@@ -15,6 +17,100 @@ exports.getStatus = async (req, res) => {
     res.json({ editingLocked: config.editingLocked });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching status', error: err.message });
+  }
+};
+
+const TREND_SOURCE_PREFIXES = [
+  ['daily_op_', 'Daily Operation Report'],
+  ['ro_hrsg_', 'RO-HRSG Report'],
+  ['timers_counters_', 'Timers & Counters'],
+  ['environment_', 'Environment Report'],
+  ['gt_fg_filter_dp_', 'GT FG Filter DP'],
+  ['gt_air_intake_filter_dp_', 'GT Air Intake Filter DP'],
+  ['water_', 'Daily Water Consumption'],
+  ['energy_', 'Daily Energy Produced'],
+  ['operation_shift_', 'Operation Shift Report'],
+];
+
+function sourceForMetricKey(metricKey) {
+  const key = String(metricKey || '').toLowerCase();
+  const match = TREND_SOURCE_PREFIXES.find(([prefix]) => key.startsWith(prefix));
+  return match ? match[1] : 'Auto-detected';
+}
+
+exports.getTrendSources = async (_req, res) => {
+  try {
+    const trends = await CustomTrend.find()
+      .sort({ updatedAt: -1 })
+      .select('_id name metricKeys showOnHomePage')
+      .lean();
+
+    const allMetricKeys = [...new Set(trends.flatMap((t) => t.metricKeys || []).filter(Boolean))];
+
+    const [metrics, latestByKey] = await Promise.all([
+      allMetricKeys.length
+        ? PlantMetric.find({ metricKey: { $in: allMetricKeys } })
+          .select('metricKey sourceFilePattern')
+          .lean()
+        : [],
+      allMetricKeys.length
+        ? PlantMetricPoint.aggregate([
+          { $match: { metricKey: { $in: allMetricKeys } } },
+          { $group: { _id: '$metricKey', lastDataPoint: { $max: '$reportDate' } } },
+        ])
+        : [],
+    ]);
+
+    const patternByKey = new Map(
+      metrics.map((m) => [m.metricKey, String(m.sourceFilePattern || '').trim()]).filter(([, p]) => p)
+    );
+    const lastByKey = new Map(latestByKey.map((row) => [row._id, row.lastDataPoint]));
+
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * oneDayMs;
+
+    const rows = trends.map((trend) => {
+      const metricKeys = [...new Set((trend.metricKeys || []).filter(Boolean))];
+      const pageSet = new Set(['reports']);
+      if (trend.showOnHomePage) pageSet.add('home');
+      if (metricKeys.length) pageSet.add('admin-portal-trends');
+
+      const detectedSources = [...new Set(metricKeys.map(sourceForMetricKey).filter((s) => s !== 'Auto-detected'))];
+      const dataSource = detectedSources.length === 1 ? detectedSources[0] : 'Auto-detected';
+
+      let lastDataPoint = null;
+      for (const key of metricKeys) {
+        const candidate = lastByKey.get(key);
+        if (candidate && (!lastDataPoint || String(candidate) > String(lastDataPoint))) {
+          lastDataPoint = candidate;
+        }
+      }
+
+      let healthStatus = 'red';
+      if (lastDataPoint) {
+        const ageMs = now - new Date(`${String(lastDataPoint).slice(0, 10)}T00:00:00.000Z`).getTime();
+        if (ageMs <= oneDayMs) healthStatus = 'green';
+        else if (ageMs <= sevenDaysMs) healthStatus = 'yellow';
+      }
+
+      const matchedFilePatterns = [...new Set(metricKeys.map((k) => patternByKey.get(k)).filter(Boolean))];
+
+      return {
+        trendId: String(trend._id),
+        name: trend.name,
+        pages: Array.from(pageSet),
+        dataSource,
+        lastDataPoint: lastDataPoint ? String(lastDataPoint).slice(0, 10) : null,
+        healthStatus,
+        metricKeys,
+        matchedFilePatterns,
+      };
+    });
+
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching trend sources', error: err.message });
   }
 };
 

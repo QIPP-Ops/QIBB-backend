@@ -23,6 +23,7 @@ router.get('/settings/shift-report-reminders', protect, requireSuperAdmin, setti
 router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.patchShiftReportEmailReminders);
 router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
 router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
+router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);
