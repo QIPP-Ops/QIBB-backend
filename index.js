@@ -41,10 +41,22 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     if (blobIngestConfigured() && process.env.PLANT_INGEST_ON_STARTUP !== '0') {
       setTimeout(async () => {
         try {
+          const { hasUsablePlantTrendsCache } = require('./services/plantReports/plantTrendsCache');
+          const forceStartup =
+            process.env.PLANT_INGEST_STARTUP_FORCE === '1' ||
+            process.argv.includes('--force-ingest');
+          if (!forceStartup && hasUsablePlantTrendsCache()) {
+            console.log(
+              '[plant-ingest] startup skipped — data/plant-trends-cache.json present (set PLANT_INGEST_STARTUP_FORCE=1 to re-parse)'
+            );
+            return;
+          }
+
           const { runPlantIngestion } = require('./services/plantReports/runIngestion');
           const PlantIngestionState = require('./models/PlantIngestionState');
           const state = await PlantIngestionState.findOne({ key: 'global' }).lean();
           const needsFullIngest =
+            forceStartup ||
             !state?.lastSuccessAt ||
             (state.pointsUpserted || 0) === 0 ||
             (state.filesProcessed || 0) === 0;

@@ -11,6 +11,7 @@
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:ptw": "node seeders/ptwSeed.js",
     "parse:ptw": "node scripts/parse-ptw-excel.js",
+    "ingest:local": "node scripts/run-plant-ingest-local.js",
     "seed:curriculum": "node scripts/seed-curriculum.js",
     "migrate:auth": "node scripts/migrate-auth-fields.js",
     "set-password": "node scripts/set-user-password.js",

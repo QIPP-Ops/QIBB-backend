@@ -55,6 +55,28 @@ describe('trends cache handler', () => {
 });
 
 describe('plantTrendsCache disk reader', () => {
+  it('hasUsablePlantTrendsCache detects metrics or series', () => {
+    const { hasUsablePlantTrendsCache } = require('../services/plantReports/plantTrendsCache');
+    expect(hasUsablePlantTrendsCache(null)).toBe(false);
+    expect(hasUsablePlantTrendsCache({ generatedAt: '2026-01-01', metrics: [], seriesByKey: {} })).toBe(
+      false
+    );
+    expect(
+      hasUsablePlantTrendsCache({
+        generatedAt: '2026-01-01',
+        metrics: [{ metricKey: 'x' }],
+        seriesByKey: {},
+      })
+    ).toBe(true);
+    expect(
+      hasUsablePlantTrendsCache({
+        generatedAt: '2026-01-01',
+        metrics: [],
+        seriesByKey: { x: [{ date: '2026-01-01', x: 1 }] },
+      })
+    ).toBe(true);
+  });
+
   it('readPlantTrendsCacheFromDisk parses sample file', () => {
     const { readPlantTrendsCacheFromDisk, CACHE_FILE } = require('../services/plantReports/plantTrendsCache');
     const dir = path.dirname(CACHE_FILE);

@@ -106,10 +106,19 @@ function readPlantTrendsCacheFromDisk() {
   }
 }
 
+/** True when committed/deployed cache has trend data (skip heavy startup blob parse). */
+function hasUsablePlantTrendsCache(data = readPlantTrendsCacheFromDisk()) {
+  if (!data?.generatedAt) return false;
+  if (Array.isArray(data.metrics) && data.metrics.length > 0) return true;
+  const series = data.seriesByKey;
+  return Boolean(series && typeof series === 'object' && Object.keys(series).length > 0);
+}
+
 module.exports = {
   CACHE_FILE,
   buildPlantTrendsCachePayload,
   writePlantTrendsCache,
   readPlantTrendsCacheFromDisk,
+  hasUsablePlantTrendsCache,
   yearStartIso,
 };

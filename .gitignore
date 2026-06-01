@@ -15,6 +15,5 @@ Thumbs.db
 # Test / coverage
 coverage/
 
-# Generated on ingest (served via GET /plant-data/trends-cache)
-data/plant-trends-cache.json
+# Local-only quiz uploads (not plant trends cache — that file is git-tracked)
 data/quizzes/

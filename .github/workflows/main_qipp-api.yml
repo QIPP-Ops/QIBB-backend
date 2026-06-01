@@ -72,7 +72,6 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             --exclude='*.md' \
-            --exclude='data/plant-trends-cache.json' \
             --exclude='data/quizzes/' \
             --exclude='uploads/' \
             --exclude='*.log' \
@@ -157,7 +156,7 @@ jobs:
             --output none
 
       # Stop the app so live node + plant ingest do not contend with SCM/Kudu during zip deploy.
-      # index.js defers PLANT_INGEST_ON_STARTUP until 12s after listen(); ingest does not block Kudu.
+      # index.js skips startup blob ingest when data/plant-trends-cache.json is in the zip; set PLANT_INGEST_STARTUP_FORCE=1 to override.
       - name: Stop app before deploy (skip if already stopped)
         run: |
           APP_NAME=qipp-api

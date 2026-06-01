@@ -13,6 +13,5 @@ env
 .env.*
 seed.js
 set-admin-password.*
-data/plant-trends-cache.json
 data/quizzes/
 uploads/
