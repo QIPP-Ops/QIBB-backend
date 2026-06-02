@@ -99,7 +99,8 @@ async function processIngestResult(result) {
   if (result.skipped) return { pointsUpserted, highlightsUpserted, kind: result.kind };
 
   pointsUpserted = await upsertPoints(result.points);
-  for (const h of result.highlights || []) {
+  const { filterOpsHighlights } = require('./opsHighlightFilter');
+  for (const h of filterOpsHighlights(result.highlights || [])) {
     const res = await OpsShiftHighlight.updateOne(
       { sourceFile: h.sourceFile, reportDate: h.reportDate, text: h.text },
       { $set: h },

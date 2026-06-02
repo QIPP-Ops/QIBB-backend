@@ -2,6 +2,7 @@ const AdminUser = require('../models/AdminUser');
 const KpiFactor = require('../models/KpiFactor');
 const { isSuperAdminUser } = require('../middleware/superAdmin');
 const { logAction } = require('../services/auditLogService');
+const { notifyKpiSubmitted, notifyKpiFinalized } = require('../services/notificationService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
 function actorEmpId(req) {
@@ -82,6 +83,11 @@ exports.submitMyKpiGoals = async (req, res) => {
     user.kpiSubmissionStatus = 'submitted';
     user.kpiSubmittedAt = new Date();
     await user.save();
+    try {
+      await notifyKpiSubmitted({ employee: user.toObject ? user.toObject() : user });
+    } catch (err) {
+      console.error('[kpi] submit notification failed:', err.message);
+    }
     res.json({ success: true, data: { kpiSubmissionStatus: user.kpiSubmissionStatus } });
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -106,24 +112,49 @@ exports.reviewEmployeeKpi = async (req, res) => {
     const user = await AdminUser.findOne({ empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found.' });
 
-    const { kpiReviewNotes, kpis, status } = req.body;
+    const { kpiReviewNotes, kpis, status, finalize } = req.body;
+    const prevStatus = user.kpiSubmissionStatus;
     if (kpiReviewNotes !== undefined) user.kpiReviewNotes = String(kpiReviewNotes);
-    if (status === 'reviewed' || status === 'draft' || status === 'submitted') {
-      user.kpiSubmissionStatus = status;
-      if (status === 'reviewed') user.kpiReviewedAt = new Date();
+    if (status === 'reviewed' || status === 'draft' || status === 'submitted' || status === 'rejected') {
+      user.kpiSubmissionStatus = status === 'rejected' ? 'draft' : status;
+      if (status === 'reviewed' || finalize) user.kpiReviewedAt = new Date();
+    }
+    if (finalize === true) {
+      user.kpiSubmissionStatus = 'reviewed';
+      user.kpiReviewedAt = new Date();
     }
 
     if (Array.isArray(kpis)) {
-      for (const patch of kpis) {
-        const kpi = user.kpis.id(patch._id || patch.kpiId);
-        if (!kpi) continue;
-        if (patch.progress !== undefined) kpi.progress = patch.progress;
-        if (patch.locked !== undefined) kpi.locked = patch.locked;
-        if (patch.adminScore !== undefined) kpi.adminScore = patch.adminScore;
-      }
+      user.kpis = kpis.map((k) => ({
+        title: String(k.title || '').trim(),
+        description: String(k.description || '').trim(),
+        weight: Math.min(100, Math.max(0, Number(k.weight) || 0)),
+        progress: Math.min(100, Math.max(0, Number(k.progress) || 0)),
+        adminScore:
+          k.adminScore !== undefined && k.adminScore !== null
+            ? Math.min(100, Math.max(0, Number(k.adminScore) || 0))
+            : undefined,
+        locked: Boolean(k.locked),
+        visible: k.visible !== false,
+        targetDate: k.targetDate || null,
+        _id: k._id || undefined,
+      })).filter((k) => k.title);
     }
 
     await user.save();
+
+    const finalized =
+      (finalize === true || status === 'reviewed') && user.kpiSubmissionStatus === 'reviewed';
+    if (finalized && prevStatus !== 'reviewed') {
+      try {
+        await notifyKpiFinalized({
+          employee: user.toObject ? user.toObject() : user,
+          reviewNotes: user.kpiReviewNotes,
+        });
+      } catch (err) {
+        console.error('[kpi] finalize notification failed:', err.message);
+      }
+    }
     await logAction({
       actor: req.user,
       action: AUDIT_ACTIONS.KPI_FACTOR_CHANGED,

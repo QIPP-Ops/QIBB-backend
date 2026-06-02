@@ -282,6 +282,45 @@ async function notifyQuizPrizeClaimed(adminId, userName, quizTitle) {
   });
 }
 
+async function notifyKpiSubmitted({ employee }) {
+  const base = getFrontendBaseUrlSafe();
+  const name = employee?.name || employee?.empId || 'Employee';
+  const kpiCount = Array.isArray(employee?.kpis) ? employee.kpis.length : 0;
+  await sendAdminBulkEmail({
+    subject: `KPI submitted for review — ${name}`,
+    bodyHtml: `<p><strong>${name}</strong> (${employee?.empId || '—'}) submitted ${kpiCount} KPI goal${kpiCount === 1 ? '' : 's'} for review.</p><p><a href="${base}/settings">Open admin KPI review</a></p>`,
+    superAdminOnly: true,
+  });
+}
+
+async function notifyKpiFinalized({ employee, reviewNotes = '' }) {
+  const base = getFrontendBaseUrlSafe();
+  const email = (employee?.email || '').trim();
+  if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return { sent: false };
+
+  const kpiLines = (employee?.kpis || [])
+    .map((k) => `<li>${k.title} — weight ${k.weight ?? 0}% · progress ${k.progress ?? 0}%</li>`)
+    .join('');
+  const notesBlock = reviewNotes
+    ? `<p><strong>Review notes:</strong> ${String(reviewNotes).replace(/</g, '&lt;')}</p>`
+    : '';
+
+  try {
+    await sendMail({
+      to: email,
+      subject: 'Your KPI goals have been finalized',
+      html: emailTemplate(
+        'KPI goals finalized',
+        `<p>Hi ${employee.name || ''},</p><p>Your KPI goals have been reviewed and finalized by the administrator.</p>${notesBlock}<ul>${kpiLines}</ul><p><a href="${base}/settings/kpi">View your KPI goals</a></p>`
+      ),
+    });
+    return { sent: true };
+  } catch (err) {
+    console.error('[notification] KPI finalize email failed:', err.message);
+    return { sent: false };
+  }
+}
+
 async function notifyLeaveConflict(message) {
   const admins = await listAdmins();
   for (const admin of admins) {
@@ -320,4 +359,6 @@ module.exports = {
   notifyQuizCompleted,
   notifyQuizPrizeClaimed,
   notifyLeaveConflict,
+  notifyKpiSubmitted,
+  notifyKpiFinalized,
 };

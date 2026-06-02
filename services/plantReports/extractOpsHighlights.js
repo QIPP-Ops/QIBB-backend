@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const ExcelJS = require('exceljs');
+const { isValidOpsHighlight } = require('./opsHighlightFilter');
 
 const EXCEL_EXT = new Set(['.xlsx', '.xlsm', '.xls']);
 const REMARK_RE = /remark|comment|note|handover|shift report|observation|highlight/i;
@@ -98,8 +99,7 @@ async function extractHighlightsFromFolder(reportsRoot) {
           if (AUTHOR_RE.test(t) && t.length < 120 && !author) author = t;
         });
 
-        if (!text || text.length < 8) return;
-        if (/^#|^n\/a|^no sample/i.test(text)) return;
+        if (!isValidOpsHighlight(text)) return;
 
         highlights.push({
           reportDate,

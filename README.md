@@ -77,6 +77,8 @@ Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in 
 
 **Local ingest / cache rebuild:** `cp .env.example .env`, set `MONGODB_URI` (or `COSMOS_URI`), then `npm run ingest:local` (blob ingest if `BLOB_SAS_URL` is set; otherwise set `PLANT_REPORTS_DIR` to a folder of Excel files — blob settings take precedence). `npm run ingest:local -- --force` re-parses all files. `npm run ingest:local -- --cache-only` rebuilds `data/plant-trends-cache.json` from Cosmos without re-parsing Excel. Parse-only smoke test (no DB): `node scripts/test-ingest-sample.js "C:\path\to\reports"`.
 
+**Shift highlight remark filters:** `services/plantReports/opsHighlightFilter.js` rejects date-only strings, label-only lines (e.g. `CRBS Status:`), generic phrases (`all are in service`, etc.), and remarks without substantive content (15+ chars or action verbs). Filters apply on ingest; existing bad rows in Cosmos are not deleted automatically — they refresh on the next ingest pass for matching source files, or run `npm run ingest:local -- --force` to re-process reports. Optional blocklist: `OPS_HIGHLIGHT_BLOCKLIST=phrase one,phrase two`.
+
 **Azure deploy (GitHub Actions):** `.github/workflows/main_qipp-api.yml` builds with `npm ci`, runs tests, reinstalls prod-only deps, zips a lean package (includes `data/plant-trends-cache.json`; excludes tests/docs/dev deps), stops the app, deploys via `az webapp deploy` with retries, sets `WEBSITE_RUN_FROM_PACKAGE=1` and `SCM_DO_BUILD_DURING_DEPLOYMENT=false`, then waits on `/health`.
 
 **Warning:** `npm run seed` clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
