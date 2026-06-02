@@ -15,6 +15,7 @@ const NotificationSchema = new mongoose.Schema(
         'roster_lock',
         'roster_unlock',
         'ingest_complete',
+        'ptw_expiry',
       ],
     },
     recipientUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', required: true },
