@@ -10,7 +10,6 @@ const {
   notifyQuizAssigned,
   notifyQuizCompleted,
   notifyQuizPrizeClaimed,
-  listAdmins,
 } = require('../services/notificationService');
 const { isValidHtml } = require('../utils/validateHtml');
 const quizStorage = require('../services/quizStorage');
@@ -414,17 +413,14 @@ exports.completeQuiz = async (req, res) => {
     }
 
     const userName = req.user?.name || req.user?.displayName || req.user?.empId || 'Member';
-    const admins = await listAdmins();
-    for (const admin of admins) {
-      await notifyQuizCompleted(admin._id, userName, quiz.title, {
-        quizId: String(quiz._id),
-        score: assignment.score,
-      });
-    }
+    await notifyQuizCompleted(null, userName, quiz.title, {
+      quizId: String(quiz._id),
+      score: assignment.score,
+    });
 
     res.json({
       success: true,
-      notifiedAdmins: admins.length,
+      notifiedAdmins: 1,
       quizId: quiz._id,
       quizTitle: quiz.title,
       score: assignment.score,
@@ -451,12 +447,9 @@ exports.claimQuizPrize = async (req, res) => {
     }
 
     const userName = req.user?.name || req.user?.displayName || req.user?.empId || 'Member';
-    const admins = await listAdmins();
-    for (const admin of admins) {
-      await notifyQuizPrizeClaimed(admin._id, userName, quiz.title);
-    }
+    await notifyQuizPrizeClaimed(null, userName, quiz.title);
 
-    res.json({ success: true, notifiedAdmins: admins.length });
+    res.json({ success: true, notifiedAdmins: 1 });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

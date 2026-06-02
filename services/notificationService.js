@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const AdminUser = require('../models/AdminUser');
+const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 const { sendMail, emailTemplate, isEmailConfigured } = require('./emailService');
 const { sendAdminBulkEmail } = require('./adminEmailService');
 const { isShiftReportEmailRemindersEnabled } = require('./systemSettingsService');
@@ -8,16 +9,23 @@ const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
 
 /** Recipient matrix per notification type. */
 const RECIPIENT_MATRIX = {
-  shift_missing: { member: true, supervisor: true, admin: 'digest' },
-  chemistry_alarm: { member: true, supervisor: true, admin: 'immediate' },
+  shift_missing: { member: true, supervisor: true, admin: 'digest_super' },
+  chemistry_alarm: { member: true, supervisor: true, admin: 'super' },
   quiz_assigned: { member: true, supervisor: false, admin: false },
-  quiz_completed: { member: false, supervisor: false, admin: true },
-  quiz_prize_claimed: { member: false, supervisor: false, admin: true },
-  leave_conflict: { member: false, supervisor: false, admin: true },
-  roster_lock: { member: true, supervisor: true, admin: true },
-  roster_unlock: { member: true, supervisor: true, admin: true },
-  ingest_complete: { member: false, supervisor: false, admin: true },
+  quiz_completed: { member: false, supervisor: false, admin: 'super' },
+  quiz_prize_claimed: { member: false, supervisor: false, admin: 'super' },
+  leave_conflict: { member: false, supervisor: false, admin: 'super' },
+  roster_lock: { member: false, supervisor: false, admin: 'super' },
+  roster_unlock: { member: false, supervisor: false, admin: 'super' },
+  ingest_complete: { member: false, supervisor: false, admin: 'super' },
 };
+
+const SYSTEM_DIGEST_NOTIFICATION_TYPES = [
+  'roster_lock',
+  'roster_unlock',
+  'ingest_complete',
+  'leave_conflict',
+];
 
 function isSupervisorRole(role) {
   if (!role) return false;
@@ -32,6 +40,17 @@ function isSupervisorRole(role) {
 
 async function listAdmins() {
   return AdminUser.find({ accessRole: 'admin', isApproved: true }).select('_id email name empId').lean();
+}
+
+async function findSuperAdminUser() {
+  const email = String(SUPER_ADMIN_EMAIL || '').trim();
+  if (!email) return null;
+  return AdminUser.findOne({
+    email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+    isApproved: true,
+  })
+    .select('_id email name empId')
+    .lean();
 }
 
 async function findSupervisorsForCrew(crew) {
@@ -132,16 +151,16 @@ async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, 
     }
   }
 
-  if (matrix.admin === 'digest' && adminDigest) {
-    const admins = await listAdmins();
-    for (const admin of admins) {
+  if (matrix.admin === 'digest_super' && adminDigest) {
+    const superAdmin = await findSuperAdminUser();
+    if (superAdmin) {
       await createNotification({
         type,
-        recipientUserId: admin._id,
+        recipientUserId: superAdmin._id,
         title: `Shift report digest — ${shiftLabel} ${shiftDate}`,
         body: adminDigest,
         link: `${base}/management`,
-        dedupeKey: `shift-missing:digest:${shiftDate}:${shiftLabel}:${admin.empId}`,
+        dedupeKey: `shift-missing:digest:${shiftDate}:${shiftLabel}:${superAdmin.empId}`,
         sendEmail: shiftEmailsEnabled,
       });
     }
@@ -175,14 +194,16 @@ async function notifyChemistryAlarm({ chemists, supervisors, admins, metricLabel
       sendEmail: true,
     });
   }
-  for (const u of admins || []) {
+
+  const superAdmin = await findSuperAdminUser();
+  if (superAdmin) {
     await createNotification({
       type,
-      recipientUserId: u._id,
+      recipientUserId: superAdmin._id,
       title: 'Chemistry alarm',
       body,
       link: `${base}/chemistry`,
-      dedupeKey: `chem-alarm:admin:${u.empId}:${metricLabel}:${reportDate}`,
+      dedupeKey: `chem-alarm:admin:${superAdmin.empId}:${metricLabel}:${reportDate}`,
       sendEmail: false,
     });
   }
@@ -200,15 +221,15 @@ async function notifyRosterLockChange(locked, actorName = 'Administrator') {
     ? 'The administrator has locked the roster. Leave planner edits are disabled.'
     : 'The roster is unlocked. Leave planner edits are enabled again.';
   const base = getFrontendBaseUrlSafe();
-  const users = await AdminUser.find({ isApproved: true }).select('_id empId').lean();
-  for (const u of users) {
+  const superAdmin = await findSuperAdminUser();
+  if (superAdmin) {
     await createNotification({
       type,
-      recipientUserId: u._id,
+      recipientUserId: superAdmin._id,
       title,
       body,
       link: `${base}/leave`,
-      dedupeKey: `${type}:${u.empId}:${new Date().toISOString().slice(0, 13)}`,
+      dedupeKey: `${type}:${superAdmin.empId}:${new Date().toISOString().slice(0, 13)}`,
       sendEmail: false,
     });
   }
@@ -222,19 +243,18 @@ async function notifyRosterLockChange(locked, actorName = 'Administrator') {
 }
 
 async function notifyIngestComplete(summary) {
-  const admins = await listAdmins();
+  const superAdmin = await findSuperAdminUser();
+  if (!superAdmin) return;
   const base = getFrontendBaseUrlSafe();
-  for (const admin of admins) {
-    await createNotification({
-      type: 'ingest_complete',
-      recipientUserId: admin._id,
-      title: 'Plant data ingest complete',
-      body: summary,
-      link: `${base}/admin-portal/trends`,
-      dedupeKey: `ingest:${new Date().toISOString().slice(0, 16)}:${admin.empId}`,
-      sendEmail: false,
-    });
-  }
+  await createNotification({
+    type: 'ingest_complete',
+    recipientUserId: superAdmin._id,
+    title: 'Plant data ingest complete',
+    body: summary,
+    link: `${base}/admin-portal/trends`,
+    dedupeKey: `ingest:${new Date().toISOString().slice(0, 16)}:${superAdmin.empId}`,
+    sendEmail: false,
+  });
 }
 
 async function notifyQuizAssigned(userId, quizTitle, metadata = {}) {
@@ -250,28 +270,32 @@ async function notifyQuizAssigned(userId, quizTitle, metadata = {}) {
   });
 }
 
-async function notifyQuizCompleted(adminId, userName, quizTitle, metadata = {}) {
+async function notifyQuizCompleted(_adminId, userName, quizTitle, metadata = {}) {
+  const superAdmin = await findSuperAdminUser();
+  if (!superAdmin) return;
   await createNotification({
     type: 'quiz_completed',
-    recipientUserId: adminId,
+    recipientUserId: superAdmin._id,
     title: 'Quiz completed',
     body: `${userName} completed ${quizTitle}`,
     link: `${getFrontendBaseUrlSafe()}/trainings`,
     metadata: { quizTitle, userName, ...metadata },
-    dedupeKey: `quiz-done:${adminId}:${userName}:${quizTitle}`,
+    dedupeKey: `quiz-done:${superAdmin.empId}:${userName}:${quizTitle}`,
     sendEmail: false,
   });
 }
 
-async function notifyQuizPrizeClaimed(adminId, userName, quizTitle) {
+async function notifyQuizPrizeClaimed(_adminId, userName, quizTitle) {
+  const superAdmin = await findSuperAdminUser();
+  if (!superAdmin) return;
   await createNotification({
     type: 'quiz_prize_claimed',
-    recipientUserId: adminId,
+    recipientUserId: superAdmin._id,
     title: 'Prize claimed',
     body: `${userName} claimed their prize for ${quizTitle}`,
     link: `${getFrontendBaseUrlSafe()}/trainings`,
     metadata: { quizTitle, userName },
-    dedupeKey: `quiz-prize:${adminId}:${userName}:${quizTitle}`,
+    dedupeKey: `quiz-prize:${superAdmin.empId}:${userName}:${quizTitle}`,
     sendEmail: false,
   });
 
@@ -322,18 +346,17 @@ async function notifyKpiFinalized({ employee, reviewNotes = '' }) {
 }
 
 async function notifyLeaveConflict(message) {
-  const admins = await listAdmins();
-  for (const admin of admins) {
-    await createNotification({
-      type: 'leave_conflict',
-      recipientUserId: admin._id,
-      title: 'Leave conflict detected',
-      body: message,
-      link: `${getFrontendBaseUrlSafe()}/leave`,
-      dedupeKey: `leave-conflict:${admin.empId}:${message.slice(0, 80)}`,
-      sendEmail: false,
-    });
-  }
+  const superAdmin = await findSuperAdminUser();
+  if (!superAdmin) return;
+  await createNotification({
+    type: 'leave_conflict',
+    recipientUserId: superAdmin._id,
+    title: 'Leave conflict detected',
+    body: message,
+    link: `${getFrontendBaseUrlSafe()}/leave`,
+    dedupeKey: `leave-conflict:${superAdmin.empId}:${message.slice(0, 80)}`,
+    sendEmail: false,
+  });
 }
 
 function getFrontendBaseUrlSafe() {
@@ -345,10 +368,20 @@ function getFrontendBaseUrlSafe() {
   }
 }
 
+function isShiftReportDigestNotification(doc) {
+  return (
+    doc.type === 'shift_missing' &&
+    (String(doc.title || '').includes('digest') || String(doc.dedupeKey || '').startsWith('shift-missing:digest:'))
+  );
+}
+
 module.exports = {
   RECIPIENT_MATRIX,
+  SYSTEM_DIGEST_NOTIFICATION_TYPES,
+  isShiftReportDigestNotification,
   isSupervisorRole,
   findSupervisorsForCrew,
+  findSuperAdminUser,
   listAdmins,
   createNotification,
   notifyShiftMissing,
