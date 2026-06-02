@@ -39,10 +39,13 @@ function buildRegistry() {
       load: () => require('./parser4_gtAirIntakeFilterDp'),
     },
     {
-      id: 'parser5_daily_water_consumption',
+      id: 'dailyWaterConsumptionParser',
       display: 'Daily water consumption followup',
-      patterns: ['*Daily*water*consumption*followup*.xlsx', '*Daily_water*consumption*.xlsx'],
-      load: () => require('./parser5_dailyWaterConsumption'),
+      patterns: [
+        '*Daily_water_consumption_followup*.xlsx',
+        '*Daily*water*consumption*followup*.xlsx',
+      ],
+      load: () => require('./dailyWaterConsumptionParser'),
     },
     {
       id: 'parser6_daily_actual_energy_produced',

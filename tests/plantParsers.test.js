@@ -61,25 +61,95 @@ describe('PARSER 6: Daily actual energy produced', () => {
   });
 });
 
-describe('PARSER 5: Daily water consumption', () => {
-  test('extracts year/month from filename and skips all-zero day columns', () => {
+describe('dailyWaterConsumptionParser', () => {
+  const { parse, slugify } = require('../services/plantReports/parsers/dailyWaterConsumptionParser');
+
+  test('registry routes followup filenames to dailyWaterConsumptionParser', () => {
+    const p = getParserForFilename('2026-03-31_Daily_water_consumption_followup master.xlsx');
+    expect(p).toBeTruthy();
+    expect(p.id).toBe('dailyWaterConsumptionParser');
+  });
+
+  test('slugify normalizes metric names', () => {
+    expect(slugify('GR-1 CONSUMPT')).toBe('gr1_consumpt');
+  });
+
+  test('parses master sheet only and skips numbered day sheets', () => {
+    const wb = new ExcelJS.Workbook();
+    const master = wb.addWorksheet('master');
+    master.getCell('A3').value = 'GR-1 CONSUMPT';
+    master.getCell('B3').value = 10;
+    master.getCell('C3').value = 20;
+    const daySheet = wb.addWorksheet('15');
+    daySheet.getCell('A3').value = 'GR-1 CONSUMPT';
+    daySheet.getCell('B3').value = 999;
+
+    const res = parse({
+      wb,
+      filename: '2026-05-01_Daily_water_consumption_followup master.xlsx',
+      sourceFile: 'w.xlsx',
+      now: new Date('2026-05-31T12:00:00Z'),
+    });
+    expect(res.skipped).toBe(false);
+    expect(res.points).toHaveLength(2);
+    expect(res.points.every((p) => p.sheetName === 'master')).toBe(true);
+    expect(res.points.some((p) => p.metricKey === 'gr1_consumpt' && p.value === 10)).toBe(true);
+    expect(res.points.some((p) => p.parserUsed === 'dailyWaterConsumptionParser')).toBe(true);
+  });
+
+  test('extracts year/month from YYYY-MM-DD filename prefix', () => {
+    const wb = wbWithSheet('master');
+    const ws = wb.getWorksheet('master');
+    ws.getCell('A3').value = 'GR-2 PROD';
+    ws.getCell('B3').value = 7;
+
+    const res = parse({
+      wb,
+      filename: '2026-04-15_Daily_water_consumption_followup master.xlsx',
+      sourceFile: 'w.xlsx',
+      now: new Date('2026-04-30T12:00:00Z'),
+    });
+    expect(res.reportDate).toBe('2026-04-01');
+    const pt = res.points.find((p) => p.columnKey === 'day1');
+    expect(pt.reportDate).toBe('2026-04-01');
+    expect(pt.unit).toBe('m³');
+    expect(pt.metricKey).toBe('gr2_prod');
+  });
+
+  test('skips empty, non-numeric, and future day cells', () => {
+    const wb = wbWithSheet('master');
+    const ws = wb.getWorksheet('master');
+    ws.getCell('A3').value = 'Tank level';
+    ws.getCell('B3').value = '';
+    ws.getCell('C3').value = 'n/a';
+    ws.getCell('D3').value = 12;
+    ws.getCell('E3').value = 5;
+
+    const res = parse({
+      wb,
+      filename: '2026-05-01_Daily_water_consumption_followup master.xlsx',
+      sourceFile: 'w.xlsx',
+      now: new Date('2026-05-03T12:00:00Z'),
+    });
+    expect(res.points.some((p) => p.columnKey === 'day1')).toBe(false);
+    expect(res.points.some((p) => p.columnKey === 'day2')).toBe(false);
+    expect(res.points.some((p) => p.columnKey === 'day3' && p.value === 12)).toBe(true);
+    expect(res.points.some((p) => p.columnKey === 'day4')).toBe(false);
+  });
+
+  test('keeps zero values when present', () => {
     const wb = wbWithSheet('master');
     const ws = wb.getWorksheet('master');
     ws.getCell('A3').value = 'GR-1 CONSUMPT';
-    // Day 1 column (B) all zeros => skip
     ws.getCell('B3').value = 0;
-    // Day 2 column (C) has value => keep
-    ws.getCell('C3').value = 5;
 
-    const { parse } = require('../services/plantReports/parsers/parser5_dailyWaterConsumption');
     const res = parse({
       wb,
-      filename: '2026-05_Daily_water_consumption_followup master.xlsx',
+      filename: '2026-05-01_Daily_water_consumption_followup master.xlsx',
       sourceFile: 'w.xlsx',
+      now: new Date('2026-05-31T12:00:00Z'),
     });
-    expect(res.skipped).toBe(false);
-    expect(res.points.some((p) => p.columnKey === 'day1')).toBe(false);
-    expect(res.points.some((p) => p.columnKey === 'day2' && p.value === 5)).toBe(true);
+    expect(res.points.some((p) => p.columnKey === 'day1' && p.value === 0)).toBe(true);
   });
 });
 
