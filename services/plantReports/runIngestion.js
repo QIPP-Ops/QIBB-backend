@@ -260,8 +260,13 @@ async function runPlantIngestion(options = {}) {
       const { writePlantTrendsCache } = require('./plantTrendsCache');
       trendsCache = await writePlantTrendsCache();
     } catch (cacheErr) {
-      console.warn('[plant-ingest] trends cache write failed:', cacheErr.message);
-      trendsCache = { ok: false, message: cacheErr.message };
+      const { getPlantTrendsCachePath } = require('./plantTrendsCache');
+      const cachePath = getPlantTrendsCachePath();
+      console.warn(
+        `[plant-ingest] trends cache write failed (${cachePath}):`,
+        cacheErr.message
+      );
+      trendsCache = { ok: false, message: cacheErr.message, path: cachePath };
     }
 
     await PlantIngestionState.updateOne(

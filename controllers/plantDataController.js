@@ -257,6 +257,7 @@ exports.getTrendsCache = async (req, res) => {
       readPlantTrendsCacheFromDisk,
       hasUsablePlantTrendsCache,
       writePlantTrendsCache,
+      getPlantTrendsCachePath,
     } = require('../services/plantReports/plantTrendsCache');
 
     if (req.query.rebuild === '1') {
@@ -275,8 +276,7 @@ exports.getTrendsCache = async (req, res) => {
     if (!hasUsablePlantTrendsCache(data)) {
       return res.status(503).json({
         success: false,
-        message:
-          'Plant trends cache is missing or empty. Run ingest or `npm run ingest:local -- --cache-only` to rebuild data/plant-trends-cache.json.',
+        message: `Plant trends cache is missing or empty at ${getPlantTrendsCachePath()}. Run ingest or npm run ingest:local -- --cache-only to rebuild.`,
         data: data || null,
       });
     }

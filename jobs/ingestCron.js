@@ -141,7 +141,10 @@ async function runIngestCycle() {
       const cache = readPlantTrendsCacheFromDisk();
       cacheMetrics = cache?.metrics?.length ?? cacheResult.metricCount ?? 0;
     } catch (cacheErr) {
-      const msg = `trends cache: ${cacheErr.message}`;
+      const { getPlantTrendsCachePath } = require('../services/plantReports/plantTrendsCache');
+      const cachePath = getPlantTrendsCachePath();
+      const msg = `trends cache (${cachePath}): ${cacheErr.message}`;
+      console.warn(`[ingest] ${msg}`);
       if (errors.length < 20) errors.push(msg);
     }
 

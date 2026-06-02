@@ -1,4 +1,5 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const PlantMetricPoint = require('../../models/PlantMetricPoint');
 const PlantIngestionState = require('../../models/PlantIngestionState');
@@ -8,9 +9,88 @@ const { expandDayColumnSeries } = require('./seriesTimeline');
 const { canonicalMetricKey, canonicalLabel, dedupeMetricsForListing } = require('./metricKeys');
 const { getDateBounds } = require('./historicalDashboard');
 
-const CACHE_DIR = path.join(__dirname, '../../data');
-const CACHE_FILE = path.join(CACHE_DIR, 'plant-trends-cache.json');
-const RAW_METRICS_FILE = path.join(CACHE_DIR, 'plant-raw-metrics.json');
+/** Committed seed / deploy bundle (often read-only on Azure WEBSITE_RUN_FROM_PACKAGE). */
+const BUNDLED_CACHE_DIR = path.join(__dirname, '../../data');
+const BUNDLED_CACHE_FILE = path.join(BUNDLED_CACHE_DIR, 'plant-trends-cache.json');
+const BUNDLED_RAW_METRICS_FILE = path.join(BUNDLED_CACHE_DIR, 'plant-raw-metrics.json');
+
+let resolvedCacheDir = null;
+
+/**
+ * Writable directory for plant-trends-cache.json (and plant-raw-metrics.json).
+ * Azure App Service: set PLANT_TRENDS_CACHE_DIR=/home/data (recommended) — wwwroot is read-only.
+ * Local dev: defaults to repo data/ when writable.
+ */
+function isDirWritable(dir) {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const probe = path.join(dir, `.write-probe-${process.pid}`);
+    fs.writeFileSync(probe, 'ok', 'utf8');
+    fs.unlinkSync(probe);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getPlantTrendsCacheDir() {
+  if (resolvedCacheDir) return resolvedCacheDir;
+
+  if (process.env.PLANT_TRENDS_CACHE_DIR) {
+    resolvedCacheDir = path.resolve(process.env.PLANT_TRENDS_CACHE_DIR);
+    return resolvedCacheDir;
+  }
+
+  const homeData = path.join(process.env.HOME || '/home', 'data');
+  const tmpFallback = path.join(os.tmpdir(), 'qibb-plant-trends');
+  const candidates = [BUNDLED_CACHE_DIR, homeData, tmpFallback];
+
+  for (const dir of candidates) {
+    if (isDirWritable(dir)) {
+      resolvedCacheDir = dir;
+      break;
+    }
+  }
+
+  if (!resolvedCacheDir) {
+    resolvedCacheDir = tmpFallback;
+    fs.mkdirSync(resolvedCacheDir, { recursive: true });
+  }
+
+  if (resolvedCacheDir !== BUNDLED_CACHE_DIR) {
+    console.log(
+      `[plant-trends-cache] writable dir: ${resolvedCacheDir} (bundled seed: ${BUNDLED_CACHE_DIR})`
+    );
+  }
+
+  return resolvedCacheDir;
+}
+
+function getPlantTrendsCachePath() {
+  return path.join(getPlantTrendsCacheDir(), 'plant-trends-cache.json');
+}
+
+function getPlantRawMetricsPath() {
+  return path.join(getPlantTrendsCacheDir(), 'plant-raw-metrics.json');
+}
+
+/**
+ * First deploy: copy bundled wwwroot cache into writable dir when writable file is absent.
+ */
+function seedPlantTrendsCacheFromBundledIfNeeded() {
+  const target = getPlantTrendsCachePath();
+  if (fs.existsSync(target)) return { seeded: false, path: target };
+  if (!fs.existsSync(BUNDLED_CACHE_FILE)) return { seeded: false, path: target };
+
+  const dir = getPlantTrendsCacheDir();
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(BUNDLED_CACHE_FILE, target);
+  if (fs.existsSync(BUNDLED_RAW_METRICS_FILE)) {
+    fs.copyFileSync(BUNDLED_RAW_METRICS_FILE, getPlantRawMetricsPath());
+  }
+  console.log(`[plant-trends-cache] seeded from bundle → ${target}`);
+  return { seeded: true, path: target };
+}
 
 function yearStartIso() {
   const y = new Date().getFullYear();
@@ -169,20 +249,33 @@ async function buildPlantTrendsCachePayload() {
   };
 }
 
-async function writePlantTrendsCache() {
-  const payload = await buildPlantTrendsCachePayload();
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), 'utf8');
-  return { path: CACHE_FILE, generatedAt: payload.generatedAt, metricCount: payload.metrics.length };
-}
-
-function readPlantTrendsCacheFromDisk() {
-  if (!fs.existsSync(CACHE_FILE)) return null;
+function readCacheFileAt(filePath) {
+  if (!fs.existsSync(filePath)) return null;
   try {
-    return JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
     return null;
   }
+}
+
+async function writePlantTrendsCache() {
+  const cacheFile = getPlantTrendsCachePath();
+  const cacheDir = getPlantTrendsCacheDir();
+  const payload = await buildPlantTrendsCachePayload();
+  fs.mkdirSync(cacheDir, { recursive: true });
+  fs.writeFileSync(cacheFile, JSON.stringify(payload), 'utf8');
+  return { path: cacheFile, generatedAt: payload.generatedAt, metricCount: payload.metrics.length };
+}
+
+function readPlantTrendsCacheFromDisk() {
+  seedPlantTrendsCacheFromBundledIfNeeded();
+  const active = getPlantTrendsCachePath();
+  const data = readCacheFileAt(active);
+  if (data) return data;
+  if (active !== BUNDLED_CACHE_FILE) {
+    return readCacheFileAt(BUNDLED_CACHE_FILE);
+  }
+  return null;
 }
 
 /** At least one metric key has a non-empty time series (required for charts/KPIs). */
@@ -199,14 +292,17 @@ function hasUsablePlantTrendsCache(data = readPlantTrendsCacheFromDisk()) {
 }
 
 function writeTrendsCacheFiles(payload, rawPayload) {
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
-  fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), 'utf8');
+  const cacheFile = getPlantTrendsCachePath();
+  const cacheDir = getPlantTrendsCacheDir();
+  const rawFile = getPlantRawMetricsPath();
+  fs.mkdirSync(cacheDir, { recursive: true });
+  fs.writeFileSync(cacheFile, JSON.stringify(payload), 'utf8');
   if (rawPayload) {
-    fs.writeFileSync(RAW_METRICS_FILE, JSON.stringify(rawPayload), 'utf8');
+    fs.writeFileSync(rawFile, JSON.stringify(rawPayload), 'utf8');
   }
   return {
-    cachePath: CACHE_FILE,
-    rawPath: rawPayload ? RAW_METRICS_FILE : null,
+    cachePath: cacheFile,
+    rawPath: rawPayload ? rawFile : null,
     generatedAt: payload.generatedAt,
     metricCount: payload.metrics.length,
     seriesCount: Object.keys(payload.seriesByKey || {}).length,
@@ -215,8 +311,18 @@ function writeTrendsCacheFiles(payload, rawPayload) {
 }
 
 module.exports = {
-  CACHE_FILE,
-  RAW_METRICS_FILE,
+  BUNDLED_CACHE_DIR,
+  BUNDLED_CACHE_FILE,
+  getPlantTrendsCacheDir,
+  getPlantTrendsCachePath,
+  getPlantRawMetricsPath,
+  seedPlantTrendsCacheFromBundledIfNeeded,
+  get CACHE_FILE() {
+    return getPlantTrendsCachePath();
+  },
+  get RAW_METRICS_FILE() {
+    return getPlantRawMetricsPath();
+  },
   buildPlantTrendsCachePayload,
   buildPlantTrendsCacheFromPoints,
   writePlantTrendsCache,

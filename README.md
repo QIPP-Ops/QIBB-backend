@@ -91,9 +91,11 @@ flowchart LR
 
 **Hot path:** `GET /api/plant-data/trends-cache` reads the disk file only — no live Cosmos scan. Missing cache → `503` with a clear message. Admins may rebuild with `GET /api/plant-data/trends-cache?rebuild=1` and a Bearer token, or `npm run ingest:local -- --cache-only`.
 
-**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=900000` (15 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, `PLANT_INGEST_MAX_FILES=800`, `TREND_BACKFILL_MAX_DAYS=365`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. After deploy, startup **skips** blob re-parse when `data/plant-trends-cache.json` already has metrics/series; set `PLANT_INGEST_STARTUP_FORCE=1` to force re-parse, or `PLANT_INGEST_ON_STARTUP=0` to disable startup ingest (scheduler + cron still run).
+**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=900000` (15 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, `PLANT_INGEST_MAX_FILES=800`, `TREND_BACKFILL_MAX_DAYS=365`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. After deploy, startup **skips** blob re-parse when the trends cache already has metrics/series; set `PLANT_INGEST_STARTUP_FORCE=1` to force re-parse, or `PLANT_INGEST_ON_STARTUP=0` to disable startup ingest (scheduler + cron still run).
 
-**Refresh cache when new Excel lands in blob:** run `npm run ingest:local` locally (or `--cache-only` if Cosmos is current), commit `data/plant-trends-cache.json`, push. On Azure, bi-hourly ingest cron updates Cosmos and rebuilds the cache file in place.
+**Azure trends cache (required on App Service):** `wwwroot` is read-only when `WEBSITE_RUN_FROM_PACKAGE=1`. Set **`PLANT_TRENDS_CACHE_DIR=/home/data`** in App Settings so ingest can write `plant-trends-cache.json`. On first start, the app copies the bundled `data/plant-trends-cache.json` from the zip into that directory if empty.
+
+**Refresh cache when new Excel lands in blob:** run `npm run ingest:local` locally (or `--cache-only` if Cosmos is current), commit `data/plant-trends-cache.json`, push. On Azure, bi-hourly ingest cron updates Cosmos and rebuilds the writable cache file.
 
 **Local ingest:** `cp .env.example .env`, set `COSMOS_URI`, then `npm run ingest:local`. `--force` re-parses all files; `--cache-only` rebuilds cache from Cosmos without re-parsing Excel. Parse-only (no DB): `node scripts/test-ingest-sample.js "C:\path\to\reports"`.
 

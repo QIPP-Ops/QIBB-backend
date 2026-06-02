@@ -41,13 +41,18 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     if (blobIngestConfigured() && process.env.PLANT_INGEST_ON_STARTUP !== '0') {
       setTimeout(async () => {
         try {
-          const { hasUsablePlantTrendsCache } = require('./services/plantReports/plantTrendsCache');
+          const {
+            hasUsablePlantTrendsCache,
+            seedPlantTrendsCacheFromBundledIfNeeded,
+            getPlantTrendsCachePath,
+          } = require('./services/plantReports/plantTrendsCache');
+          seedPlantTrendsCacheFromBundledIfNeeded();
           const forceStartup =
             process.env.PLANT_INGEST_STARTUP_FORCE === '1' ||
             process.argv.includes('--force-ingest');
           if (!forceStartup && hasUsablePlantTrendsCache()) {
             console.log(
-              '[plant-ingest] startup skipped — data/plant-trends-cache.json present (set PLANT_INGEST_STARTUP_FORCE=1 to re-parse)'
+              `[plant-ingest] startup skipped — trends cache present at ${getPlantTrendsCachePath()} (set PLANT_INGEST_STARTUP_FORCE=1 to re-parse)`
             );
             return;
           }
