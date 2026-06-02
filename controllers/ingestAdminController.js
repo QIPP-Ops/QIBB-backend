@@ -15,6 +15,7 @@ exports.getIngestStatus = async (_req, res) => {
         skippedCurrent: status.lastRunStats?.skippedCurrent ?? 0,
         noParser: status.lastRunStats?.noParser ?? 0,
         totalMetricsInCache: status.totalMetricsInCache,
+        cachePath: status.cachePath,
         errors: status.errors || [],
         nextScheduledRunAt: status.nextScheduledRunAt,
         cronExpr: status.cronExpr,

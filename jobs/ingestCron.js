@@ -172,6 +172,7 @@ async function runIngestCycle() {
 }
 
 function getIngestCronStatus() {
+  const { getPlantTrendsCachePath } = require('../services/plantReports/plantTrendsCache');
   const cache = readPlantTrendsCacheFromDisk();
   const cacheMetricCount = cache?.metrics?.length ?? 0;
   return {
@@ -181,8 +182,8 @@ function getIngestCronStatus() {
     lastRunStats: lastRunState.lastRunStats,
     errors: lastRunState.errors,
     nextScheduledRunAt: getNextBiHourlyRun(),
-    totalMetricsInCache:
-      lastRunState.lastRunStats?.totalMetricsInCache ?? cacheMetricCount,
+    cachePath: getPlantTrendsCachePath(),
+    totalMetricsInCache: cacheMetricCount,
   };
 }
 

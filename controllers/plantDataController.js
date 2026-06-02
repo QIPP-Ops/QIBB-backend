@@ -274,9 +274,14 @@ exports.getTrendsCache = async (req, res) => {
 
     const data = readPlantTrendsCacheFromDisk();
     if (!hasUsablePlantTrendsCache(data)) {
+      const cachePath = getPlantTrendsCachePath();
+      const azureHint = process.env.WEBSITE_SITE_NAME
+        ? ' On Azure App Service set PLANT_TRENDS_CACHE_DIR=/home/data, redeploy, then trigger ingest (writable wwwroot is not supported).'
+        : '';
       return res.status(503).json({
         success: false,
-        message: `Plant trends cache is missing or empty at ${getPlantTrendsCachePath()}. Run ingest or npm run ingest:local -- --cache-only to rebuild.`,
+        message: `Plant trends cache is missing or empty at ${cachePath}. Run ingest or npm run ingest:local -- --cache-only to rebuild.${azureHint}`,
+        cachePath,
         data: data || null,
       });
     }
