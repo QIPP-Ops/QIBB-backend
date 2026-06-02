@@ -509,41 +509,51 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-/** Stateless — identity from verified JWT; optional profile photo when DB is up. */
-exports.verify = (req, res) => {
-  const u = req.user;
-  const mongoose = require('mongoose');
-  const payload = {
+function buildAuthMePayload(decodedUser, dbRow) {
+  const { portalRoleFromUser } = require('../utils/jwtAuth');
+  const accessRole = dbRow?.accessRole || decodedUser.accessRole || 'viewer';
+  const portalRole = dbRow ? portalRoleFromUser(dbRow) : decodedUser.role;
+  return {
     ok: true,
     user: {
-      id: u.userId || u.id,
-      email: u.email,
-      role: u.role,
-      accessRole: u.accessRole,
-      displayName: u.displayName || u.name,
-      name: u.displayName || u.name,
-      empId: u.empId,
-      crew: u.crew,
-      canOpsLead: u.canOpsLead === true,
-      profilePhotoUrl: '',
+      id: decodedUser.userId || decodedUser.id,
+      email: dbRow?.email || decodedUser.email,
+      role: portalRole,
+      accessRole,
+      displayName: dbRow?.name || decodedUser.displayName || decodedUser.name,
+      name: dbRow?.name || decodedUser.displayName || decodedUser.name,
+      empId: dbRow?.empId || decodedUser.empId,
+      crew: dbRow?.crew || decodedUser.crew,
+      canOpsLead: dbRow ? Boolean(dbRow.canOpsLead) : decodedUser.canOpsLead === true,
+      profilePhotoUrl: dbRow?.profilePhotoUrl || '',
+      jobRole: dbRow?.role || decodedUser.jobRole,
     },
   };
+}
 
+/** Fresh portal role from DB — overrides stale JWT accessRole after admin changes. */
+exports.me = async (req, res) => {
+  const u = req.user;
+  const mongoose = require('mongoose');
   if (mongoose.connection.readyState !== 1) {
-    return res.json(payload);
+    return res.json(buildAuthMePayload(u, null));
   }
-
   const userId = u.userId || u.id;
   if (!userId) {
-    return res.json(payload);
+    return res.json(buildAuthMePayload(u, null));
   }
-
-  AdminUser.findById(userId).select('profilePhotoUrl').lean()
-    .then((row) => {
-      if (row?.profilePhotoUrl) payload.user.profilePhotoUrl = row.profilePhotoUrl;
-      res.json(payload);
-    })
-    .catch(() => {
-      res.json(payload);
-    });
+  try {
+    const row = await AdminUser.findById(userId)
+      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive')
+      .lean();
+    if (row?.isActive === false) {
+      return res.status(403).json({ message: 'Access revoked.', code: 'ACCESS_REVOKED' });
+    }
+    return res.json(buildAuthMePayload(u, row));
+  } catch (error) {
+    return res.status(500).json({ message: 'Could not load profile.', error: error.message });
+  }
 };
+
+/** Alias for legacy clients — same payload as GET /auth/me */
+exports.verify = exports.me;

@@ -7,6 +7,7 @@ const { requireSuperAdmin } = require('../middleware/superAdmin');
 router.get('/register-options',                   authController.getRegisterOptions);
 router.post('/register',                          authController.register);
 router.post('/login',                             authController.login);
+router.get('/me',               protect,          authController.me);
 router.get('/verify',           protect,          authController.verify);
 
 // ─── Email OTP ───────────────────────────────────────────────────────────────

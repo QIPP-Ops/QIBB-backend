@@ -77,6 +77,50 @@ describe('plantTrendsCache disk reader', () => {
     ).toBe(true);
   });
 
+  it('buildPlantTrendsCacheFromPoints builds series from parsed points', () => {
+    const { buildPlantTrendsCacheFromPoints } = require('../services/plantReports/plantTrendsCache');
+    const payload = buildPlantTrendsCacheFromPoints([
+      {
+        metricKey: 'plant_generation',
+        label: 'Generation',
+        category: 'energy',
+        unit: 'MWh',
+        reportDate: '2026-05-01',
+        value: 100,
+        sourceFile: 'test.xlsx',
+      },
+      {
+        metricKey: 'plant_generation',
+        label: 'Generation',
+        category: 'energy',
+        unit: 'MWh',
+        reportDate: '2026-05-02',
+        value: 110,
+        sourceFile: 'test.xlsx',
+      },
+    ]);
+    expect(payload.metrics.length).toBe(1);
+    expect(payload.seriesByKey.plant_generation.length).toBe(2);
+  });
+
+  it('chemistryWaterHasData detects snapshots and latest', () => {
+    const { chemistryWaterHasData } = require('../services/plantReports/plantTrendsCache');
+    expect(chemistryWaterHasData(null)).toBe(false);
+    expect(chemistryWaterHasData({ latest: null, snapshots: [] })).toBe(false);
+    expect(
+      chemistryWaterHasData({
+        latest: { chemistry: { ro: { ph: 7 } } },
+        snapshots: [],
+      })
+    ).toBe(true);
+    expect(
+      chemistryWaterHasData({
+        latest: null,
+        snapshots: [{ createdAt: '2026-01-01', water: { swProduction: 1 } }],
+      })
+    ).toBe(true);
+  });
+
   it('readPlantTrendsCacheFromDisk parses sample file', () => {
     const { readPlantTrendsCacheFromDisk, CACHE_FILE } = require('../services/plantReports/plantTrendsCache');
     const dir = path.dirname(CACHE_FILE);

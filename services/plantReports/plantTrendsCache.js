@@ -5,15 +5,116 @@ const PlantIngestionState = require('../../models/PlantIngestionState');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { PlantMetric } = require('../../models/PlantMetric');
 const { expandDayColumnSeries } = require('./seriesTimeline');
-const { dedupeMetricsForListing } = require('./metricKeys');
+const { canonicalMetricKey, canonicalLabel, dedupeMetricsForListing } = require('./metricKeys');
 const { getDateBounds } = require('./historicalDashboard');
 
 const CACHE_DIR = path.join(__dirname, '../../data');
 const CACHE_FILE = path.join(CACHE_DIR, 'plant-trends-cache.json');
+const RAW_METRICS_FILE = path.join(CACHE_DIR, 'plant-raw-metrics.json');
 
 function yearStartIso() {
   const y = new Date().getFullYear();
   return `${y}-01-01`;
+}
+
+/**
+ * Build trends cache JSON from in-memory parsed points (no MongoDB).
+ * Used by scripts/parse-excel-to-json.js — same shape as GET /api/plant-data/trends-cache.
+ */
+function buildPlantTrendsCacheFromPoints(allPoints, options = {}) {
+  const points = Array.isArray(allPoints) ? allPoints.filter((p) => p && p.metricKey) : [];
+  const metricDraft = new Map();
+  for (const p of points) {
+    const ck = canonicalMetricKey(p.metricKey);
+    if (!metricDraft.has(ck)) {
+      metricDraft.set(ck, {
+        metricKey: ck,
+        label: canonicalLabel(p.displayName || p.label, p.metricKey),
+        category: p.category || 'other',
+        unit: p.unit || '',
+      });
+    }
+  }
+  const metrics = dedupeMetricsForListing([...metricDraft.values()]);
+
+  let minDate = null;
+  let maxDate = null;
+  for (const p of points) {
+    const d = String(p.reportDate || '').slice(0, 10);
+    if (!d) continue;
+    if (!minDate || d < minDate) minDate = d;
+    if (!maxDate || d > maxDate) maxDate = d;
+  }
+  const from = minDate || yearStartIso();
+  const to = maxDate || new Date().toISOString().slice(0, 10);
+
+  const inRange = points.filter((p) => {
+    const d = String(p.reportDate || '').slice(0, 10);
+    return d && d >= from && d <= to;
+  });
+
+  const topKeys = metrics.slice(0, 120).map((m) => m.metricKey);
+  const seriesByKey = {};
+  for (const key of topKeys) {
+    const keyRows = inRange.filter(
+      (r) => r.metricKey === key || String(r.metricKey).startsWith(`${key}_day`)
+    );
+    const series = expandDayColumnSeries(keyRows, [key, ...keyRows.map((r) => r.metricKey)]);
+    if (series.length) seriesByKey[key] = series;
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    dateRange: { from, to, minDate, maxDate },
+    metrics: metrics.map((m) => ({
+      metricKey: m.metricKey,
+      label: m.label,
+      category: m.category,
+      unit: m.unit || '',
+    })),
+    seriesByKey,
+    chemistryWater: options.chemistryWater || { latest: null, snapshots: [] },
+    ingestStatus: options.ingestStatus || null,
+    parseMeta: options.parseMeta || null,
+  };
+}
+
+/** Chemistry/water snapshots for trends cache and public home (Mongo TrendsSnapshot). */
+async function fetchChemistryWaterSection(from, to) {
+  const fromStr = from || yearStartIso();
+  const toStr = to || new Date().toISOString().slice(0, 10);
+  const since = new Date(`${fromStr}T00:00:00.000Z`);
+  const until = new Date(`${toStr}T23:59:59.999Z`);
+
+  const latest = await TrendsSnapshot.findOne().sort({ createdAt: -1 }).lean();
+  const snapshots = await TrendsSnapshot.find({ createdAt: { $gte: since, $lte: until } })
+    .sort({ createdAt: 1 })
+    .limit(2000)
+    .select('createdAt water chemistry energy dailyOps')
+    .lean();
+
+  return {
+    latest: latest
+      ? {
+          createdAt: latest.createdAt,
+          chemistry: latest.chemistry || null,
+          water: latest.water || null,
+        }
+      : null,
+    snapshots: snapshots.map((s) => ({
+      createdAt: s.createdAt,
+      chemistry: s.chemistry || null,
+      water: s.water || null,
+      energy: s.energy || null,
+      dailyOps: s.dailyOps || null,
+    })),
+  };
+}
+
+function chemistryWaterHasData(cw) {
+  if (!cw) return false;
+  if (cw.latest?.chemistry || cw.latest?.water) return true;
+  return Array.isArray(cw.snapshots) && cw.snapshots.some((s) => s.chemistry || s.water);
 }
 
 async function buildPlantTrendsCachePayload() {
@@ -40,14 +141,7 @@ async function buildPlantTrendsCachePayload() {
     if (series.length) seriesByKey[key] = series;
   }
 
-  const since = new Date(`${from}T00:00:00.000Z`);
-  const until = new Date(`${to}T23:59:59.999Z`);
-  const latest = await TrendsSnapshot.findOne().sort({ createdAt: -1 }).lean();
-  const snapshots = await TrendsSnapshot.find({ createdAt: { $gte: since, $lte: until } })
-    .sort({ createdAt: 1 })
-    .limit(2000)
-    .select('createdAt water chemistry energy dailyOps')
-    .lean();
+  const chemistryWater = await fetchChemistryWaterSection(from, to);
 
   const ingest = await PlantIngestionState.findOne({ key: 'global' }).lean();
 
@@ -61,22 +155,7 @@ async function buildPlantTrendsCachePayload() {
       unit: m.unit || '',
     })),
     seriesByKey,
-    chemistryWater: {
-      latest: latest
-        ? {
-            createdAt: latest.createdAt,
-            chemistry: latest.chemistry || null,
-            water: latest.water || null,
-          }
-        : null,
-      snapshots: snapshots.map((s) => ({
-        createdAt: s.createdAt,
-        chemistry: s.chemistry || null,
-        water: s.water || null,
-        energy: s.energy || null,
-        dailyOps: s.dailyOps || null,
-      })),
-    },
+    chemistryWater,
     ingestStatus: ingest
       ? {
           lastSuccessAt: ingest.lastSuccessAt,
@@ -114,11 +193,47 @@ function hasUsablePlantTrendsCache(data = readPlantTrendsCacheFromDisk()) {
   return Boolean(series && typeof series === 'object' && Object.keys(series).length > 0);
 }
 
+function writeTrendsCacheFiles(payload, rawPayload) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+  fs.writeFileSync(CACHE_FILE, JSON.stringify(payload), 'utf8');
+  if (rawPayload) {
+    fs.writeFileSync(RAW_METRICS_FILE, JSON.stringify(rawPayload), 'utf8');
+  }
+  return {
+    cachePath: CACHE_FILE,
+    rawPath: rawPayload ? RAW_METRICS_FILE : null,
+    generatedAt: payload.generatedAt,
+    metricCount: payload.metrics.length,
+    seriesCount: Object.keys(payload.seriesByKey || {}).length,
+    pointCount: rawPayload?.pointCount ?? 0,
+  };
+}
+
+/** Merge live chemistry/water from DB when disk cache only has generation metrics. */
+async function ensureChemistryWaterOnCache(data) {
+  if (!data) return data;
+  if (chemistryWaterHasData(data.chemistryWater)) return data;
+  try {
+    const dr = data.dateRange || {};
+    const chemistryWater = await fetchChemistryWaterSection(dr.from, dr.to);
+    if (!chemistryWaterHasData(chemistryWater)) return data;
+    return { ...data, chemistryWater };
+  } catch {
+    return data;
+  }
+}
+
 module.exports = {
   CACHE_FILE,
+  RAW_METRICS_FILE,
   buildPlantTrendsCachePayload,
+  buildPlantTrendsCacheFromPoints,
   writePlantTrendsCache,
+  writeTrendsCacheFiles,
   readPlantTrendsCacheFromDisk,
   hasUsablePlantTrendsCache,
+  fetchChemistryWaterSection,
+  chemistryWaterHasData,
+  ensureChemistryWaterOnCache,
   yearStartIso,
 };

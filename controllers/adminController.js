@@ -466,7 +466,16 @@ exports.updateUserRole = async (req, res) => {
       req,
     });
 
-    res.json({ message: 'User role updated.', user });
+    const body = { message: 'User role updated.', user };
+    const actorId = String(req.user?.userId || req.user?.id || '');
+    if (actorId && String(user._id) === actorId) {
+      const jwt = require('jsonwebtoken');
+      const { buildJwtPayload, JWT_EXPIRES_IN } = require('../utils/jwtAuth');
+      body.token = jwt.sign(buildJwtPayload(user), process.env.JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
+      });
+    }
+    res.json(body);
   } catch (err) {
     res.status(500).json({ message: 'Error updating user role', error: err.message });
   }
