@@ -98,14 +98,19 @@ function seedPlantTrendsCacheFromBundledIfNeeded() {
   if (fs.existsSync(target)) return { seeded: false, path: target };
   if (!fs.existsSync(BUNDLED_CACHE_FILE)) return { seeded: false, path: target };
 
-  const dir = getPlantTrendsCacheDir();
-  fs.mkdirSync(dir, { recursive: true });
-  fs.copyFileSync(BUNDLED_CACHE_FILE, target);
-  if (fs.existsSync(BUNDLED_RAW_METRICS_FILE)) {
-    fs.copyFileSync(BUNDLED_RAW_METRICS_FILE, getPlantRawMetricsPath());
+  try {
+    const dir = getPlantTrendsCacheDir();
+    fs.mkdirSync(dir, { recursive: true });
+    fs.copyFileSync(BUNDLED_CACHE_FILE, target);
+    if (fs.existsSync(BUNDLED_RAW_METRICS_FILE)) {
+      fs.copyFileSync(BUNDLED_RAW_METRICS_FILE, getPlantRawMetricsPath());
+    }
+    console.log(`[plant-trends-cache] seeded from bundle → ${target}`);
+    return { seeded: true, path: target };
+  } catch (err) {
+    console.warn(`[plant-trends-cache] seed skipped (${target}): ${err.message}`);
+    return { seeded: false, path: target, error: err.message };
   }
-  console.log(`[plant-trends-cache] seeded from bundle → ${target}`);
-  return { seeded: true, path: target };
 }
 
 function yearStartIso() {

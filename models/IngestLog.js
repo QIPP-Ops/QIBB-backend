@@ -6,6 +6,7 @@ const IngestLogSchema = new mongoose.Schema(
     blobLastModified: { type: Date, required: true },
     processedAt: { type: Date, default: Date.now },
     parserUsed: { type: String, default: '' },
+    noMatch: { type: Boolean, default: false },
     metricsWritten: { type: Number, default: 0 },
     skipped: { type: Boolean, default: false },
     error: { type: String, default: null },

@@ -188,53 +188,45 @@ exports.getChemistryWaterOverview = async (req, res) => {
 };
 
 exports.getMetricSeries = async (req, res) => {
-  const keys = String(req.query.keys || '')
-    .split(',')
-    .map((k) => k.trim())
-    .filter(Boolean);
-  if (!keys.length) {
-    return res.status(400).json({ message: 'keys query required (comma-separated metricKey)' });
+  try {
+    const keys = String(req.query.keys || '')
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (!keys.length) {
+      return res.status(400).json({ message: 'keys query required (comma-separated metricKey)' });
+    }
+
+    let fromStr = req.query.from;
+    let toStr = req.query.to;
+    if (!fromStr || !toStr) {
+      const y = new Date().getFullYear();
+      fromStr = fromStr || `${y}-01-01`;
+      toStr = toStr || new Date().toISOString().slice(0, 10);
+    }
+
+    const { fetchMetricSeriesFromMongo } = require('../services/plantReports/metricSeriesQuery');
+    const { series, from, to } = await fetchMetricSeriesFromMongo(keys, fromStr, toStr);
+
+    res.json({
+      success: true,
+      data: {
+        series,
+        metrics: keys,
+        from,
+        to,
+        minDate: series[0]?.date ?? from,
+        maxDate: series.length ? series[series.length - 1]?.date : to,
+      },
+    });
+  } catch (err) {
+    console.error('[trend-preview] error:', err.message);
+    res.status(500).json({ message: err.message });
   }
-
-  let fromStr = req.query.from;
-  let toStr = req.query.to;
-
-  if (!fromStr || !toStr) {
-    const y = new Date().getFullYear();
-    fromStr = fromStr || `${y}-01-01`;
-    toStr = toStr || new Date().toISOString().slice(0, 10);
-  }
-
-  const { expandMetricKeysForQuery } = require('../services/plantReports/metricKeys');
-  const queryKeys = expandMetricKeysForQuery(keys);
-  const keyClauses = [{ metricKey: { $in: queryKeys } }];
-  for (const k of keys) {
-    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    keyClauses.push({ metricKey: { $regex: new RegExp(`^${escaped}_day\\d+$`, 'i') } });
-  }
-
-  const rows = await PlantMetricPoint.find({
-    $or: keyClauses,
-    reportDate: { $gte: fromStr, $lte: toStr },
-  })
-    .sort({ reportDate: 1 })
-    .lean();
-
-  const { expandDayColumnSeries } = require('../services/plantReports/seriesTimeline');
-  const series = expandDayColumnSeries(rows, keys);
-
-  res.json({
-    success: true,
-    data: {
-      series,
-      metrics: keys,
-      from: fromStr,
-      to: toStr,
-      minDate: series[0]?.date ?? fromStr,
-      maxDate: series.length ? series[series.length - 1]?.date : toStr,
-    },
-  });
 };
+
+/** Alias for Trend Studio preview — same handler as GET /metrics/series */
+exports.getTrendPreview = exports.getMetricSeries;
 
 function adminFromBearer(req) {
   const authHeader = req.headers.authorization;

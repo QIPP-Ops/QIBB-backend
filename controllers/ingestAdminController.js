@@ -4,7 +4,8 @@ const AUDIT_ACTIONS = require('../constants/auditActions');
 
 exports.getIngestStatus = async (_req, res) => {
   try {
-    const status = getIngestCronStatus();
+    const status = await getIngestCronStatus();
+    const metricsInCache = status.metricsInCache ?? status.totalMetricsInCache ?? 0;
     res.json({
       success: true,
       data: {
@@ -14,8 +15,10 @@ exports.getIngestStatus = async (_req, res) => {
         metricsWritten: status.lastRunStats?.metricsWritten ?? 0,
         skippedCurrent: status.lastRunStats?.skippedCurrent ?? 0,
         noParser: status.lastRunStats?.noParser ?? 0,
-        totalMetricsInCache: status.totalMetricsInCache,
-        cachePath: status.cachePath,
+        totalMetricsInCache: metricsInCache,
+        metricsInCache,
+        cachePath: status.cachePath || '',
+        unmatchedFiles: status.unmatchedFiles || [],
         errors: status.errors || [],
         nextScheduledRunAt: status.nextScheduledRunAt,
         cronExpr: status.cronExpr,
@@ -23,13 +26,39 @@ exports.getIngestStatus = async (_req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.warn('[ingest-status] handler error:', err.message);
+    const { getPlantTrendsCachePath } = require('../services/plantReports/plantTrendsCache');
+    let cachePath = '';
+    try {
+      cachePath = getPlantTrendsCachePath();
+    } catch {
+      cachePath = process.env.PLANT_TRENDS_CACHE_DIR || '';
+    }
+    res.json({
+      success: true,
+      data: {
+        lastRunAt: null,
+        lastRunStats: null,
+        filesProcessed: 0,
+        metricsWritten: 0,
+        skippedCurrent: 0,
+        noParser: 0,
+        totalMetricsInCache: 0,
+        metricsInCache: 0,
+        cachePath,
+        unmatchedFiles: [],
+        errors: [err.message],
+        nextScheduledRunAt: null,
+        cronExpr: '0 */2 * * *',
+        running: false,
+      },
+    });
   }
 };
 
 exports.triggerIngest = async (req, res) => {
   try {
-    const status = getIngestCronStatus();
+    const status = await getIngestCronStatus();
     if (status.running) {
       return res.status(409).json({ message: 'Ingest cycle is already running.' });
     }

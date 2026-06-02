@@ -15,6 +15,7 @@ router.get('/chemistry-water-overview', c.getChemistryWaterOverview);
 router.get('/trends-cache', c.getTrendsCache);
 
 router.get('/metrics/series', protect, c.getMetricSeries);
+router.get('/trend-preview', protect, c.getTrendPreview);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
 router.get('/home-trends', protect, c.getHomeTrends);
 router.get('/metrics', protect, opsLead, c.listMetrics);

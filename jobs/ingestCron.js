@@ -18,6 +18,7 @@ let running = false;
 const lastRunState = {
   lastRunAt: null,
   lastRunStats: null,
+  unmatchedFiles: [],
   errors: [],
   cronExpr: CRON_UTC,
 };
@@ -66,6 +67,7 @@ async function runIngestCycle() {
 
   running = true;
   const errors = [];
+  const unmatchedFiles = [];
   let filesProcessed = 0;
   let metricsWritten = 0;
   let skippedCurrent = 0;
@@ -89,6 +91,23 @@ async function runIngestCycle() {
         const parser = getParserForFilename(filename);
         if (!parser) {
           noParser += 1;
+          unmatchedFiles.push(filename);
+          await IngestLog.findOneAndUpdate(
+            { filename, blobLastModified },
+            {
+              $set: {
+                filename,
+                blobLastModified,
+                processedAt: new Date(),
+                parserUsed: '',
+                noMatch: true,
+                metricsWritten: 0,
+                skipped: true,
+                error: null,
+              },
+            },
+            { upsert: true }
+          );
           continue;
         }
 
@@ -159,6 +178,7 @@ async function runIngestCycle() {
 
     lastRunState.lastRunAt = new Date();
     lastRunState.lastRunStats = stats;
+    lastRunState.unmatchedFiles = unmatchedFiles;
     lastRunState.errors = errors;
 
     console.log(
@@ -171,10 +191,65 @@ async function runIngestCycle() {
   }
 }
 
-function getIngestCronStatus() {
-  const { getPlantTrendsCachePath } = require('../services/plantReports/plantTrendsCache');
-  const cache = readPlantTrendsCacheFromDisk();
-  const cacheMetricCount = cache?.metrics?.length ?? 0;
+function safeReadCacheMetricCount() {
+  try {
+    const { getPlantTrendsCachePath, readPlantTrendsCacheFromDisk } = require('../services/plantReports/plantTrendsCache');
+    const cache = readPlantTrendsCacheFromDisk();
+    return {
+      cachePath: getPlantTrendsCachePath(),
+      totalMetricsInCache: cache?.metrics?.length ?? 0,
+    };
+  } catch (err) {
+    const { getPlantTrendsCachePath } = require('../services/plantReports/plantTrendsCache');
+    let cachePath = '';
+    try {
+      cachePath = getPlantTrendsCachePath();
+    } catch {
+      cachePath = process.env.PLANT_TRENDS_CACHE_DIR
+        ? path.join(path.resolve(process.env.PLANT_TRENDS_CACHE_DIR), 'plant-trends-cache.json')
+        : '';
+    }
+    console.warn(`[ingest-status] cache read failed: ${err.message}`);
+    return { cachePath, totalMetricsInCache: 0 };
+  }
+}
+
+async function fetchUnmatchedFilesFromLastRun() {
+  if (lastRunState.unmatchedFiles?.length) {
+    return [...lastRunState.unmatchedFiles].sort();
+  }
+  if (!lastRunState.lastRunAt) {
+    const latest = await IngestLog.findOne({
+      $or: [{ noMatch: true }, { parserUsed: { $in: [null, ''] } }],
+    })
+      .sort({ processedAt: -1 })
+      .lean();
+    if (!latest) return [];
+    const anchor = new Date(latest.processedAt);
+    const windowStart = new Date(anchor.getTime() - 30 * 60 * 1000);
+    const windowEnd = new Date(anchor.getTime() + 60 * 1000);
+    const rows = await IngestLog.find({
+      processedAt: { $gte: windowStart, $lte: windowEnd },
+      $or: [{ noMatch: true }, { parserUsed: { $in: [null, ''] } }],
+    })
+      .select('filename')
+      .lean();
+    return rows.map((r) => r.filename).filter(Boolean).sort();
+  }
+  const anchor = new Date(lastRunState.lastRunAt);
+  const windowStart = new Date(anchor.getTime() - 30 * 60 * 1000);
+  const rows = await IngestLog.find({
+    processedAt: { $gte: windowStart, $lte: anchor },
+    $or: [{ noMatch: true }, { parserUsed: { $in: [null, ''] } }],
+  })
+    .select('filename')
+    .lean();
+  return rows.map((r) => r.filename).filter(Boolean).sort();
+}
+
+async function getIngestCronStatus() {
+  const { cachePath, totalMetricsInCache } = safeReadCacheMetricCount();
+  const unmatchedFiles = await fetchUnmatchedFilesFromLastRun();
   return {
     cronExpr: CRON_UTC,
     running,
@@ -182,8 +257,10 @@ function getIngestCronStatus() {
     lastRunStats: lastRunState.lastRunStats,
     errors: lastRunState.errors,
     nextScheduledRunAt: getNextBiHourlyRun(),
-    cachePath: getPlantTrendsCachePath(),
-    totalMetricsInCache: cacheMetricCount,
+    cachePath,
+    totalMetricsInCache,
+    metricsInCache: totalMetricsInCache,
+    unmatchedFiles,
   };
 }
 
