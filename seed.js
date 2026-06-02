@@ -7,7 +7,8 @@ const AdminUser        = require('./models/AdminUser');
 const AdminConfig      = require('./models/AdminConfig');
 
 const rosterData = require('./data/roster.json');
-const plantData  = require('./data/plant_data.json');
+/** @deprecated Trends UI uses data/plant-trends-cache.json (blob ingest). This file seeds PlantPerformance KPI rows only. */
+const plantData = require('./data/plant_data.json');
 
 async function seed() {
   try {

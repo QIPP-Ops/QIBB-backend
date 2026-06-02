@@ -236,23 +236,53 @@ exports.getMetricSeries = async (req, res) => {
   });
 };
 
-exports.getTrendsCache = async (_req, res) => {
+function adminFromBearer(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.split(' ')[1];
+  if (!token || !process.env.JWT_SECRET) return null;
+  try {
+    const jwt = require('jsonwebtoken');
+    const { normalizeDecodedUser } = require('../utils/jwtAuth');
+    return normalizeDecodedUser(jwt.verify(token, process.env.JWT_SECRET));
+  } catch {
+    return null;
+  }
+}
+
+/** Serve pre-built data/plant-trends-cache.json only (no live Cosmos scan on hot path). */
+exports.getTrendsCache = async (req, res) => {
   try {
     const {
       readPlantTrendsCacheFromDisk,
-      buildPlantTrendsCachePayload,
       hasUsablePlantTrendsCache,
-      ensureChemistryWaterOnCache,
+      writePlantTrendsCache,
     } = require('../services/plantReports/plantTrendsCache');
-    let data = readPlantTrendsCacheFromDisk();
+
+    if (req.query.rebuild === '1') {
+      const { hasPortalAdminAccess } = require('../middleware/superAdmin');
+      const user = adminFromBearer(req);
+      if (!user || !hasPortalAdminAccess({ user })) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin Bearer token required for ?rebuild=1',
+        });
+      }
+      await writePlantTrendsCache();
+    }
+
+    const data = readPlantTrendsCacheFromDisk();
     if (!hasUsablePlantTrendsCache(data)) {
-      data = await buildPlantTrendsCachePayload();
-    } else {
-      data = await ensureChemistryWaterOnCache(data);
+      return res.status(503).json({
+        success: false,
+        message:
+          'Plant trends cache is missing or empty. Run ingest or `npm run ingest:local -- --cache-only` to rebuild data/plant-trends-cache.json.',
+        data: data || null,
+      });
     }
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

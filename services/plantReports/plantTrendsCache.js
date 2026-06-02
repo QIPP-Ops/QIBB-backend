@@ -209,20 +209,6 @@ function writeTrendsCacheFiles(payload, rawPayload) {
   };
 }
 
-/** Merge live chemistry/water from DB when disk cache only has generation metrics. */
-async function ensureChemistryWaterOnCache(data) {
-  if (!data) return data;
-  if (chemistryWaterHasData(data.chemistryWater)) return data;
-  try {
-    const dr = data.dateRange || {};
-    const chemistryWater = await fetchChemistryWaterSection(dr.from, dr.to);
-    if (!chemistryWaterHasData(chemistryWater)) return data;
-    return { ...data, chemistryWater };
-  } catch {
-    return data;
-  }
-}
-
 module.exports = {
   CACHE_FILE,
   RAW_METRICS_FILE,
@@ -234,6 +220,5 @@ module.exports = {
   hasUsablePlantTrendsCache,
   fetchChemistryWaterSection,
   chemistryWaterHasData,
-  ensureChemistryWaterOnCache,
   yearStartIso,
 };

@@ -10,7 +10,7 @@ Environment: set `COSMOS_MONGO_URI` (same value as `COSMOS_URI` in the Node app)
 | `energy_hourly` | `etl_energy_hourly.py` | `report_date` | Hourly energy metrics |
 | `gt_filter` | `etl_gt_air_filter.py`, `etl_gt_fg_filter.py` | `report_date` | GT filter differential pressure |
 | `daily_operation` | `etl_daily_operation.py` | `report_date` | Daily ops summary |
-| `plant_performance` | (KPI seed / trends) | `date` (Date) | Dashboard KPIs from `plant_data.json` |
+| `plant_performance` | (KPI seed only) | `date` (Date) | Legacy seed from `data/plant_data.json` — trends UI uses `data/plant-trends-cache.json` |
 | `trends_snapshots` | SharePoint sync / upload | `report_date` | Environmental trend snapshots |
 
 ## water_balance

@@ -71,11 +71,33 @@ Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in 
 
 **Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
 
-**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=900000` (15 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, `PLANT_INGEST_MAX_FILES=800`, `TREND_BACKFILL_MAX_DAYS=365`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. Parsed trends are stored in **`data/plant-trends-cache.json`** (git-tracked; included in deploy zip) and served via `GET /api/plant-data/trends-cache`. After deploy, startup **skips** blob re-parse when that file already has metrics/series (`index.js`); set `PLANT_INGEST_STARTUP_FORCE=1` to force a full re-parse, or `PLANT_INGEST_ON_STARTUP=0` to disable startup ingest entirely (15‑min scheduler + bi-hourly ingest cron still run). RO-HRSG / water filenames are matched case-insensitively; day-column Excel sheets merge into continuous series from January 1.
+### Plant trends pipeline (single path)
 
-**Refresh cache when new Excel lands in blob (no redeploy wipe):** run locally `npm run ingest:local` (or `npm run ingest:local -- --cache-only` if Cosmos already has points), commit the updated `data/plant-trends-cache.json`, and push. On the server, bi-hourly ingest cron updates Cosmos from new blobs and rebuilds the cache file in place.
+```mermaid
+flowchart LR
+  blob[Azure blob report container]
+  parsers[parserRegistry parsers]
+  cosmos[(Cosmos PlantMetricPoint + PlantMetric)]
+  cache[data/plant-trends-cache.json]
+  api[GET /api/plant-data/trends-cache]
+  ui[Frontend loadPlantTrendsCache]
 
-**Local ingest / cache rebuild:** `cp .env.example .env`, set `MONGODB_URI` (or `COSMOS_URI`), then `npm run ingest:local` (blob ingest if `BLOB_SAS_URL` is set; otherwise set `PLANT_REPORTS_DIR` to a folder of Excel files — blob settings take precedence). `npm run ingest:local -- --force` re-parses all files. `npm run ingest:local -- --cache-only` rebuilds `data/plant-trends-cache.json` from Cosmos without re-parsing Excel. Parse-only smoke test (no DB): `node scripts/test-ingest-sample.js "C:\path\to\reports"`.
+  blob --> parsers --> cosmos
+  cosmos -->|writePlantTrendsCache after ingest| cache
+  cache --> api --> ui
+```
+
+**Ingest triggers (all end in cache write):** startup ingest (`index.js`, skippable when cache present), 15‑min `ingestScheduler`, bi-hourly `ingestCron`, `POST /api/plant-data/ingest`, `POST /api/ingest/trigger`, `npm run ingest:local`.
+
+**Hot path:** `GET /api/plant-data/trends-cache` reads the disk file only — no live Cosmos scan. Missing cache → `503` with a clear message. Admins may rebuild with `GET /api/plant-data/trends-cache?rebuild=1` and a Bearer token, or `npm run ingest:local -- --cache-only`.
+
+**Plant ingest (Azure App Settings):** `PLANT_INGEST_MAX_AGE_DAYS=365`, `PLANT_INGEST_INTERVAL_MS=900000` (15 min), `PLANT_INGEST_ON_STARTUP=1`, `AZURE_STORAGE_CONNECTION_STRING` or `BLOB_SAS_URL`, `PLANT_INGEST_MAX_FILES=800`, `TREND_BACKFILL_MAX_DAYS=365`, `BLOB_DOWNLOAD_TIMEOUT_MS=120000`. After deploy, startup **skips** blob re-parse when `data/plant-trends-cache.json` already has metrics/series; set `PLANT_INGEST_STARTUP_FORCE=1` to force re-parse, or `PLANT_INGEST_ON_STARTUP=0` to disable startup ingest (scheduler + cron still run).
+
+**Refresh cache when new Excel lands in blob:** run `npm run ingest:local` locally (or `--cache-only` if Cosmos is current), commit `data/plant-trends-cache.json`, push. On Azure, bi-hourly ingest cron updates Cosmos and rebuilds the cache file in place.
+
+**Local ingest:** `cp .env.example .env`, set `COSMOS_URI`, then `npm run ingest:local`. `--force` re-parses all files; `--cache-only` rebuilds cache from Cosmos without re-parsing Excel. Parse-only (no DB): `node scripts/test-ingest-sample.js "C:\path\to\reports"`.
+
+**Legacy:** `data/plant_data.json` is seed-only for `PlantPerformance` (`npm run seed`), not served to the trends UI. `GET /operational-overview` and `GET /chemistry-water-overview` remain for backward compatibility; the frontend reads chemistry via `chemistryWater` inside the trends cache.
 
 **Shift highlight remark filters:** `services/plantReports/opsHighlightFilter.js` rejects date-only strings, label-only lines (e.g. `CRBS Status:`), generic phrases (`all are in service`, etc.), and remarks without substantive content (15+ chars or action verbs). Filters apply on ingest; existing bad rows in Cosmos are not deleted automatically — they refresh on the next ingest pass for matching source files, or run `npm run ingest:local -- --force` to re-process reports. Optional blocklist: `OPS_HIGHLIGHT_BLOCKLIST=phrase one,phrase two`.
 
@@ -93,7 +115,7 @@ Default seeded passwords are defined in `seed.js` only — they are not printed 
 4. `POST /api/auth/login` — returns JWT (requires verified email + approval)
 5. `GET /api/auth/verify` — validates token (send `Authorization: Bearer <token>`)
 
-Most operational routes require a valid JWT. **Public (no auth):** `/health`, `GET /api/plant-data/metrics/date-range`, `GET /api/plant-data/operational-overview` (home dashboard).
+Most operational routes require a valid JWT. **Public (no auth):** `/health`, `GET /api/plant-data/metrics/date-range`, `GET /api/plant-data/trends-cache`, legacy `GET /api/plant-data/operational-overview`.
 
 ## Python ETL
 
