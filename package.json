@@ -14,6 +14,7 @@
     "ingest:local": "node scripts/run-plant-ingest-local.js",
     "ingest:parse-json": "node scripts/parse-excel-to-json.js",
     "verify:trends-cache": "node scripts/verify-trends-cache.js",
+    "rebuild:trends-cache": "node scripts/rebuild-trends-cache-from-raw.js",
     "seed:curriculum": "node scripts/seed-curriculum.js",
     "migrate:auth": "node scripts/migrate-auth-fields.js",
     "set-password": "node scripts/set-user-password.js",
