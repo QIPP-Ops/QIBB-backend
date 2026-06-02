@@ -16,6 +16,11 @@ const BUNDLED_RAW_METRICS_FILE = path.join(BUNDLED_CACHE_DIR, 'plant-raw-metrics
 
 let resolvedCacheDir = null;
 
+/** Test-only: clear memoized writable dir between cases. */
+function resetPlantTrendsCacheDir() {
+  resolvedCacheDir = null;
+}
+
 function isAzureAppService() {
   return Boolean(
     process.env.WEBSITE_SITE_NAME ||
@@ -324,6 +329,8 @@ function writeTrendsCacheFiles(payload, rawPayload) {
 module.exports = {
   BUNDLED_CACHE_DIR,
   BUNDLED_CACHE_FILE,
+  resetPlantTrendsCacheDir,
+  isAzureAppService,
   getPlantTrendsCacheDir,
   getPlantTrendsCachePath,
   getPlantRawMetricsPath,
