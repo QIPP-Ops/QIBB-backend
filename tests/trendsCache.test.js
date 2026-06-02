@@ -23,6 +23,7 @@ const { getTrendsCache } = require('../controllers/plantDataController');
 const {
   CACHE_FILE,
   hasUsablePlantTrendsCache,
+  hasTrendSeriesData,
   buildPlantTrendsCacheFromPoints,
   chemistryWaterHasData,
   readPlantTrendsCacheFromDisk,
@@ -86,7 +87,10 @@ describe('getTrendsCache (disk-only hot path)', () => {
   it('returns 503 when cache file is missing or empty', async () => {
     const missingPath = path.join(path.dirname(CACHE_FILE), 'plant-trends-cache-missing-test.json');
     const realCache = readPlantTrendsCacheFromDisk();
-    fs.writeFileSync(CACHE_FILE, JSON.stringify({ generatedAt: '2026-01-01', metrics: [], seriesByKey: {} }));
+    fs.writeFileSync(
+      CACHE_FILE,
+      JSON.stringify({ generatedAt: '2026-01-01', metrics: [{ metricKey: 'a' }], seriesByKey: {} })
+    );
 
     const app = express();
     app.get('/trends-cache', getTrendsCache);
@@ -110,7 +114,7 @@ describe('getTrendsCache (disk-only hot path)', () => {
 });
 
 describe('plantTrendsCache disk reader', () => {
-  it('hasUsablePlantTrendsCache detects metrics or series', () => {
+  it('hasUsablePlantTrendsCache requires non-empty time series', () => {
     expect(hasUsablePlantTrendsCache(null)).toBe(false);
     expect(hasUsablePlantTrendsCache({ generatedAt: '2026-01-01', metrics: [], seriesByKey: {} })).toBe(
       false
@@ -118,10 +122,17 @@ describe('plantTrendsCache disk reader', () => {
     expect(
       hasUsablePlantTrendsCache({
         generatedAt: '2026-01-01',
+        metrics: [{ metricKey: 'a' }],
+        seriesByKey: {},
+      })
+    ).toBe(false);
+    expect(
+      hasUsablePlantTrendsCache({
+        generatedAt: '2026-01-01',
         metrics: [{ metricKey: 'x' }],
         seriesByKey: {},
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       hasUsablePlantTrendsCache({
         generatedAt: '2026-01-01',
@@ -129,6 +140,7 @@ describe('plantTrendsCache disk reader', () => {
         seriesByKey: { x: [{ date: '2026-01-01', x: 1 }] },
       })
     ).toBe(true);
+    expect(hasTrendSeriesData({ seriesByKey: { x: [] } })).toBe(false);
   });
 
   it('buildPlantTrendsCacheFromPoints builds series from parsed points', () => {

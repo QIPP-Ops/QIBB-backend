@@ -185,12 +185,17 @@ function readPlantTrendsCacheFromDisk() {
   }
 }
 
+/** At least one metric key has a non-empty time series (required for charts/KPIs). */
+function hasTrendSeriesData(data) {
+  const series = data?.seriesByKey;
+  if (!series || typeof series !== 'object') return false;
+  return Object.values(series).some((rows) => Array.isArray(rows) && rows.length > 0);
+}
+
 /** True when committed/deployed cache has trend data (skip heavy startup blob parse). */
 function hasUsablePlantTrendsCache(data = readPlantTrendsCacheFromDisk()) {
   if (!data?.generatedAt) return false;
-  if (Array.isArray(data.metrics) && data.metrics.length > 0) return true;
-  const series = data.seriesByKey;
-  return Boolean(series && typeof series === 'object' && Object.keys(series).length > 0);
+  return hasTrendSeriesData(data);
 }
 
 function writeTrendsCacheFiles(payload, rawPayload) {
@@ -217,6 +222,7 @@ module.exports = {
   writePlantTrendsCache,
   writeTrendsCacheFiles,
   readPlantTrendsCacheFromDisk,
+  hasTrendSeriesData,
   hasUsablePlantTrendsCache,
   fetchChemistryWaterSection,
   chemistryWaterHasData,
