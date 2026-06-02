@@ -59,10 +59,29 @@ exports.getTrendDisplay = async (_req, res) => {
       /* cache optional */
     }
 
+    let seriesKeys = [];
+    try {
+      const { readPlantTrendsCacheFromDisk } = require('../services/plantReports/plantTrendsCache');
+      const cache = readPlantTrendsCacheFromDisk();
+      if (cache?.seriesByKey && typeof cache.seriesByKey === 'object') {
+        seriesKeys = Object.entries(cache.seriesByKey)
+          .filter(([, rows]) => Array.isArray(rows) && rows.length > 0)
+          .map(([key]) => key);
+      }
+    } catch {
+      /* cache optional */
+    }
+
     const metricKeySet = new Set([
       ...metrics.map((m) => m.metricKey),
       ...cacheKeys,
     ]);
+    if (seriesKeys.length) {
+      for (const key of [...metricKeySet]) {
+        if (!seriesKeys.includes(key)) metricKeySet.delete(key);
+      }
+      for (const key of seriesKeys) metricKeySet.add(key);
+    }
 
     res.json({
       success: true,

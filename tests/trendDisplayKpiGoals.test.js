@@ -28,6 +28,14 @@ describe('trend display config', () => {
     expect([200, 503]).toContain(res.status);
   });
 
+  test('PATCH /api/admin/trend-display allows super admin', async () => {
+    const res = await request(app)
+      .patch('/api/admin/trend-display')
+      .set('Authorization', `Bearer ${tokenFor('admin@acwaops.com')}`)
+      .send({ panel: { panelId: 'plant_load', displayName: 'Load', metricKeys: ['plant_load'] } });
+    expect([200, 503]).toContain(res.status);
+  });
+
   test('PATCH /api/admin/trend-display blocks non super admin', async () => {
     const res = await request(app)
       .patch('/api/admin/trend-display')
