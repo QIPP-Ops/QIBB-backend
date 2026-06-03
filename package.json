@@ -9,6 +9,7 @@
     "seed": "node seed.js",
     "seed:super-admin": "node scripts/seed-super-admin.js",
     "seed:employees": "node scripts/seedEmployeeData.js",
+    "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",
     "seed:ptw": "node seeders/ptwSeed.js",
     "parse:ptw": "node scripts/parse-ptw-excel.js",
     "ingest:local": "node scripts/run-plant-ingest-local.js",

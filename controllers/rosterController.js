@@ -10,6 +10,7 @@ const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
 const {
   isAnnualLeaveType,
   isBankLeaveType,
+  isCompensateLeaveType,
 } = require('../constants/leaveTypes');
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 const { logAction } = require('../services/auditLogService');
@@ -118,7 +119,7 @@ exports.addLeave = async (req, res) => {
       user.bankLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
     }
 
-    if (/compensat/i.test(leaveTypeStr)) {
+    if (isCompensateLeaveType(leaveTypeStr)) {
       const span =
         typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0
           ? leaveData.workingDays

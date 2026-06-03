@@ -95,14 +95,14 @@ function isEmployeeOnDuty(employee, dateStr, options = {}) {
   return resolveEmployeeShift(employee, dateStr, options).onDuty;
 }
 
-const { normalizeLeaveType } = require('../constants/leaveTypes');
+const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
 const { sortRosterEmployees } = require('../utils/rosterRowSort');
 
 function leaveStyleFlags(type) {
   const t = normalizeLeaveType(type);
   return {
     leaveType: t,
-    isAnnualLeave: t === 'Annual Leave',
+    isAnnualLeave: isAnnualLeaveType(t),
     isBankLeave: t === 'Bank Leave',
     isPlannedLeave: t === 'Planned' || /^applied on sap$/i.test(String(type || '')),
   };

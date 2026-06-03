@@ -1,0 +1,787 @@
+{
+  "balances": [
+    {
+      "name": "Abdul Hameed AbdulRasheed",
+      "email": "a_hameed@nomac.com",
+      "annualLeaveBalance": 3.83
+    },
+    {
+      "name": "Sami Hamdan Al Harbi",
+      "email": "sami.alharbi@nomac.com",
+      "annualLeaveBalance": 10.41,
+      "bankLeaveBalance": 44
+    },
+    {
+      "name": "MOHAMMED ABDULLAH ALDAWSARI",
+      "email": "m.aldawsari@nomac.com",
+      "annualLeaveBalance": 8.16,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Abdullah Faleh Al hajri",
+      "email": "abdullah.faleh@nomac.com",
+      "annualLeaveBalance": 10.41,
+      "bankLeaveBalance": 0.5
+    },
+    {
+      "name": "Bakr Abdulmajeed Al khabeerani",
+      "email": "bakr.kamal@nomac.com",
+      "annualLeaveBalance": 8.03,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Abdulrahman Shabib AlBaqami",
+      "email": "abdulrahman.shabib@nomac.com",
+      "annualLeaveBalance": -8.83,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Faris Shaya AlDawsari",
+      "email": "faris.shaya@nomac.com",
+      "annualLeaveBalance": -5.83
+    },
+    {
+      "name": "Mohammad Abdullah AlGarni",
+      "email": "m.algarni@nomac.com",
+      "annualLeaveBalance": 4.91,
+      "bankLeaveBalance": 3
+    },
+    {
+      "name": "Saad Salem AlHajri",
+      "email": "saad.salem@nomac.com",
+      "annualLeaveBalance": 9.16
+    },
+    {
+      "name": "Abdulhadi Mohammed AlMohammedSaleh",
+      "email": "abdulhadi.mohammed@nomac.com",
+      "annualLeaveBalance": 9.16
+    },
+    {
+      "name": "Ali Mashabab AlQahtani",
+      "email": "ali.mashabab@nomac.com",
+      "annualLeaveBalance": 8.16,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Saad Mohammed AlShahrani",
+      "email": "saad.mohammed@nomac.com",
+      "annualLeaveBalance": 9.16,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Abdullah Abdulrahman Alamri",
+      "email": "abdullah.alamri@nomac.com",
+      "annualLeaveBalance": 7.58,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Saleh Mohammed Saleh Alamri",
+      "email": "saleh.alamri@nomac.com",
+      "annualLeaveBalance": 10,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Saad Fadel Saad Alenezi",
+      "email": "saad.alenizi@nomac.com",
+      "annualLeaveBalance": -1.41,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Mohammed Abdullah Alghamdi",
+      "email": "mohammed.gh@nomac.com",
+      "annualLeaveBalance": -2.83,
+      "bankLeaveBalance": 1
+    },
+    {
+      "name": "Rashed Ghalib Alhajri",
+      "email": "r.hajri@nomac.com",
+      "annualLeaveBalance": 10.41,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Abdulaziz Dhaifallah Alharbi",
+      "email": "abdulaziz.a@nomac.com",
+      "annualLeaveBalance": 9.33
+    },
+    {
+      "name": "Syed Shahnawaz Ahmed Syed Salim Ahmed",
+      "email": "syed.shahnawaz@nomac.com",
+      "annualLeaveBalance": -1.16,
+      "bankLeaveBalance": 0.58
+    },
+    {
+      "name": "Muhammad Afnan Shafi",
+      "email": "m.afnan@nomac.com",
+      "annualLeaveBalance": 9.16,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Mark Anthony Villaluz Ramirez",
+      "email": "mark.ramirez@nomac.com",
+      "annualLeaveBalance": 9.24,
+      "bankLeaveBalance": 0.66
+    },
+    {
+      "name": "LAKSHMI APPALA RAMA DURGA PRASAD ROWTHU",
+      "email": "lakshmi.rowthu@nomac.com",
+      "annualLeaveBalance": 9.16
+    },
+    {
+      "name": "Devaraj Purushothaman",
+      "email": "p.devaraj@nomac.com",
+      "annualLeaveBalance": 1.16,
+      "bankLeaveBalance": 0.66
+    },
+    {
+      "name": "Somanathan Nair Prathapan",
+      "email": "prathapan@nomac.com",
+      "annualLeaveBalance": 10.83
+    },
+    {
+      "name": "Veera Venkata Prasad Vaka",
+      "email": "veera.venkata@nomac.com",
+      "annualLeaveBalance": 9.41,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Mustafa Salem Mustafa",
+      "email": "mustafa.salem@nomac.com",
+      "annualLeaveBalance": 9.41,
+      "bankLeaveBalance": 28
+    },
+    {
+      "name": "Rajesh Muniasamy",
+      "email": "r.muniasamy@nomac.com",
+      "annualLeaveBalance": 4.89
+    },
+    {
+      "name": "Izhar Ali Muhammad",
+      "email": "izhar.ali@nomac.com",
+      "annualLeaveBalance": 1.16,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Ahmed Mostafa Mohamed Meshref",
+      "email": "ahmed.mostafa@nomac.com",
+      "annualLeaveBalance": 10.83
+    },
+    {
+      "name": "Saravanakumar Madhaiyan",
+      "email": "s.madhaiyan@nomac.com",
+      "annualLeaveBalance": -6.75,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Shaheer Yousaf Latif Ur Rehman",
+      "email": "shaheer.yousaf@nomac.com",
+      "annualLeaveBalance": 8.91
+    },
+    {
+      "name": "Kanaka Naga Srinivasu Kolli",
+      "email": "kanaka.naga@nomac.com",
+      "annualLeaveBalance": 9.24
+    },
+    {
+      "name": "Khaled Saleh Khulusi",
+      "email": "k.khulusi@nomac.com",
+      "annualLeaveBalance": 1.16,
+      "bankLeaveBalance": 3.63
+    },
+    {
+      "name": "Juma Khan",
+      "email": "juma.khan@nomac.com",
+      "annualLeaveBalance": 2.83
+    },
+    {
+      "name": "Bader Ibrahim Abdulrahman Alsubeet",
+      "email": "b.alsubit@nomac.com",
+      "annualLeaveBalance": 10,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Ahmed Fathy Ibrahim AbduelKader",
+      "email": "ahmed.abdelkhad@nomac.com",
+      "annualLeaveBalance": 9.24,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Moustafa Elansary Hewaidy",
+      "email": "moustafa.elansary@nomac.com",
+      "annualLeaveBalance": 10.83,
+      "bankLeaveBalance": 10
+    },
+    {
+      "name": "Fahad Faisal Halawani",
+      "email": "fahad.halawani@nomac.com",
+      "annualLeaveBalance": 5.68,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Mohammed Hassan Hakami",
+      "email": "mohammed.hassan@nomac.com",
+      "annualLeaveBalance": 9.16
+    },
+    {
+      "name": "Walid Elshahhat Hussein Fayad",
+      "email": "walid.fayad@nomac.com",
+      "annualLeaveBalance": 3.16,
+      "bankLeaveBalance": 0.76
+    },
+    {
+      "name": "Mohammed Fahad Al Mulhim",
+      "email": "mohammed.almulhim@nomac.com",
+      "annualLeaveBalance": 7.58
+    },
+    {
+      "name": "Norbie Vianzon Cruz",
+      "email": "norbie.cruz@nomac.com",
+      "annualLeaveBalance": 10.58,
+      "bankLeaveBalance": 6
+    },
+    {
+      "name": "Albara Tareq M Barri",
+      "email": "a.barri@nomac.com",
+      "annualLeaveBalance": 3.66
+    },
+    {
+      "name": "Hassan Arshad",
+      "email": "arshad.hassan@nomac.com",
+      "annualLeaveBalance": 10.41,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Yasir Essa Althuwayqib",
+      "email": "y.althuwayqib@nomac.com",
+      "annualLeaveBalance": 9.16,
+      "bankLeaveBalance": 1
+    },
+    {
+      "name": "Mashal Mohammed Alsumaihan",
+      "email": "mashal.alsumaihan@nomac.com",
+      "annualLeaveBalance": 6.16,
+      "bankLeaveBalance": 0.17
+    },
+    {
+      "name": "Ahmed Salem Alsaqoor",
+      "email": "ahmed.alsaqoor@nomac.com",
+      "annualLeaveBalance": 2.16,
+      "bankLeaveBalance": 1
+    },
+    {
+      "name": "Alaa Alrefaei",
+      "email": "a.alrefaei@nomac.com",
+      "annualLeaveBalance": 6.87
+    },
+    {
+      "name": "Fawaz Mari Saeed Alqahtani",
+      "email": "fawaz.alqahtani@nomac.com",
+      "annualLeaveBalance": 3,
+      "bankLeaveBalance": 3
+    },
+    {
+      "name": "Faisal Abdullah D Alotaibi",
+      "email": "faisal.alotaibi@nomac.com",
+      "annualLeaveBalance": 3.42
+    },
+    {
+      "name": "Zaid Hadi Almarri",
+      "email": "z.almarri@nomac.com",
+      "annualLeaveBalance": 7.2
+    },
+    {
+      "name": "Adam Mohammed Alhuzum",
+      "email": "adam.alhuzum@nomac.com",
+      "annualLeaveBalance": 9.41,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Saud Saad Abdulkarim Abdulkarim",
+      "email": "saud.abdulkarim@nomac.com",
+      "annualLeaveBalance": 3.58,
+      "bankLeaveBalance": 40
+    },
+    {
+      "name": "Mukhtar Ali",
+      "email": "mukhtar.ali@nomac.com",
+      "annualLeaveBalance": 10.83,
+      "bankLeaveBalance": 5
+    },
+    {
+      "name": "Mohamed Nawas Mohamed Mydeen",
+      "email": "mohamed.nawas@nomac.com",
+      "annualLeaveBalance": 10.83,
+      "bankLeaveBalance": 4
+    },
+    {
+      "name": "Tariq Mohammed Alqahtani",
+      "email": "tariq.alqahtani@nomac.com",
+      "annualLeaveBalance": 7.58,
+      "bankLeaveBalance": 2
+    },
+    {
+      "name": "Alvin Haban Perello",
+      "email": "alvin.perello@nomac.com",
+      "annualLeaveBalance": 9.16,
+      "bankLeaveBalance": 4.67
+    },
+    {
+      "name": "Qasem Ahmed Al Saad",
+      "email": "qasem.ahmed@nomac.com",
+      "annualLeaveBalance": 0,
+      "bankLeaveBalance": 0
+    },
+    {
+      "name": "Mohammed Ahmed Saleh Al Gamdi",
+      "email": "m.a.alghamdi@nomac.com",
+      "annualLeaveBalance": 10,
+      "bankLeaveBalance": 2
+    }
+  ],
+  "leaves": [
+    {
+      "email": "m.aldawsari@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-07",
+      "end": "2026-01-07"
+    },
+    {
+      "email": "a_hameed@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-14",
+      "end": "2026-01-03"
+    },
+    {
+      "email": "a_hameed@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-01-18",
+      "end": "2026-01-28"
+    },
+    {
+      "email": "a_hameed@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-29",
+      "end": "2026-02-05"
+    },
+    {
+      "email": "a_hameed@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-29",
+      "end": "2026-06-13"
+    },
+    {
+      "email": "sami.alharbi@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-12",
+      "end": "2026-01-04"
+    },
+    {
+      "email": "sami.alharbi@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-07",
+      "end": "2026-02-15"
+    },
+    {
+      "email": "abdullah.faleh@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-05",
+      "end": "2026-01-28"
+    },
+    {
+      "email": "bakr.kamal@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-05-21",
+      "end": "2026-05-25"
+    },
+    {
+      "email": "abdulrahman.shabib@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-22",
+      "end": "2026-01-09"
+    },
+    {
+      "email": "abdulrahman.shabib@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-21",
+      "end": "2026-04-28"
+    },
+    {
+      "email": "faris.shaya@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-03-24",
+      "end": "2026-03-31"
+    },
+    {
+      "email": "faris.shaya@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-01",
+      "end": "2026-04-08"
+    },
+    {
+      "email": "faris.shaya@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-09",
+      "end": "2026-04-10"
+    },
+    {
+      "email": "faris.shaya@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-17",
+      "end": "2026-05-24"
+    },
+    {
+      "email": "m.algarni@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-01-29",
+      "end": "2026-01-29"
+    },
+    {
+      "email": "m.algarni@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-03-28",
+      "end": "2026-03-28"
+    },
+    {
+      "email": "m.algarni@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-17",
+      "end": "2026-05-29"
+    },
+    {
+      "email": "saad.salem@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-15",
+      "end": "2026-02-15"
+    },
+    {
+      "email": "saad.salem@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-03-26",
+      "end": "2026-03-27"
+    },
+    {
+      "email": "saad.salem@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-04-27",
+      "end": "2026-04-28"
+    },
+    {
+      "email": "abdulhadi.mohammed@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-04-21",
+      "end": "2026-04-21"
+    },
+    {
+      "email": "ali.mashabab@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-15",
+      "end": "2026-01-16"
+    },
+    {
+      "email": "saad.alenizi@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-02-16",
+      "end": "2026-02-23"
+    },
+    {
+      "email": "saad.alenizi@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-30",
+      "end": "2026-05-14"
+    },
+    {
+      "email": "mohammed.gh@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-20",
+      "end": "2026-02-25"
+    },
+    {
+      "email": "mohammed.gh@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-02-26",
+      "end": "2026-03-31"
+    },
+    {
+      "email": "adam.alhuzum@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-11-18",
+      "end": "2026-01-06"
+    },
+    {
+      "email": "fawaz.alqahtani@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-21",
+      "end": "2026-01-28"
+    },
+    {
+      "email": "fawaz.alqahtani@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-27",
+      "end": "2026-05-30"
+    },
+    {
+      "email": "fawaz.alqahtani@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-20",
+      "end": "2026-06-21"
+    },
+    {
+      "email": "ahmed.alsaqoor@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-19",
+      "end": "2026-06-11"
+    },
+    {
+      "email": "mashal.alsumaihan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-26",
+      "end": "2026-01-26"
+    },
+    {
+      "email": "mashal.alsumaihan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-22",
+      "end": "2026-06-06"
+    },
+    {
+      "email": "y.althuwayqib@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-23",
+      "end": "2026-01-11"
+    },
+    {
+      "email": "y.althuwayqib@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-12",
+      "end": "2026-01-12"
+    },
+    {
+      "email": "y.althuwayqib@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-05-23",
+      "end": "2026-06-04"
+    },
+    {
+      "email": "y.althuwayqib@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-05",
+      "end": "2026-06-07"
+    },
+    {
+      "email": "arshad.hassan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-24",
+      "end": "2026-03-08"
+    },
+    {
+      "email": "norbie.cruz@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-28",
+      "end": "2026-07-28"
+    },
+    {
+      "email": "walid.fayad@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-14",
+      "end": "2026-01-18"
+    },
+    {
+      "email": "walid.fayad@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-01-23",
+      "end": "2026-01-27"
+    },
+    {
+      "email": "walid.fayad@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-28",
+      "end": "2026-01-30"
+    },
+    {
+      "email": "walid.fayad@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-05-31",
+      "end": "2026-06-23"
+    },
+    {
+      "email": "mohammed.hassan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-03-18",
+      "end": "2026-03-19"
+    },
+    {
+      "email": "fahad.halawani@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-02-25",
+      "end": "2026-02-26"
+    },
+    {
+      "email": "moustafa.elansary@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-06-24",
+      "end": "2026-07-06"
+    },
+    {
+      "email": "ahmed.abdelkhad@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-06-06",
+      "end": "2026-06-14"
+    },
+    {
+      "email": "ahmed.abdelkhad@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-15",
+      "end": "2026-07-13"
+    },
+    {
+      "email": "b.alsubit@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-31",
+      "end": "2026-01-22"
+    },
+    {
+      "email": "b.alsubit@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-07",
+      "end": "2026-06-20"
+    },
+    {
+      "email": "juma.khan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-01-31",
+      "end": "2026-02-07"
+    },
+    {
+      "email": "juma.khan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-29",
+      "end": "2026-05-14"
+    },
+    {
+      "email": "juma.khan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-05-16",
+      "end": "2026-05-20"
+    },
+    {
+      "email": "k.khulusi@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-31",
+      "end": "2026-02-15"
+    },
+    {
+      "email": "kanaka.naga@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-09",
+      "end": "2026-01-21"
+    },
+    {
+      "email": "shaheer.yousaf@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-31",
+      "end": "2026-01-30"
+    },
+    {
+      "email": "s.madhaiyan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-02-10",
+      "end": "2026-02-21"
+    },
+    {
+      "email": "s.madhaiyan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-02-22",
+      "end": "2026-03-13"
+    },
+    {
+      "email": "ahmed.mostafa@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-02",
+      "end": "2026-02-13"
+    },
+    {
+      "email": "izhar.ali@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-21",
+      "end": "2026-05-02"
+    },
+    {
+      "email": "r.muniasamy@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-10",
+      "end": "2026-01-02"
+    },
+    {
+      "email": "r.muniasamy@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-01-11",
+      "end": "2026-01-18"
+    },
+    {
+      "email": "r.muniasamy@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-28",
+      "end": "2026-07-05"
+    },
+    {
+      "email": "mustafa.salem@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-26",
+      "end": "2026-01-14"
+    },
+    {
+      "email": "mustafa.salem@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-04",
+      "end": "2026-06-13"
+    },
+    {
+      "email": "veera.venkata@nomac.com",
+      "type": "Annual Leave",
+      "start": "2025-12-26",
+      "end": "2026-01-10"
+    },
+    {
+      "email": "prathapan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-02",
+      "end": "2026-02-05"
+    },
+    {
+      "email": "prathapan@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-18",
+      "end": "2026-02-18"
+    },
+    {
+      "email": "p.devaraj@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-04-26",
+      "end": "2026-05-07"
+    },
+    {
+      "email": "lakshmi.rowthu@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-02-12",
+      "end": "2026-02-21"
+    },
+    {
+      "email": "lakshmi.rowthu@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-30",
+      "end": "2026-07-31"
+    },
+    {
+      "email": "mark.ramirez@nomac.com",
+      "type": "Annual Leave - Carry Forward Previous Year",
+      "start": "2026-01-08",
+      "end": "2026-01-14"
+    },
+    {
+      "email": "m.afnan@nomac.com",
+      "type": "Annual Leave",
+      "start": "2026-06-02",
+      "end": "2026-06-17"
+    }
+  ],
+  "ignoredNonAnnualLeaves": 26
+}

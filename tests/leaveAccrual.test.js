@@ -13,6 +13,7 @@ const {
 describe('leaveTypes', () => {
   test('balance types', () => {
     expect(isAnnualLeaveType('Annual Leave')).toBe(true);
+    expect(isAnnualLeaveType('Annual Leave - Carry Forward Previous Year')).toBe(true);
     expect(isBalanceLeaveType('Bank Leave')).toBe(true);
     expect(isBalanceLeaveType('Planned')).toBe(false);
   });
