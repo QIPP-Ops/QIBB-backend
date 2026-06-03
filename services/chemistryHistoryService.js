@@ -137,4 +137,5 @@ module.exports = {
   appendFromTrendsSnapshot,
   getHistoryForParameter,
   buildParameterKey,
+  flattenNestedSnapshot,
 };

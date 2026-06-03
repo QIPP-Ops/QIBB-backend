@@ -5,6 +5,26 @@ const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { expandDayColumnSeries } = require('../plantReports/seriesTimeline');
 const { getDateBounds, clampRange } = require('../plantReports/historicalDashboard');
 const { buildOperationalOverview } = require('../plantReports/operationalOverview');
+const { buildChemistryWaterPanel } = require('./chemistryWaterSeries');
+const { TREND_DEFINITION_SEEDS } = require('./trendDefinitionSeeds');
+
+let seedingDefinitions = null;
+
+async function ensureTrendDefinitionsSeeded() {
+  const count = await TrendDefinition.countDocuments();
+  if (count > 0) return count;
+  if (!seedingDefinitions) {
+    seedingDefinitions = TrendDefinition.insertMany(TREND_DEFINITION_SEEDS, { ordered: false })
+      .catch((err) => {
+        if (err?.code !== 11000) throw err;
+      })
+      .finally(() => {
+        seedingDefinitions = null;
+      });
+  }
+  await seedingDefinitions;
+  return TrendDefinition.countDocuments();
+}
 
 function panelMatchers(def) {
   const patterns = (def.metricSeries || [])
@@ -58,6 +78,23 @@ function panelSummary(series, primaryKey) {
   return { latest, target: avg, changePct, min: Math.min(...vals), max: Math.max(...vals) };
 }
 
+function filterSeeds(filter) {
+  let defs = [...TREND_DEFINITION_SEEDS];
+  if (filter.panelId) defs = defs.filter((d) => d.panelId === filter.panelId);
+  if (filter.showOnHome) defs = defs.filter((d) => d.showOnHome);
+  if (filter.showOnManagement) defs = defs.filter((d) => d.showOnManagement);
+  if (filter.showOnTrends) defs = defs.filter((d) => d.showOnTrends);
+  if (filter.showOnInsightStrip) defs = defs.filter((d) => d.showOnInsightStrip);
+  if (filter.route) {
+    defs = defs.filter(
+      (d) =>
+        !d.appliesToRoutes?.length ||
+        d.appliesToRoutes.some((r) => r === filter.route || filter.route.startsWith(r))
+    );
+  }
+  return defs.sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
 async function loadDefinitions(filter = {}) {
   const q = {};
   if (filter.route) {
@@ -69,10 +106,13 @@ async function loadDefinitions(filter = {}) {
   if (filter.showOnInsightStrip) q.showOnInsightStrip = true;
   if (filter.panelId) q.panelId = filter.panelId;
 
-  let defs = await TrendDefinition.find(q).sort({ order: 1, panelId: 1 }).lean();
-  if (!defs.length && !filter.panelId) {
-    const { TREND_DEFINITION_SEEDS } = require('./trendDefinitionSeeds');
-    defs = TREND_DEFINITION_SEEDS;
+  const total = await ensureTrendDefinitionsSeeded();
+  let defs =
+    total > 0
+      ? await TrendDefinition.find(q).sort({ order: 1, panelId: 1 }).lean()
+      : [];
+  if (!defs.length) {
+    defs = filterSeeds(filter);
   }
   if (filter.route) {
     defs = defs.filter(
@@ -86,22 +126,26 @@ async function loadDefinitions(filter = {}) {
 
 async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
   if (def.dataSource === 'chemistry_water') {
+    return buildChemistryWaterPanel(def, from, to);
+  }
+
+  const matched = matchMetrics(allMetrics, def).filter((m) => !usedKeys.has(m.metricKey));
+  if (!matched.length) {
     return {
       id: def.panelId,
       title: def.title,
+      description: def.description || '',
       chartType: def.chartType,
       category: def.category,
       unit: def.unit || '',
+      theme: def.theme || 'default',
       metricKeys: [],
       labels: {},
       series: [],
       summary: null,
-      dataSource: def.dataSource,
+      dataSource: def.dataSource || 'plant_metric_point',
     };
   }
-
-  const matched = matchMetrics(allMetrics, def).filter((m) => !usedKeys.has(m.metricKey));
-  if (!matched.length) return null;
   matched.forEach((m) => usedKeys.add(m.metricKey));
   const keys = matched.map((m) => m.metricKey);
   const rows = await PlantMetricPoint.find({
@@ -111,7 +155,22 @@ async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
     .sort({ reportDate: 1 })
     .lean();
   const series = expandDayColumnSeries(rows, keys);
-  if (!series.length) return null;
+  if (!series.length) {
+    return {
+      id: def.panelId,
+      title: def.title,
+      description: def.description || '',
+      chartType: def.chartType,
+      category: def.category,
+      unit: def.unit || matched[0]?.unit || '',
+      theme: def.theme || 'default',
+      metricKeys: keys,
+      labels: Object.fromEntries(matched.map((m) => [m.metricKey, m.label])),
+      series: [],
+      summary: null,
+      dataSource: def.dataSource || 'plant_metric_point',
+    };
+  }
   const labels = Object.fromEntries(
     matched.map((m, i) => {
       const cfg = def.metricSeries?.[i];
@@ -156,7 +215,33 @@ async function queryPanelsForRoute(route, dateRange = {}) {
     const panel = await buildPanelPayload(def, from, to, allMetrics, usedKeys);
     if (panel) panels.push(panel);
   }
-  return { dateRange: { from, to, ...bounds }, panels };
+  const result = { dateRange: { from, to, ...bounds }, panels };
+  return mergeCachePanelsIfEmpty(result);
+}
+
+async function mergeCachePanelsIfEmpty(result) {
+  const hasData = (result.panels || []).some((p) => Array.isArray(p.series) && p.series.length > 0);
+  if (hasData) return result;
+  try {
+    const {
+      readPlantTrendsCacheFromDisk,
+      hasUsablePlantTrendsCache,
+    } = require('../plantReports/plantTrendsCache');
+    const { buildHistoricalDashboard: legacyDashboard } = require('../plantReports/historicalDashboard');
+    const cache = readPlantTrendsCacheFromDisk();
+    if (hasUsablePlantTrendsCache(cache)) {
+      const legacy = await legacyDashboard({
+        from: result.dateRange.from,
+        to: result.dateRange.to,
+      });
+      if (legacy.panels?.length) {
+        return { ...result, panels: legacy.panels, _fallback: 'plant-trends-cache' };
+      }
+    }
+  } catch {
+    /* disk cache optional */
+  }
+  return result;
 }
 
 async function buildHistoricalDashboard(query = {}) {
@@ -193,7 +278,7 @@ async function buildHistoricalDashboard(query = {}) {
     .select('createdAt water energy dailyOps')
     .lean();
 
-  return {
+  const payload = {
     dateRange: { from, to, ...bounds },
     panels,
     categoryBreakdown,
@@ -205,13 +290,20 @@ async function buildHistoricalDashboard(query = {}) {
     })),
     metricCount: allMetrics.length,
   };
+  const merged = await mergeCachePanelsIfEmpty(payload);
+  return { ...payload, panels: merged.panels, _fallback: merged._fallback };
 }
 
 async function buildHomeTrendsPayload(dateRange = {}) {
   const bounds = await getDateBounds();
   const { from, to } = clampRange(dateRange.from, dateRange.to, bounds);
   const defs = await loadDefinitions({ showOnHome: true });
-  const chartDefs = defs.filter((d) => d.panelId.startsWith('home_chart_') || d.panelId.startsWith('home_kpi_'));
+  const chartDefs = defs.filter(
+    (d) =>
+      d.panelId.startsWith('home_chart_') ||
+      d.panelId.startsWith('home_kpi_') ||
+      d.panelId.startsWith('home_chem_')
+  );
   const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
   const usedKeys = new Set();
   const panels = [];
@@ -238,7 +330,9 @@ async function buildHomeTrendsPayload(dateRange = {}) {
     });
   }
 
-  return { dateRange: { from, to }, panels, customTrends: custom };
+  const payload = { dateRange: { from, to }, panels, customTrends: custom };
+  const merged = await mergeCachePanelsIfEmpty(payload);
+  return { ...payload, panels: merged.panels, _fallback: merged._fallback };
 }
 
 async function buildManagementDashboard(dateRange = {}) {
@@ -253,13 +347,15 @@ async function buildManagementDashboard(dateRange = {}) {
     if (panel) panels.push(panel);
   }
   const overview = await buildOperationalOverview({ from, to });
-  return {
+  const payload = {
     dateRange: { from, to, ...bounds },
     panels,
     kpiSeries: overview.kpiSeries,
     latest: overview.latest,
     plantCapacityMw: overview.plantCapacityMw,
   };
+  const merged = await mergeCachePanelsIfEmpty(payload);
+  return { ...payload, panels: merged.panels, _fallback: merged._fallback };
 }
 
 async function buildInsightStrip() {
