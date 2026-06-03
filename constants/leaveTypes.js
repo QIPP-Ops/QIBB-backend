@@ -7,7 +7,6 @@ const LEAVE_TYPES = [
   'Annual Leave - Carry Forward Previous Year',
   'Bank Leave',
   'Compensate Off',
-  'Compensate Leave Balance',
   'Compassionate Leave',
   'Marriage Leave',
   'Paternity Leave',
@@ -21,8 +20,16 @@ const ANNUAL_LEAVE_TYPES = new Set([
   'Annual Leave - Carry Forward Previous Year',
 ]);
 
+const LEGACY_COMPENSATE_LEAVE = 'Compensate Leave Balance';
+
+function normalizeCompensateLeaveType(type) {
+  const t = String(type || '').trim();
+  if (t === LEGACY_COMPENSATE_LEAVE) return 'Compensate Off';
+  return t;
+}
+
 function isBalanceLeaveType(type) {
-  return BALANCE_LEAVE_TYPES.has(String(type || '').trim());
+  return BALANCE_LEAVE_TYPES.has(normalizeCompensateLeaveType(type));
 }
 
 function isAnnualLeaveType(type) {
@@ -30,8 +37,7 @@ function isAnnualLeaveType(type) {
 }
 
 function isCompensateLeaveType(type) {
-  const t = String(type || '').trim();
-  return t === 'Compensate Off' || t === 'Compensate Leave Balance';
+  return normalizeCompensateLeaveType(type) === 'Compensate Off';
 }
 
 function isBankLeaveType(type) {
@@ -40,7 +46,7 @@ function isBankLeaveType(type) {
 
 /** Legacy roster data used "Applied on SAP" / "SAP leave" as types — map for display only. */
 function normalizeLeaveType(type) {
-  const t = String(type || 'Planned').trim();
+  const t = normalizeCompensateLeaveType(String(type || 'Planned').trim());
   if (/^applied on sap$/i.test(t) || /^sap leave$/i.test(t)) return 'Planned';
   return t;
 }
@@ -49,6 +55,8 @@ module.exports = {
   LEAVE_TYPES,
   BALANCE_LEAVE_TYPES,
   ANNUAL_LEAVE_TYPES,
+  LEGACY_COMPENSATE_LEAVE,
+  normalizeCompensateLeaveType,
   isBalanceLeaveType,
   isAnnualLeaveType,
   isBankLeaveType,

@@ -33,12 +33,13 @@ exports.getStatus = async (_req, res) => {
       data: {
         mongo: { ok: true, ...uriInfo },
         reportsRoot: state?.reportsRoot || '',
-        blobAccount: process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp',
-        blobContainer: CONTAINER,
+        blobAccount: process.env.BLOB_STORAGE_ACCOUNT || '',
+        blobContainer: process.env.BLOB_CONTAINER_NAME || CONTAINER,
         blobSasConfigured: blobIngestConfigured(),
         blobAccess: getBlobAccessInfo(),
+        allowLocalFolderIngest: process.env.ALLOW_LOCAL_FOLDER_INGEST === '1',
         maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10),
-        ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : 'local'),
+        ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : ''),
         lastRunAt: state?.lastRunAt,
         lastSuccessAt: state?.lastSuccessAt,
         lastError: state?.lastError || '',
@@ -49,7 +50,7 @@ exports.getStatus = async (_req, res) => {
         metricsDiscovered: state?.metricsDiscovered || 0,
         lastByKind: state?.lastByKind || {},
         lastIngestErrors: state?.lastIngestErrors || [],
-        autoIngest: blobIngestConfigured() || Boolean(process.env.PLANT_REPORTS_DIR),
+        autoIngest: blobIngestConfigured(),
       },
     });
   } catch (err) {
@@ -118,8 +119,59 @@ exports.getMetricDateRange = async (_req, res) => {
 
 exports.getHistoricalDashboard = async (req, res) => {
   try {
-    const { buildHistoricalDashboard } = require('../services/plantReports/historicalDashboard');
+    const { buildHistoricalDashboard } = require('../services/trends/trendEngine');
     const data = await buildHistoricalDashboard({
+      from: req.query.from,
+      to: req.query.to,
+    });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getTrendPanels = async (req, res) => {
+  try {
+    const { queryPanelsForRoute } = require('../services/trends/trendEngine');
+    const route = String(req.query.route || '/reports/trends');
+    const data = await queryPanelsForRoute(route, {
+      from: req.query.from,
+      to: req.query.to,
+    });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getTrendPanelById = async (req, res) => {
+  try {
+    const { queryPanelById } = require('../services/trends/trendEngine');
+    const data = await queryPanelById(req.params.panelId, {
+      from: req.query.from,
+      to: req.query.to,
+    });
+    if (!data) return res.status(404).json({ message: 'Panel not found' });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getInsightStrip = async (_req, res) => {
+  try {
+    const { buildInsightStrip } = require('../services/trends/trendEngine');
+    const data = await buildInsightStrip();
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getManagementTrends = async (req, res) => {
+  try {
+    const { buildManagementDashboard } = require('../services/trends/trendEngine');
+    const data = await buildManagementDashboard({
       from: req.query.from,
       to: req.query.to,
     });
@@ -131,30 +183,12 @@ exports.getHistoricalDashboard = async (req, res) => {
 
 exports.getHomeTrends = async (req, res) => {
   try {
-    const { expandDayColumnSeries } = require('../services/plantReports/seriesTimeline');
-    const trends = await CustomTrend.find({ showOnHomePage: true })
-      .sort({ updatedAt: -1 })
-      .limit(12)
-      .lean();
-    const from = req.query.from;
-    const to = req.query.to;
-    let dateFilter = {};
-    if (from && to) dateFilter = { reportDate: { $gte: from, $lte: to } };
-
-    const enriched = [];
-    for (const t of trends) {
-      const rows = await PlantMetricPoint.find({
-        metricKey: { $in: t.metricKeys },
-        ...dateFilter,
-      })
-        .sort({ reportDate: 1 })
-        .lean();
-      enriched.push({
-        ...t,
-        series: expandDayColumnSeries(rows, t.metricKeys),
-      });
-    }
-    res.json({ success: true, data: enriched });
+    const { buildHomeTrendsPayload } = require('../services/trends/trendEngine');
+    const data = await buildHomeTrendsPayload({
+      from: req.query.from,
+      to: req.query.to,
+    });
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

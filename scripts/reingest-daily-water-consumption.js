@@ -6,7 +6,7 @@
  *   node scripts/reingest-daily-water-consumption.js
  *   node scripts/reingest-daily-water-consumption.js "C:\path\to\reports"
  *
- * Env: MONGODB_URI or COSMOS_URI; BLOB_SAS_URL or PLANT_REPORTS_DIR
+ * Env: MONGODB_URI or COSMOS_URI; BLOB_SAS_URL (preferred) or ALLOW_LOCAL_FOLDER_INGEST=1 + PLANT_REPORTS_DIR
  */
 require('dotenv').config();
 const fs = require('fs');
@@ -17,13 +17,16 @@ const PlantMetricPoint = require('../models/PlantMetricPoint');
 const { filenameMatchesPattern } = require('../services/plantReports/fileMappingService');
 const { walkExcel } = require('../services/plantReports/extractOpsHighlights');
 const { ingestWorkbook, ingestWorkbookFromBuffer } = require('../services/plantReports/ingestWorkbook');
-const { processIngestResult } = require('../services/plantReports/runIngestion');
+const { processIngestResult } = require('../services/plantReports/ingestProcessResult');
 const { writePlantTrendsCache } = require('../services/plantReports/plantTrendsCache');
 const {
   listReportBlobs,
   downloadBlobBuffer,
-  blobIngestConfigured,
 } = require('../services/plantReports/blobReports');
+const {
+  blobIngestConfigured,
+  allowLocalFolderIngest,
+} = require('../services/plantReports/blobIngestPolicy');
 
 const FOLLOWUP_PATTERN = '*Daily_water_consumption_followup*';
 const DELETE_SOURCE_RE = /Daily_water_consumption/i;
@@ -95,7 +98,7 @@ async function main() {
   if (blobIngestConfigured()) {
     console.log('Re-ingesting from Azure Blob…');
     batch = await reingestBlob();
-  } else if (process.env.PLANT_REPORTS_DIR?.trim()) {
+  } else if (allowLocalFolderIngest() && process.env.PLANT_REPORTS_DIR?.trim()) {
     const root = process.env.PLANT_REPORTS_DIR.trim();
     if (!fs.existsSync(root)) {
       console.error(`PLANT_REPORTS_DIR not found: ${root}`);
@@ -104,7 +107,7 @@ async function main() {
     console.log(`Re-ingesting from folder: ${root}`);
     batch = await reingestLocal(root);
   } else {
-    console.warn('No BLOB_SAS_URL or PLANT_REPORTS_DIR — delete-only run');
+    console.warn('No blob config or ALLOW_LOCAL_FOLDER_INGEST=1 + PLANT_REPORTS_DIR — delete-only run');
     batch = { filesProcessed: 0, pointsUpserted: 0, filesScanned: 0 };
   }
 

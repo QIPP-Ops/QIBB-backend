@@ -11,17 +11,21 @@
  * Env (see .env.example):
  *   MONGODB_URI or COSMOS_URI — required (Cosmos DB)
  *   BLOB_SAS_URL or AZURE_STORAGE_CONNECTION_STRING — production-style ingest from Azure "report" container
- *   PLANT_REPORTS_DIR — local folder of .xlsx files (only used when blob vars are NOT set)
+ *   PLANT_REPORTS_DIR — local folder (requires ALLOW_LOCAL_FOLDER_INGEST=1)
+ *   ALLOW_LOCAL_FOLDER_INGEST=1 — enable dev folder ingest when blob is not configured
  *
- * Blob wins: if BLOB_SAS_URL is set, PLANT_REPORTS_DIR is ignored. For folder-only local runs,
- * comment out blob settings in .env temporarily.
+ * Production ingest uses Azure Blob only. Blob wins when configured.
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { getMongoUri } = require('../config/database');
 const { runPlantIngestion } = require('../services/plantReports/runIngestion');
 const { writePlantTrendsCache } = require('../services/plantReports/plantTrendsCache');
-const { blobIngestConfigured } = require('../services/plantReports/blobReports');
+const {
+  blobIngestConfigured,
+  resolveIngestSource,
+  allowLocalFolderIngest,
+} = require('../services/plantReports/blobIngestPolicy');
 
 const args = process.argv.slice(2);
 const forceAll = args.includes('--force');
@@ -49,15 +53,21 @@ async function main() {
     process.env.PLANT_REPORTS_DIR = reportsRoot;
   }
 
-  if (!blobIngestConfigured() && !process.env.PLANT_REPORTS_DIR?.trim()) {
+  const source = resolveIngestSource({ reportsRoot: process.env.PLANT_REPORTS_DIR });
+  if (!source) {
     console.error(
-      'Configure BLOB_SAS_URL (blob ingest) or PLANT_REPORTS_DIR / pass a folder path for local files.'
+      'Configure BLOB_SAS_URL / AZURE_STORAGE_CONNECTION_STRING for blob ingest, or set ALLOW_LOCAL_FOLDER_INGEST=1 with PLANT_REPORTS_DIR.'
     );
     process.exit(1);
   }
 
-  const source = blobIngestConfigured() ? 'Azure Blob' : `folder: ${process.env.PLANT_REPORTS_DIR}`;
-  console.log(`Ingest source: ${source}${forceAll ? ' (forceAll)' : ''}`);
+  const sourceLabel =
+    source === 'blob' ? 'Azure Blob' : `local folder: ${process.env.PLANT_REPORTS_DIR}`;
+  if (source === 'local' && !allowLocalFolderIngest()) {
+    console.error('Local folder ingest requires ALLOW_LOCAL_FOLDER_INGEST=1');
+    process.exit(1);
+  }
+  console.log(`Ingest source: ${sourceLabel}${forceAll ? ' (forceAll)' : ''}`);
 
   const result = await runPlantIngestion({ forceAll, reportsRoot: process.env.PLANT_REPORTS_DIR });
   console.log(JSON.stringify(result, null, 2));

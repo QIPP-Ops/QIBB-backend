@@ -2,55 +2,11 @@ const path = require('path');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { listReportBlobs, downloadBlobBuffer } = require('./blobReports');
 const { inferDateFromFilename } = require('./excelUtils');
-const {
-  matchesRoHrsgReport,
-  matchesWaterReport,
-  matchesEnergyReport,
-  matchesDailyOpsReport,
-} = require('./reportMatchers');
-const {
-  parseWaterConsumption,
-  parseEnergyReport,
-  parseROHRSGReport,
-  parseDailyOperationReport,
-  parseGtFilterDP,
-} = require('../reportParser');
-
-/** Latest blob per report family → structured TrendsSnapshot for Reports → Trends page */
-const PICKERS = [
-  {
-    field: 'water',
-    match: matchesWaterReport,
-    parse: parseWaterConsumption,
-  },
-  {
-    field: 'energy',
-    match: matchesEnergyReport,
-    parse: parseEnergyReport,
-  },
-  {
-    field: 'chemistry',
-    match: matchesRoHrsgReport,
-    parse: parseROHRSGReport,
-  },
-  {
-    field: 'dailyOps',
-    match: matchesDailyOpsReport,
-    parse: parseDailyOperationReport,
-  },
-  {
-    field: 'airFilterDP',
-    match: (name) => /air intake filter/i.test(name),
-    parse: (buf) => parseGtFilterDP(buf, 'air'),
-  },
-  {
-    field: 'fgFilterDP',
-    match: (name) => /fg filter|fg-filter/i.test(name),
-    parse: (buf) => parseGtFilterDP(buf, 'fuel'),
-  },
-];
+const { assertBlobIngestConfigured } = require('./blobIngestPolicy');
+const { SNAPSHOT_PICKERS } = require('./snapshotPickers');
 
 async function syncTrendsSnapshotFromBlob(options = {}) {
+  assertBlobIngestConfigured();
   const maxAgeDays = options.maxAgeDays || parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
   const blobs = await listReportBlobs({ maxAgeDays });
   if (!blobs.length) {
@@ -60,7 +16,7 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
   const payload = {};
   const picked = [];
 
-  for (const picker of PICKERS) {
+  for (const picker of SNAPSHOT_PICKERS) {
     const hit = blobs.find((b) => picker.match(path.basename(b.name)));
     if (!hit) continue;
     const reportDate = inferDateFromFilename(hit.name, hit.lastModified);
@@ -76,7 +32,8 @@ async function syncTrendsSnapshotFromBlob(options = {}) {
   if (!Object.keys(payload).length) {
     return {
       ok: false,
-      message: 'No matching report filenames for trends snapshot (water, energy, RO-HRSG, daily ops, etc.)',
+      message:
+        'No matching report filenames for trends snapshot (water, energy, RO-HRSG, daily ops, etc.)',
       blobsScanned: blobs.length,
     };
   }

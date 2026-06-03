@@ -56,7 +56,10 @@ exports.getTrendsHistory = async (req, res) => {
 
 // ─── POST /api/trends/sync — trigger manual sync from SharePoint ──────────────
 
-exports.syncFromSharePoint = async (req, res) => {
+exports.syncFromSharePoint = async (_req, res) => {
+  return res.status(410).json({
+    message: 'SharePoint trends sync removed. Use POST /api/trends/sync-blob.',
+  });
   try {
     const data = await syncAllReports();
     const snapshot = new TrendsSnapshot(data);
@@ -101,7 +104,10 @@ exports.syncFromBlob = async (req, res) => {
 
 // ─── POST /api/trends/upload — manual file upload fallback ───────────────────
 
-exports.uploadReport = async (req, res) => {
+exports.uploadReport = async (_req, res) => {
+  return res.status(410).json({
+    message: 'Manual trends upload removed. Reports ingest via Azure Blob container.',
+  });
   try {
     const { type } = req.body;
     const file = req.file;

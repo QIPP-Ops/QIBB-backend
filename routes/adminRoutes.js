@@ -7,6 +7,7 @@ const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
 const ingestAdmin = require('../controllers/ingestAdminController');
 const trendDisplay = require('../controllers/trendDisplayController');
+const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
@@ -33,6 +34,10 @@ router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin
 router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
 router.get('/trend-display', protect, trendDisplay.getTrendDisplay);
 router.patch('/trend-display', protect, requireSuperAdmin, trendDisplay.patchTrendDisplay);
+router.get('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.listTrendDefinitions);
+router.post('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.createTrendDefinition);
+router.patch('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.patchTrendDefinition);
+router.delete('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.deleteTrendDefinition);
 router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);

@@ -1,117 +1,30 @@
-const fs = require('fs');
 const path = require('path');
-const OpsShiftHighlight = require('../../models/OpsShiftHighlight');
 const PlantIngestionState = require('../../models/PlantIngestionState');
-const PlantMetricPoint = require('../../models/PlantMetricPoint');
 const { PlantMetric } = require('../../models/PlantMetric');
-const { walkExcel } = require('./extractOpsHighlights');
+const { processIngestResult } = require('./ingestProcessResult');
 const { classifyReport } = require('./excelUtils');
-const { ingestWorkbook, ingestWorkbookFromBuffer } = require('./ingestWorkbook');
+const { ingestWorkbookFromBuffer } = require('./ingestWorkbook');
 const { getParserForFilename } = require('./parsers/parserRegistry');
 const {
   listReportBlobs,
   downloadBlobBuffer,
-  blobIngestConfigured,
   CONTAINER,
 } = require('./blobReports');
+const {
+  resolveIngestSource,
+  ingestSourceLabel,
+  assertBlobIngestConfigured,
+  blobIngestConfigured,
+} = require('./blobIngestPolicy');
 const { syncTrendsSnapshotFromBlob } = require('./syncTrendsSnapshot');
 const { backfillTrendSnapshotsFromBlobs } = require('./backfillTrendSnapshots');
+const { runLocalIngestionLegacy } = require('./runLocalIngestionLegacy');
 
 const MAX_FILES = parseInt(process.env.PLANT_INGEST_MAX_FILES || '800', 10);
 const MAX_AGE_DAYS = parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
 
-async function upsertPoints(points) {
-  let n = 0;
-  const { evaluateMetricReading } = require('../chemistryAlarmService');
-  for (const p of points) {
-    if (p.value == null || !Number.isFinite(p.value)) continue;
-    const displayLabel = p.displayName || p.label;
-    const pointDoc = {
-      ...p,
-      label: displayLabel,
-    };
-    delete pointDoc.displayName;
-    const res = await PlantMetricPoint.updateOne(
-      {
-        metricKey: p.metricKey,
-        reportDate: p.reportDate,
-        sourceFile: p.sourceFile,
-        equipmentId: p.equipmentId || '',
-        columnKey: p.columnKey || '',
-      },
-      { $set: pointDoc },
-      { upsert: true }
-    );
-    if (res.upsertedCount || res.modifiedCount) n += 1;
-
-    const { canonicalMetricKey, canonicalLabel } = require('./metricKeys');
-    const ck = canonicalMetricKey(p.metricKey);
-    if (/chem|ro|hrsg|ph|conductivity|silica|oxygen/i.test(ck) || p.category === 'chemistry') {
-      evaluateMetricReading({
-        metricKey: ck,
-        label: canonicalLabel(displayLabel, p.metricKey),
-        value: p.value,
-        reportDate: p.reportDate,
-      }).catch((err) => console.warn('[chem-alarm]', err.message));
-    }
-    const resolvedLabel = canonicalLabel(displayLabel, p.metricKey);
-    await PlantMetric.updateOne(
-      { metricKey: ck },
-      {
-        $set: {
-          label: resolvedLabel,
-          displayName: String(p.displayName || displayLabel || '').trim() || resolvedLabel,
-          category: p.category,
-          unit: p.unit || '',
-          sourceFilePattern: p.sourceFile,
-          sheetName: p.sheetName || '',
-          columnKey: p.columnKey || '',
-        },
-      },
-      { upsert: true }
-    );
-  }
-  return n;
-}
-
-function selectLocalFiles(allFiles) {
-  const minMtime = Date.now() - MAX_AGE_DAYS * 86400000;
-  return allFiles
-    .filter((f) => {
-      const base = path.basename(f);
-      // Prefer parser registry recognition; fall back to legacy classification
-      // to avoid breaking existing correctly-parsed files.
-      const hasParser = Boolean(getParserForFilename(base));
-      const kind = hasParser ? 'registry' : classifyReport(base);
-      if (!hasParser && kind === 'other') return false;
-      try {
-        return fs.statSync(f).mtimeMs >= minMtime;
-      } catch {
-        return false;
-      }
-    })
-    .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-}
-
-async function processIngestResult(result) {
-  let pointsUpserted = 0;
-  let highlightsUpserted = 0;
-  if (result.skipped) return { pointsUpserted, highlightsUpserted, kind: result.kind };
-
-  pointsUpserted = await upsertPoints(result.points);
-  const { filterOpsHighlights } = require('./opsHighlightFilter');
-  for (const h of filterOpsHighlights(result.highlights || [])) {
-    const res = await OpsShiftHighlight.updateOne(
-      { sourceFile: h.sourceFile, reportDate: h.reportDate, text: h.text },
-      { $set: h },
-      { upsert: true }
-    );
-    if (res.upsertedCount || res.modifiedCount) highlightsUpserted += 1;
-  }
-  return { pointsUpserted, highlightsUpserted, kind: result.kind };
-}
-
 async function runBlobIngestion(forceAll) {
+  assertBlobIngestConfigured();
   const maxAge = forceAll ? 3650 : MAX_AGE_DAYS;
   const limit = forceAll ? Math.max(MAX_FILES, 800) : MAX_FILES;
   const allBlobs = await listReportBlobs({ maxAgeDays: maxAge });
@@ -158,55 +71,12 @@ async function runBlobIngestion(forceAll) {
   };
 }
 
-async function runLocalIngestion(reportsRoot, forceAll) {
-  const allFiles = walkExcel(reportsRoot);
-  const files = forceAll
-    ? allFiles
-        .filter((f) => {
-          const base = path.basename(f);
-          return Boolean(getParserForFilename(base)) || classifyReport(base) !== 'other';
-        })
-        .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
-        .slice(0, Math.max(MAX_FILES, 200))
-    : selectLocalFiles(allFiles).slice(0, MAX_FILES);
-
-  let pointsUpserted = 0;
-  let highlightsUpserted = 0;
-  let filesProcessed = 0;
-  const byKind = {};
-
-  for (const filePath of files) {
-    try {
-      const result = await ingestWorkbook(filePath, reportsRoot);
-      const stats = await processIngestResult(result);
-      if (result.skipped) continue;
-      filesProcessed += 1;
-      byKind[stats.kind] = (byKind[stats.kind] || 0) + 1;
-      pointsUpserted += stats.pointsUpserted;
-      highlightsUpserted += stats.highlightsUpserted;
-    } catch (err) {
-      console.warn(`[plant-ingest] skip ${path.basename(filePath)}:`, err.message);
-    }
-  }
-
-  return {
-    source: 'local',
-    filesScanned: allFiles.length,
-    filesProcessed,
-    pointsUpserted,
-    highlightsUpserted,
-    byKind,
-  };
-}
-
 async function runPlantIngestion(options = {}) {
   const forceAll = Boolean(options.forceAll);
+  const source = resolveIngestSource(options);
   const reportsRoot = options.reportsRoot || process.env.PLANT_REPORTS_DIR;
-  const useBlob = blobIngestConfigured();
 
-  const sourceLabel = useBlob
-    ? `blob:${process.env.BLOB_STORAGE_ACCOUNT || 'acwaopsqipp'}/${CONTAINER}`
-    : reportsRoot || '';
+  const sourceLabel = ingestSourceLabel(source) || '';
 
   await PlantIngestionState.findOneAndUpdate(
     { key: 'global' },
@@ -214,26 +84,29 @@ async function runPlantIngestion(options = {}) {
     { upsert: true, new: true }
   );
 
-  if (!useBlob && !reportsRoot) {
-    await PlantIngestionState.updateOne(
-      { key: 'global' },
-      { $set: { lastError: 'BLOB_SAS_URL or PLANT_REPORTS_DIR must be configured' } }
-    );
-    return { ok: false, message: 'BLOB_SAS_URL or PLANT_REPORTS_DIR must be configured' };
+  if (!source) {
+    const msg = blobIngestConfigured()
+      ? 'Invalid ingest options'
+      : 'Configure blob storage (BLOB_SAS_URL / AZURE_STORAGE_CONNECTION_STRING) or set ALLOW_LOCAL_FOLDER_INGEST=1 with PLANT_REPORTS_DIR for local dev';
+    await PlantIngestionState.updateOne({ key: 'global' }, { $set: { lastError: msg } });
+    return { ok: false, message: msg };
   }
 
   try {
-    const batch = useBlob
-      ? await runBlobIngestion(forceAll)
-      : await runLocalIngestion(reportsRoot, forceAll);
+    const batch =
+      source === 'blob'
+        ? await runBlobIngestion(forceAll)
+        : await runLocalIngestionLegacy(reportsRoot, forceAll);
 
     const metricsDiscovered = await PlantMetric.countDocuments();
 
     let trendsSnapshot = { ok: false, skipped: true };
     let trendsBackfill = { ok: false, skipped: true };
-    if (useBlob) {
+    if (source === 'blob') {
       try {
-        trendsSnapshot = await syncTrendsSnapshotFromBlob({ maxAgeDays: forceAll ? 3650 : MAX_AGE_DAYS });
+        trendsSnapshot = await syncTrendsSnapshotFromBlob({
+          maxAgeDays: forceAll ? 3650 : MAX_AGE_DAYS,
+        });
       } catch (snapErr) {
         console.warn('[plant-ingest] trends snapshot sync failed:', snapErr.message);
         trendsSnapshot = { ok: false, message: snapErr.message };
@@ -262,10 +135,7 @@ async function runPlantIngestion(options = {}) {
     } catch (cacheErr) {
       const { getPlantTrendsCachePath } = require('./plantTrendsCache');
       const cachePath = getPlantTrendsCachePath();
-      console.warn(
-        `[plant-ingest] trends cache write failed (${cachePath}):`,
-        cacheErr.message
-      );
+      console.warn(`[plant-ingest] trends cache write failed (${cachePath}):`, cacheErr.message);
       trendsCache = { ok: false, message: cacheErr.message, path: cachePath };
     }
 
@@ -315,17 +185,11 @@ async function runPlantIngestion(options = {}) {
       trendsCache,
     };
   } catch (err) {
-    await PlantIngestionState.updateOne(
-      { key: 'global' },
-      { $set: { lastError: err.message } }
-    );
+    await PlantIngestionState.updateOne({ key: 'global' }, { $set: { lastError: err.message } });
     throw err;
   }
 }
 
-/**
- * Ingest one blob through workbook parse + DB upsert (used by ingest cron).
- */
 async function ingestBlobFile(blob) {
   const buffer = await downloadBlobBuffer(blob.name);
   const result = await ingestWorkbookFromBuffer(buffer, blob.name, {
@@ -335,4 +199,9 @@ async function ingestBlobFile(blob) {
   return { result, stats };
 }
 
-module.exports = { runPlantIngestion, ingestBlobFile, processIngestResult };
+module.exports = {
+  runPlantIngestion,
+  runBlobIngestion,
+  ingestBlobFile,
+  processIngestResult,
+};

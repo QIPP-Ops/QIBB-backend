@@ -11,6 +11,8 @@ const {
   isAnnualLeaveType,
   isBankLeaveType,
   isCompensateLeaveType,
+  normalizeCompensateLeaveType,
+  normalizeLeaveType,
 } = require('../constants/leaveTypes');
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 const { logAction } = require('../services/auditLogService');
@@ -45,6 +47,8 @@ function rosterRowForClient(doc) {
   if (!row.opsTreeParentEmpId) row.opsTreeParentEmpId = '';
   if (!row.opsTreeRelation) row.opsTreeRelation = '';
   if (!row.assignedTo) row.assignedTo = '';
+  row.isERT = Boolean(row.isERT);
+  row.employeeExternalId = row.employeeExternalId || '';
   return row;
 }
 
@@ -60,6 +64,57 @@ exports.getRoster = async (req, res) => {
         .map((row) => redactLeaveBalancesForClient(row, req))
     );
   } catch (error) { res.status(500).json({ message: error.message }); }
+};
+
+exports.getPersonnelDirectory = async (_req, res) => {
+  try {
+    const { sortRosterEmployees } = require('../utils/rosterRowSort');
+    const rows = sortRosterEmployees(
+      await AdminUser.find()
+        .select('name email empId isERT employeeExternalId crew role')
+        .lean()
+    );
+    res.json({
+      success: true,
+      data: filterProtectedAccounts(rows).map((r) => ({
+        name: r.name,
+        email: sanitizeEmailForClient(r.email),
+        empId: r.empId,
+        isERT: Boolean(r.isERT),
+        employeeExternalId: r.employeeExternalId || '',
+        crew: r.crew,
+        role: r.role,
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.patchPersonnelProfile = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    const { empId } = req.params;
+    const patch = {};
+    if (req.body?.isERT !== undefined) patch.isERT = Boolean(req.body.isERT);
+    if (req.body?.employeeExternalId !== undefined) {
+      patch.employeeExternalId = String(req.body.employeeExternalId || '').trim();
+    }
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ message: 'No fields to update' });
+    }
+    const user = await AdminUser.findOneAndUpdate(
+      { empId },
+      { $set: patch },
+      { new: true, runValidators: true }
+    ).select('-passwordHash');
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    res.json({ success: true, data: rosterRowForClient(user) });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 exports.addLeave = async (req, res) => {
@@ -94,7 +149,8 @@ exports.addLeave = async (req, res) => {
     leaveData.start = new Date(leaveData.start);
     leaveData.end = new Date(leaveData.end);
     leaveData.appliedOnSap = leaveData.appliedOnSap === true;
-    const leaveTypeStr = String(leaveData.type || 'Planned');
+    const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(leaveData.type || 'Planned'));
+    leaveData.type = leaveTypeStr;
     const spanDays =
       typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
         ? leaveData.totalDays

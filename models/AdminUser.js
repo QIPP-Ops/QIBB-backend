@@ -34,6 +34,10 @@ const AdminUserSchema = new mongoose.Schema({
   name:         { type: String, required: true },
   profilePhotoUrl: { type: String, default: '' },
   empId:        { type: String, required: true, unique: true },
+  /** Canonical external / SAP employee ID (separate from internal empId). */
+  employeeExternalId: { type: String, default: '' },
+  /** Emergency Response Team member flag */
+  isERT:        { type: Boolean, default: false },
   crew:         { type: String, required: true },
   role:         { type: String, required: true },
   color:        { type: String, enum: COLOR_VALUES, default: 'crew-grey' },

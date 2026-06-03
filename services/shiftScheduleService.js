@@ -173,6 +173,8 @@ function buildRosterSchedule(employees, options = {}) {
       compensateDayBalance: emp.compensateDayBalance ?? 0,
       annualLeaveBalance: emp.annualLeaveBalance ?? 0,
       bankLeaveBalance: emp.bankLeaveBalance ?? 0,
+      isERT: Boolean(emp.isERT),
+      employeeExternalId: emp.employeeExternalId || '',
       cells,
     };
   });

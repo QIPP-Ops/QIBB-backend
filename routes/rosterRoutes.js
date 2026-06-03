@@ -5,6 +5,8 @@ const { protect, admin } = require('../middleware/auth');
 const { checkEditingLock } = require('../middleware/lock');
 
 router.get('/', protect, c.getRoster);
+router.get('/personnel-directory', protect, admin, c.getPersonnelDirectory);
+router.patch('/:empId/personnel-profile', protect, admin, c.patchPersonnelProfile);
 router.post('/', protect, admin, c.createEmployee);
 router.put('/:empId', protect, c.updateEmployee);
 router.delete('/:empId', protect, admin, c.deleteEmployee);

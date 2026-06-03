@@ -13,10 +13,14 @@ router.get('/metrics/date-range', c.getMetricDateRange);
 router.get('/operational-overview', c.getOperationalOverview);
 router.get('/chemistry-water-overview', c.getChemistryWaterOverview);
 router.get('/trends-cache', c.getTrendsCache);
+router.get('/trend-panels', c.getTrendPanels);
+router.get('/trend-panels/:panelId', c.getTrendPanelById);
+router.get('/insight-strip', c.getInsightStrip);
 
 router.get('/metrics/series', protect, c.getMetricSeries);
 router.get('/trend-preview', protect, c.getTrendPreview);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
+router.get('/management-trends', protect, c.getManagementTrends);
 router.get('/home-trends', protect, c.getHomeTrends);
 router.get('/metrics', protect, opsLead, c.listMetrics);
 router.post('/metrics', protect, c.upsertMetric);

@@ -2,41 +2,8 @@ const path = require('path');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { listReportBlobs, downloadBlobBuffer } = require('./blobReports');
 const { inferDateFromFilename } = require('./excelUtils');
-const {
-  matchesRoHrsgReport,
-  matchesWaterReport,
-  matchesEnergyReport,
-  matchesDailyOpsReport,
-} = require('./reportMatchers');
-const {
-  parseWaterConsumption,
-  parseEnergyReport,
-  parseROHRSGReport,
-  parseDailyOperationReport,
-} = require('../reportParser');
-
-const FIELD_PICKERS = [
-  {
-    field: 'water',
-    match: matchesWaterReport,
-    parse: parseWaterConsumption,
-  },
-  {
-    field: 'energy',
-    match: matchesEnergyReport,
-    parse: parseEnergyReport,
-  },
-  {
-    field: 'chemistry',
-    match: matchesRoHrsgReport,
-    parse: parseROHRSGReport,
-  },
-  {
-    field: 'dailyOps',
-    match: matchesDailyOpsReport,
-    parse: parseDailyOperationReport,
-  },
-];
+const { assertBlobIngestConfigured } = require('./blobIngestPolicy');
+const { BACKFILL_FIELD_PICKERS } = require('./snapshotPickers');
 
 function reportDateFromBlob(blob) {
   return inferDateFromFilename(blob.name, blob.lastModified);
@@ -52,11 +19,8 @@ function yearStartIso() {
   return `${new Date().getFullYear()}-01-01`;
 }
 
-/**
- * Build dated TrendsSnapshot rows from blob Excel files (one logical day per report date).
- * Powers chemistry/water history without manual Trend Studio sync.
- */
 async function backfillTrendSnapshotsFromBlobs(options = {}) {
+  assertBlobIngestConfigured();
   const maxAgeDays =
     options.maxAgeDays || parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10);
   const maxDays =
@@ -74,7 +38,7 @@ async function backfillTrendSnapshotsFromBlobs(options = {}) {
   for (const blob of blobs) {
     if (scanned >= maxFiles) break;
     const base = path.basename(blob.name);
-    const picker = FIELD_PICKERS.find((p) => p.match(base));
+    const picker = BACKFILL_FIELD_PICKERS.find((p) => p.match(base));
     if (!picker) continue;
     scanned += 1;
 
@@ -105,7 +69,7 @@ async function backfillTrendSnapshotsFromBlobs(options = {}) {
     const payload = {};
 
     for (const { field, name, blob } of bucket.files) {
-      const picker = FIELD_PICKERS.find((p) => p.field === field);
+      const picker = BACKFILL_FIELD_PICKERS.find((p) => p.field === field);
       if (!picker) continue;
       try {
         const buf = await downloadBlobBuffer(blob.name);

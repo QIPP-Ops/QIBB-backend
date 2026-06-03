@@ -259,4 +259,11 @@ async function buildHistoricalDashboard(query = {}) {
   };
 }
 
-module.exports = { buildHistoricalDashboard, getDateBounds, PANEL_DEFS };
+module.exports = {
+  buildHistoricalDashboard,
+  getDateBounds,
+  PANEL_DEFS,
+  clampRange,
+  matchMetrics,
+  panelSummary,
+};
