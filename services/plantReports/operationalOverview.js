@@ -6,21 +6,21 @@ const { expandDayColumnSeries } = require('./seriesTimeline');
 
 const PLANT_CAPACITY_MW = 3883.2;
 
-/** Match ingested metricKey + label patterns (see parsers/dailyOperation.js slugKey output). */
+/** Match ingested metricKey + label patterns (parser9 daily_op_* keys). */
 const KPI_MATCHERS = {
-  plf: [/plf|plant.*availability|availability.*factor/i],
+  plf: [/plf|plant.*availability|availability.*factor|daily_op_plf/i],
   grossGen: [
+    /daily_op_plant_gross_gen/i,
     /plant_generation/i,
     /gross.*gen/i,
     /total.*generation/i,
     /generation.*mwh/i,
-    /daily_ops_.*_total_mwh/i,
   ],
-  plantLoad: [/plant_total_load|total_plant_load/i],
-  heatRate: [/plant_heat_rate|heat_rate/i],
-  efficiency: [/plant_net_efficiency|net_efficiency|net.*efficien/i],
-  fuelGas: [/plant_fuel_gas|fuel_gas/i],
-  mfeqh: [/mfeqh|equivalent.*operating.*hours/i],
+  plantLoad: [/daily_op_total_plant_load|plant_total_load|total_plant_load/i],
+  heatRate: [/daily_op_heat_rate|plant_heat_rate|heat_rate/i],
+  efficiency: [/daily_op_net_efficiency|plant_net_efficiency|net_efficiency|net.*efficien/i],
+  fuelGas: [/daily_op_fuel_gas|plant_fuel_gas|fuel_gas/i],
+  mfeqh: [/daily_op_.*_mfeqh|mfeqh|equivalent.*operating.*hours/i],
   nox: [/nox|no_x/i],
   sox: [/sox|so2|sulphur/i],
   co: [/\bco\b|carbon monoxide/i],

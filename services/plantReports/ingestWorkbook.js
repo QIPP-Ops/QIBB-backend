@@ -4,12 +4,17 @@ const { classifyReport, inferDateFromFilename } = require('./excelUtils');
 const { findBestMappingForFile } = require('./fileMappingService');
 const { parseMappedWorkbook } = require('./parseMappedWorkbook');
 const { getParserForFilename } = require('./parsers/parserRegistry');
-const { parseWaterWorkbook } = require('./parsers/waterConsumption');
-const { parseRoHrsgWorkbook } = require('./parsers/roHrsg');
-const { parseDailyOperationWorkbook } = require('./parsers/dailyOperation');
-const { parseGtFilterWorkbook } = require('./parsers/gtFilters');
-const { parseShiftReportWorkbook } = require('./parsers/shiftReport');
-const { parseEnvironmentWorkbook } = require('./parsers/environment');
+
+function noParserResult(sourceName, reportDate, kind) {
+  return {
+    points: [],
+    highlights: [],
+    skipped: true,
+    kind: kind || 'unknown',
+    reportDate: reportDate || null,
+    noParserMatch: true,
+  };
+}
 
 async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
   const rel = sourceName.replace(/\\/g, '/');
@@ -35,7 +40,6 @@ async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
     };
   }
 
-  // Dedicated parser registry (most-specific filename match wins).
   const parser = getParserForFilename(path.basename(sourceName));
   if (parser) {
     const res = parser.parse({ wb, filename: path.basename(sourceName), sourceFile: rel });
@@ -50,7 +54,7 @@ async function ingestWorkbookFromBuffer(buffer, sourceName, options = {}) {
     };
   }
 
-  return parseWorkbook(wb, rel, reportDate, kind);
+  return noParserResult(rel, reportDate, kind);
 }
 
 async function ingestWorkbook(filePath, reportsRoot) {
@@ -75,44 +79,7 @@ async function ingestWorkbook(filePath, reportsRoot) {
     };
   }
 
-  return parseWorkbook(wb, rel, reportDate, kind);
-}
-
-async function parseWorkbook(wb, rel, reportDate, kind) {
-
-  let points = [];
-  let highlights = [];
-
-  switch (kind) {
-    case 'water':
-      points = parseWaterWorkbook(wb, reportDate, rel);
-      break;
-    case 'ro_hrsg':
-      points = parseRoHrsgWorkbook(wb, reportDate, rel);
-      break;
-    case 'daily_ops':
-      points = parseDailyOperationWorkbook(wb, reportDate, rel);
-      break;
-    case 'gt_fg_filter':
-      points = parseGtFilterWorkbook(wb, reportDate, rel, 'fg');
-      break;
-    case 'gt_air_filter':
-      points = parseGtFilterWorkbook(wb, reportDate, rel, 'air');
-      break;
-    case 'shift': {
-      const res = parseShiftReportWorkbook(wb, reportDate, rel);
-      points = res.points;
-      highlights = res.highlights;
-      break;
-    }
-    case 'environment':
-      points = parseEnvironmentWorkbook(wb, reportDate, rel);
-      break;
-    default:
-      return { points: [], highlights: [], skipped: true, kind };
-  }
-
-  return { points, highlights, skipped: false, kind, reportDate };
+  return noParserResult(rel, reportDate, kind);
 }
 
 module.exports = { ingestWorkbook, ingestWorkbookFromBuffer };

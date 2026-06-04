@@ -361,6 +361,24 @@ describe('PARSER 1: Operation Shift Report', () => {
   });
 });
 
+describe('ingestWorkbook (registry only)', () => {
+  test('returns noParserMatch when filename has no registry parser (no legacy fallback)', async () => {
+    const fileMappingService = require('../services/plantReports/fileMappingService');
+    jest.spyOn(fileMappingService, 'findBestMappingForFile').mockResolvedValue(null);
+    const ExcelJS = require('exceljs');
+    const { ingestWorkbookFromBuffer } = require('../services/plantReports/ingestWorkbook');
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Sheet1');
+    const buffer = await wb.xlsx.writeBuffer();
+    const res = await ingestWorkbookFromBuffer(buffer, 'random_unmatched_report.xlsx');
+    expect(res.skipped).toBe(true);
+    expect(res.noParserMatch).toBe(true);
+    expect(res.points).toHaveLength(0);
+    expect(res.parserId).toBeUndefined();
+    fileMappingService.findBestMappingForFile.mockRestore();
+  });
+});
+
 describe('PARSER 9: Daily Operation Report', () => {
   test('extracts plant KPIs, per-unit values, ambient metrics, and observations', () => {
     const wb = new ExcelJS.Workbook();
