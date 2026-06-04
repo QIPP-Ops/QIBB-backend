@@ -117,6 +117,7 @@ app.get('/ready', (_req, res) => {
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/trends', trendsRoutes);
 app.use('/api/environmental-reports', environmentalReportRoutes);
+app.use('/api/reports-v3', require('./services/plantReportsV3/routes/reportsV3Router'));
 app.use('/api/roster', rosterRoutes);
 app.use('/api/roster-ops', rosterOpsRoutes);
 app.use('/api/kpis', kpiRoutes);
@@ -136,6 +137,8 @@ app.use('/api/kpi', personnelKpiRoutes);
 app.use('/api/kpi-goals', kpiGoalsRoutes);
 app.use('/api/blob', blobRoutes);
 app.use('/api/ingest', ingestRoutes);
+
+require('./services/plantReportsV3/azureSync')();
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

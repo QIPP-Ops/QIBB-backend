@@ -57,7 +57,8 @@
   "jest": {
     "testEnvironment": "node",
     "testMatch": [
-      "**/tests/**/*.test.js"
+      "**/tests/**/*.test.js",
+      "**/__tests__/**/*.test.js"
     ],
     "moduleNameMapper": {
       "^@azure/storage-blob$": "<rootDir>/tests/mocks/azure-storage-blob.js"
