@@ -1,5 +1,4 @@
 const TrendsSnapshot = require('../models/TrendsSnapshot');
-const { syncAllReports } = require('../services/sharepointService');
 const { blobIngestConfigured } = require('../services/plantReports/blobReports');
 const { syncTrendsSnapshotFromBlob } = require('../services/plantReports/syncTrendsSnapshot');
 const { runPlantIngestion } = require('../services/plantReports/runIngestion');
@@ -9,7 +8,7 @@ const {
   parseROHRSGReport,
   parseDailyOperationReport,
   parseGtFilterDP,
-} = require('../services/reportParser');
+} = require('../reportParser');
 
 // ─── GET /api/trends — latest snapshot ───────────────────────────────────────
 
@@ -60,22 +59,6 @@ exports.syncFromSharePoint = async (_req, res) => {
   return res.status(410).json({
     message: 'SharePoint trends sync removed. Use POST /api/trends/sync-blob.',
   });
-  try {
-    const data = await syncAllReports();
-    const snapshot = new TrendsSnapshot(data);
-    await snapshot.save();
-    if (data.chemistry) {
-      try {
-        const { appendFromTrendsSnapshot } = require('../services/chemistryHistoryService');
-        await appendFromTrendsSnapshot(snapshot);
-      } catch (histErr) {
-        console.warn('[trends-sharepoint] chemistry history:', histErr.message);
-      }
-    }
-    res.json({ message: 'Sync complete', snapshot });
-  } catch (err) {
-    res.status(500).json({ message: 'Sync failed', error: err.message });
-  }
 };
 
 /** Sync KPI trends visuals + plant metrics from Azure Blob container `report` */

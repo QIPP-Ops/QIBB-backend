@@ -10,7 +10,7 @@ const {
   parseROHRSGReport,
   parseDailyOperationReport,
   parseGtFilterDP,
-} = require('../reportParser');
+} = require('../../reportParser');
 
 /** Latest blob per report family → structured TrendsSnapshot fields */
 const SNAPSHOT_PICKERS = [
