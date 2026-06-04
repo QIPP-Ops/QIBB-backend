@@ -1,11 +1,17 @@
 const OpsShiftHighlight = require('../../models/OpsShiftHighlight');
 const PlantMetricPoint = require('../../models/PlantMetricPoint');
 const { PlantMetric } = require('../../models/PlantMetric');
+const { filterFutureMetricPoints } = require('./reportDateGuards');
 
-async function upsertPoints(points) {
+async function upsertPoints(points, options = {}) {
+  const { kept, rejected } = filterFutureMetricPoints(points, options);
+  if (rejected > 0 && options.log !== false) {
+    console.warn(`[plant-ingest] rejected ${rejected} future PlantMetricPoint row(s)`);
+  }
+
   let n = 0;
   const { evaluateMetricReading } = require('../chemistryAlarmService');
-  for (const p of points) {
+  for (const p of kept) {
     if (p.value == null || !Number.isFinite(p.value)) continue;
     const displayLabel = p.displayName || p.label;
     const pointDoc = {

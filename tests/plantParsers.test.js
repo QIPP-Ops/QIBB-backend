@@ -94,6 +94,8 @@ describe('dailyWaterConsumptionParser', () => {
     expect(res.points).toHaveLength(2);
     expect(res.points.every((p) => p.sheetName === 'master')).toBe(true);
     expect(res.points.some((p) => p.metricKey === 'gr1_consumpt' && p.value === 10)).toBe(true);
+    expect(res.points.every((p) => !/_day_|_col_/i.test(p.metricKey))).toBe(true);
+    expect(res.points.every((p) => p.displayName && p.reportDate)).toBe(true);
     expect(res.points.some((p) => p.parserUsed === 'dailyWaterConsumptionParser')).toBe(true);
   });
 
@@ -135,6 +137,22 @@ describe('dailyWaterConsumptionParser', () => {
     expect(res.points.some((p) => p.columnKey === 'day2')).toBe(false);
     expect(res.points.some((p) => p.columnKey === 'day3' && p.value === 12)).toBe(true);
     expect(res.points.some((p) => p.columnKey === 'day4')).toBe(false);
+  });
+
+  test('does not emit June 6+ when now is June 2', () => {
+    const wb = wbWithSheet('master');
+    const ws = wb.getWorksheet('master');
+    ws.getCell('A3').value = 'GR-1 CONSUMPT';
+    ws.getCell('G3').value = 99;
+
+    const res = parse({
+      wb,
+      filename: '2026-06-01_Daily_water_consumption_followup master.xlsx',
+      sourceFile: 'w.xlsx',
+      now: new Date('2026-06-02T12:00:00Z'),
+    });
+    expect(res.points.some((p) => p.reportDate === '2026-06-06')).toBe(false);
+    expect(res.points.some((p) => p.columnKey === 'day6')).toBe(false);
   });
 
   test('keeps zero values when present', () => {

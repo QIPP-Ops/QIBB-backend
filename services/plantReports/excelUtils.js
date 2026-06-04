@@ -35,6 +35,13 @@ function slugKey(parts) {
 
 function inferDateFromFilename(filePath, fallbackDate) {
   const base = require('path').basename(filePath);
+
+  const isoStart = base.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoStart) return `${isoStart[1]}-${isoStart[2]}-${isoStart[3]}`;
+
+  const ymStart = base.match(/^(\d{4})[-_](\d{2})(?![0-9])/);
+  if (ymStart) return `${ymStart[1]}-${ymStart[2]}-01`;
+
   const iso = base.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
 
@@ -73,16 +80,7 @@ function inferDateFromFilename(filePath, fallbackDate) {
     if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   }
 
-  try {
-    const fs = require('fs');
-    if (fs.existsSync(filePath)) {
-      return fs.statSync(filePath).mtime.toISOString().slice(0, 10);
-    }
-  } catch {
-    /* blob virtual paths are not on local disk */
-  }
-
-  return new Date().toISOString().slice(0, 10);
+  return null;
 }
 
 function classifyReport(filename) {

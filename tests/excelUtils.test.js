@@ -7,9 +7,17 @@ describe('inferDateFromFilename', () => {
     );
   });
 
-  it('uses blob lastModified when filename has no date and file is not on disk', () => {
+  it('uses explicit fallback when filename has no date', () => {
     const d = new Date('2025-03-15T10:00:00Z');
     expect(inferDateFromFilename('virtual/path/shift report.xlsx', d)).toBe('2025-03-15');
+  });
+
+  it('returns null instead of today when no date and no fallback', () => {
+    expect(inferDateFromFilename('virtual/path/shift report.xlsx')).toBeNull();
+  });
+
+  it('parses YYYY-MM prefix as first of month anchor', () => {
+    expect(inferDateFromFilename('2026-06_Daily_water_consumption.xlsx')).toBe('2026-06-01');
   });
 
   it('parses abbreviated month names in RO-HRSG filenames', () => {

@@ -55,6 +55,21 @@ function parseYearMonthFromFilename(filename) {
   return null;
 }
 
+/** YYYY-MM-DD or YYYY-MM at filename start → { year, month } (month 1–12, never JS month index). */
+function parseYearMonthFromFilenameStart(filename) {
+  const path = require('path');
+  const base = path.basename(String(filename || ''));
+  const full = base.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (full) {
+    return { year: parseInt(full[1], 10), month: parseInt(full[2], 10) };
+  }
+  const ym = base.match(/^(\d{4})[-_](\d{2})(?![0-9])/);
+  if (ym) {
+    return { year: parseInt(ym[1], 10), month: parseInt(ym[2], 10) };
+  }
+  return parseYearMonthFromFilename(filename);
+}
+
 function makePoint({
   metricKey,
   label,
@@ -91,6 +106,7 @@ module.exports = {
   parseDmyFromFilename,
   parseDdMonthYyyyFromFilename,
   parseYearMonthFromFilename,
+  parseYearMonthFromFilenameStart,
   makePoint,
 };
 

@@ -1,5 +1,6 @@
 const { slugKey, cellText } = require('../excelUtils');
 const { parseNullableNumber, toIsoDateOnly, makePoint, parseDmyFromFilename } = require('./common');
+const { isFutureReportDate } = require('../reportDateGuards');
 
 function parseDateCell(v) {
   if (v instanceof Date && !Number.isNaN(v.getTime())) return toIsoDateOnly(v);
@@ -40,7 +41,7 @@ function parseSheet(ws, sourceFile) {
   for (let r = 2; r <= Math.min(ws.rowCount || 2000, 2000); r++) {
     const row = ws.getRow(r);
     const dateIso = parseDateCell(row.getCell(1).value ?? cellText(row.getCell(1)));
-    if (!dateIso) continue;
+    if (!dateIso || isFutureReportDate(dateIso)) continue;
 
     for (const [colStr, meta] of Object.entries(colMeta)) {
       const col = parseInt(colStr, 10);
@@ -257,16 +258,18 @@ function parseCompiledSheet(ws, sourceFile, reportDate) {
   return points;
 }
 
-function parse({ wb, filename, sourceFile }) {
+function parse({ wb, filename, sourceFile, now = new Date() }) {
   const points = [];
   const compiledReportDate = compiledReportDateFromFilename(filename);
+  const compiledDate =
+    compiledReportDate && !isFutureReportDate(compiledReportDate, now) ? compiledReportDate : null;
   for (const ws of wb.worksheets) {
     if (/^group-?\d+/i.test(ws.name)) {
       points.push(...parseSheet(ws, sourceFile));
       continue;
     }
     if (/compiled/i.test(ws.name) || /summary/i.test(ws.name)) {
-      points.push(...parseCompiledSheet(ws, sourceFile, compiledReportDate));
+      points.push(...parseCompiledSheet(ws, sourceFile, compiledDate));
     }
   }
   if (!points.length) return { skipped: true, kind: 'timers', points: [], highlights: [], reportDate: null };

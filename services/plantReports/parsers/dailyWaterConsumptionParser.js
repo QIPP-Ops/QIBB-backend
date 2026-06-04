@@ -1,6 +1,9 @@
-const path = require('path');
 const { cellText } = require('../excelUtils');
-const { parseNullableNumber, parseYearMonthFromFilename } = require('./common');
+const {
+  parseNullableNumber,
+  parseYearMonthFromFilenameStart,
+} = require('./common');
+const { isFutureCalendarDay } = require('../reportDateGuards');
 
 const PARSER_ID = 'dailyWaterConsumptionParser';
 
@@ -24,28 +27,8 @@ function getUnitForMetric(name) {
   return 'm³';
 }
 
-/** YYYY-MM-DD or YYYY-MM at filename start → { year, month } */
-function parseYearMonthFromFilenameStart(filename) {
-  const base = path.basename(String(filename || ''));
-  const full = base.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (full) {
-    return { year: parseInt(full[1], 10), month: parseInt(full[2], 10) };
-  }
-  const ym = base.match(/^(\d{4})[-_](\d{2})(?![0-9])/);
-  if (ym) {
-    return { year: parseInt(ym[1], 10), month: parseInt(ym[2], 10) };
-  }
-  return parseYearMonthFromFilename(filename);
-}
-
 function toIsoDate(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function isFutureCalendarDay(year, month, day, now = new Date()) {
-  const d = new Date(year, month - 1, day);
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return d > today;
 }
 
 function getMasterSheet(wb) {

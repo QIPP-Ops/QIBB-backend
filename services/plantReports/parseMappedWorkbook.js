@@ -1,5 +1,6 @@
 const { cellText, parseNumber, slugKey, inferDateFromFilename } = require('./excelUtils');
 const { parseCellRef } = require('./cellRef');
+const { isFutureReportDate } = require('./reportDateGuards');
 
 function parseDateValue(raw, fallbackDate) {
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
@@ -59,7 +60,7 @@ function parseMappedWorkbook(wb, mapping, reportDate, sourceFile) {
       if (c <= dateRef.col) continue;
       const dateRaw = sheet.getRow(dateRow).getCell(c).value;
       const pointDate = parseDateValue(dateRaw, fallbackDate);
-      if (!pointDate) continue;
+      if (!pointDate || isFutureReportDate(pointDate)) continue;
 
       for (const mc of metricCols) {
         const nameRaw = cellText(sheet.getRow(mc.nameRow).getCell(c));
@@ -94,6 +95,7 @@ function parseMappedWorkbook(wb, mapping, reportDate, sourceFile) {
       const row = sheet.getRow(r);
       const dateRaw = row.getCell(dateCol).value;
       const pointDate = parseDateValue(dateRaw, fallbackDate);
+      if (pointDate && isFutureReportDate(pointDate)) continue;
       const hasDate = dateRaw != null && String(cellText(row.getCell(dateCol))).trim() !== '';
 
       for (const mc of metricCols) {
