@@ -71,10 +71,7 @@ const REPORTS_TRENDS = [
     showOnTrends: true,
     appliesToRoutes: ['/reports/trends'],
     order: 6,
-    metricSeries: ms([
-      'daily_op_fuel_gas|plant_fuel_gas|(?:^|_)fuel_gas(?:_|$)',
-      '(?!generation_col|_col_)',
-    ]),
+    metricSeries: ms(['daily_op_fuel_gas|plant_fuel_gas|(?:^|_)fuel_gas(?!.*col_)']),
   },
   {
     panelId: 'chemistry',
@@ -85,10 +82,8 @@ const REPORTS_TRENDS = [
     showOnTrends: true,
     appliesToRoutes: ['/reports/trends'],
     order: 7,
-    metricSeries: ms([
-      '^(?:ro|hrsg)[_.]|\\bro[_.]|hrsg|chlor|ph|conduct|silica|permeate|recovery|oxygen|do_ppb',
-      '(?!tank|daftank|daf\\b|dmf|dt\\d|st\\d|level|sw_tank|dm_tank)',
-    ]),
+    maxKeys: 6,
+    metricSeries: ms(['^ro_', '^hrsg_']),
   },
   {
     panelId: 'environment',
@@ -108,7 +103,9 @@ const REPORTS_TRENDS = [
     showOnTrends: true,
     appliesToRoutes: ['/reports/trends'],
     order: 9,
-    metricSeries: ms(['generation|gross.*power|net.*power|mw']),
+    metricSeries: ms([
+      '^(?:plant_)?gross_generation|^(?:plant_)?net_generation|power_generation|plant_generation',
+    ]),
   },
   {
     panelId: 'power_kpi',

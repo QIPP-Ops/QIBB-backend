@@ -9,9 +9,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { getMongoUri } = require('../config/database');
-const PlantMetricPoint = require('../models/PlantMetricPoint');
-const { PlantMetric } = require('../models/PlantMetric');
-const { BAD_METRIC_KEY_RE } = require('../services/plantReports/metricKeys');
+const { deleteBadDayColMetricPoints } = require('../services/plantReports/productionBootCleanup');
 
 async function main() {
   const uri = getMongoUri();
@@ -32,35 +30,8 @@ async function main() {
     throw err;
   }
 
-  const filter = { metricKey: { $regex: BAD_METRIC_KEY_RE } };
-  const badCount = await PlantMetricPoint.countDocuments(filter);
-  console.log(`PlantMetricPoint with bad day/col metricKey: ${badCount}`);
-
-  let deletedCount = 0;
-  if (badCount > 0) {
-    const res = await PlantMetricPoint.deleteMany(filter);
-    deletedCount = res.deletedCount;
-    console.log(`Deleted ${deletedCount} PlantMetricPoint document(s)`);
-  }
-
-  const badMetrics = await PlantMetric.find({ metricKey: { $regex: BAD_METRIC_KEY_RE } })
-    .select('metricKey')
-    .lean();
-  let metricsDeleted = 0;
-  if (badMetrics.length) {
-    const mRes = await PlantMetric.deleteMany({ metricKey: { $regex: BAD_METRIC_KEY_RE } });
-    metricsDeleted = mRes.deletedCount;
-    console.log(`Deleted ${metricsDeleted} PlantMetric catalog row(s)`);
-  }
-
-  const remaining = await PlantMetricPoint.countDocuments(filter);
-  console.log(
-    JSON.stringify(
-      { deletedCount, metricsDeleted, remainingBadPoints: remaining },
-      null,
-      2
-    )
-  );
+  const result = await deleteBadDayColMetricPoints();
+  console.log(JSON.stringify(result, null, 2));
 
   await mongoose.disconnect();
 }

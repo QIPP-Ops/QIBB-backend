@@ -2,7 +2,16 @@ const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { flattenNestedSnapshot } = require('../chemistryHistoryService');
 
 const CHEMISTRY_EXCLUDE_RE =
-  /tank|daftank|daf\b|dmf|sw\s*tank|dm\s*tank|dt-?\d|st-?\d|level|storage/i;
+  /tank|daftank|daf\b|dmf|sw\s*tank|dm\s*tank|dt-?\d|st-?\d|level|storage|^unit\d+$/i;
+
+/** RO/HRSG chemistry parameter keys only — not tank level labels (unit10, unit20, …). */
+function isChemistryParameterKey(key) {
+  const k = String(key || '').trim();
+  if (!k || CHEMISTRY_EXCLUDE_RE.test(k)) return false;
+  if (/^unit\d+$/i.test(k)) return false;
+  if (/^(?:ro|hrsg)_/i.test(k)) return true;
+  return /(?:ph|chlor|conduct|silica|permeate|recovery|turbidity|iron|orp|dissolved)/i.test(k);
+}
 
 const WATER_SERIES_DEFS = [
   { key: 'totalGrConsumption', label: 'Total GR consumption', pick: (w) => num(w?.totalGrConsumption) },
@@ -48,7 +57,7 @@ function patternsFromDef(def) {
 }
 
 function keyMatchesPatterns(key, patterns) {
-  if (CHEMISTRY_EXCLUDE_RE.test(String(key || ''))) return false;
+  if (!isChemistryParameterKey(key)) return false;
   if (!patterns.length) return true;
   return patterns.some((re) => re.test(key));
 }
@@ -149,24 +158,15 @@ async function buildChemistryWaterPanel(def, from, to) {
   } else if (panelId.includes('ro') || panelId === 'home_chem_ro' || panelId === 'chemistry') {
     built = buildChemistrySeries(
       snapshots,
-      patterns.length ? patterns : [/ro|permeate|recovery|chlor|ph|conduct|silica/i],
+      patterns.length ? patterns : [/^ro_/i, /^hrsg_/i],
       maxKeys
     );
   } else {
-    const chem = buildChemistrySeries(snapshots, patterns, maxKeys);
-    const water = buildWaterSeries(snapshots, patterns, maxKeys);
-    const keys = [...new Set([...chem.keys, ...water.keys])].slice(0, maxKeys);
-    const labels = { ...water.labels, ...chem.labels };
-    const byDate = {};
-    for (const row of [...chem.series, ...water.series]) {
-      if (!byDate[row.date]) byDate[row.date] = { date: row.date };
-      Object.assign(byDate[row.date], row);
-    }
-    built = {
-      keys,
-      labels,
-      series: Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date)),
-    };
+    built = buildChemistrySeries(
+      snapshots,
+      patterns.length ? patterns : [/^ro_/i, /^hrsg_/i],
+      maxKeys
+    );
   }
 
   return {

@@ -9,6 +9,9 @@ const TrendDefinition = require('../models/TrendDefinition');
 const TrendDisplayConfig = require('../models/TrendDisplayConfig');
 const { TREND_DEFINITION_SEEDS } = require('../services/trends/trendDefinitionSeeds');
 
+/** Always refresh from seeds (fixes chemistry/fuel/power panel matchers in Cosmos). */
+const FORCE_SEED_PANEL_IDS = new Set(['chemistry', 'fuel_gas', 'power_gen']);
+
 async function applyDisplayOverrides(seed, displayRows) {
   const hit = displayRows.find((r) => r.panelId === seed.panelId);
   if (!hit) return seed;
@@ -51,7 +54,7 @@ async function main() {
     const before = JSON.stringify(existing.toObject());
     existing.set(seed);
     const after = JSON.stringify(existing.toObject());
-    if (before !== after) {
+    if (before !== after || FORCE_SEED_PANEL_IDS.has(seed.panelId)) {
       await existing.save();
       updated += 1;
     } else {

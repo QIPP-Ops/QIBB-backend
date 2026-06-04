@@ -3,7 +3,7 @@ const { PlantMetric, CustomTrend } = require('../../models/PlantMetric');
 const TrendDefinition = require('../../models/TrendDefinition');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { expandDayColumnSeries } = require('../plantReports/seriesTimeline');
-const { isBadMetricKey } = require('../plantReports/metricKeys');
+const { isBadMetricKey, expandMetricKeysForQuery } = require('../plantReports/metricKeys');
 const { getDateBounds, clampRange } = require('../plantReports/historicalDashboard');
 const { buildOperationalOverview } = require('../plantReports/operationalOverview');
 const { buildChemistryWaterPanel } = require('./chemistryWaterSeries');
@@ -30,10 +30,12 @@ async function ensureTrendDefinitionsSeeded() {
 function panelMatchers(def) {
   const patterns = (def.metricSeries || [])
     .map((s) => s.keyPattern || s.key)
-    .filter(Boolean)
+    .filter((p) => p && !/^\(\?!/.test(String(p)))
     .map((p) => new RegExp(p, 'i'));
   return patterns;
 }
+
+const PANEL_METRIC_DENY_RE = /_(?:day|col)_\d+|generation_col|^unit\d+$/i;
 
 function matchMetrics(allMetrics, def) {
   const patterns = panelMatchers(def);
@@ -41,6 +43,7 @@ function matchMetrics(allMetrics, def) {
   const hits = [];
   for (const m of allMetrics) {
     if (isBadMetricKey(m.metricKey)) continue;
+    if (PANEL_METRIC_DENY_RE.test(m.metricKey)) continue;
     if (def.category && def.category !== 'general' && m.category !== def.category) continue;
     const label = `${m.displayName || m.label} ${m.metricKey}`;
     const matched =
@@ -150,8 +153,9 @@ async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
   }
   matched.forEach((m) => usedKeys.add(m.metricKey));
   const keys = matched.map((m) => m.metricKey);
+  const queryKeys = expandMetricKeysForQuery(keys);
   const rows = await PlantMetricPoint.find({
-    metricKey: { $in: keys },
+    metricKey: { $in: queryKeys },
     reportDate: { $gte: from, $lte: to },
   })
     .sort({ reportDate: 1 })

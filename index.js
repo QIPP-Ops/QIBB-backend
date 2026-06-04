@@ -20,6 +20,15 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
   .then(async () => {
     console.log('MongoDB connected');
 
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const { runProductionBootCleanup } = require('./services/plantReports/productionBootCleanup');
+        await runProductionBootCleanup();
+      } catch (bootCleanupErr) {
+        console.warn('[boot-cleanup] skipped or failed:', bootCleanupErr.message);
+      }
+    }
+
     const { ensurePtwPersonnelSeeded } = require('./services/ptwAutoSeed');
     try {
       const ptw = await ensurePtwPersonnelSeeded();
