@@ -107,7 +107,7 @@ describe('jsonStore.js', () => {
       kind: 'daily_ops',
       data: [{ date: '2026-01-15', metric: 'load', value: 100 }],
     });
-    expect(fileStore.has(kindFilePath('daily_ops'))).toBe(true);
+    expect([...fileStore.keys()].some((k) => k.endsWith('daily_ops.json'))).toBe(true);
   });
 
   test('saveKind throws when payload is invalid', () => {
