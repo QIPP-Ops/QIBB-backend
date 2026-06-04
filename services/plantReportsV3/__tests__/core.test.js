@@ -99,22 +99,22 @@ describe('jsonStore.js', () => {
   test('saveKind writes a valid payload and loadKind reads it back correctly', () => {
     const { saveKind, loadKind } = requireJsonStore();
     const payload = {
-      kind: 'shift',
+      kind: 'daily_ops',
       data: [{ date: '2026-01-15', metric: 'load', value: 100 }],
     };
-    saveKind('shift', payload);
-    expect(loadKind('shift')).toEqual({
-      kind: 'shift',
+    saveKind('daily_ops', payload);
+    expect(loadKind('daily_ops')).toEqual({
+      kind: 'daily_ops',
       data: [{ date: '2026-01-15', metric: 'load', value: 100 }],
     });
-    expect(fileStore.has(kindFilePath('shift'))).toBe(true);
+    expect(fileStore.has(kindFilePath('daily_ops'))).toBe(true);
   });
 
   test('saveKind throws when payload is invalid', () => {
     const { saveKind } = requireJsonStore();
     expect(() =>
-      saveKind('shift', {
-        kind: 'shift',
+      saveKind('daily_ops', {
+        kind: 'daily_ops',
         data: [{ date: 'bad', metric: 'load', value: 100 }],
       }),
     ).toThrow();
@@ -152,7 +152,7 @@ describe('jsonStore.js', () => {
 
   test('mergeKind output is sorted by date then metric ascending', () => {
     const { mergeKind } = requireJsonStore();
-    const merged = mergeKind('timers', [
+    const merged = mergeKind('timers_counters', [
       { date: '2026-03-01', metric: 'z_metric', value: 1 },
       { date: '2026-01-01', metric: 'b_metric', value: 2 },
       { date: '2026-01-01', metric: 'a_metric', value: 3 },
