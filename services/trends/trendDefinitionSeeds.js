@@ -71,7 +71,10 @@ const REPORTS_TRENDS = [
     showOnTrends: true,
     appliesToRoutes: ['/reports/trends'],
     order: 6,
-    metricSeries: ms(['fuel_gas']),
+    metricSeries: ms([
+      'daily_op_fuel_gas|plant_fuel_gas|(?:^|_)fuel_gas(?:_|$)',
+      '(?!generation_col|_col_)',
+    ]),
   },
   {
     panelId: 'chemistry',
@@ -82,7 +85,10 @@ const REPORTS_TRENDS = [
     showOnTrends: true,
     appliesToRoutes: ['/reports/trends'],
     order: 7,
-    metricSeries: ms(['chlor|ph|conduct|silica|ro|permeate|recovery']),
+    metricSeries: ms([
+      '^(?:ro|hrsg)[_.]|\\bro[_.]|hrsg|chlor|ph|conduct|silica|permeate|recovery|oxygen|do_ppb',
+      '(?!tank|daftank|daf\\b|dmf|dt\\d|st\\d|level|sw_tank|dm_tank)',
+    ]),
   },
   {
     panelId: 'environment',

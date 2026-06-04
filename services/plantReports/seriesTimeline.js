@@ -31,10 +31,12 @@ function expandDayColumnSeries(rows, metricKeys) {
     let date = r.reportDate;
     if (m) {
       const dayNum = parseInt(m[1], 10);
-      if (dayNum >= 1) {
-        const base = new Date(`${r.reportDate}T12:00:00Z`);
-        base.setUTCDate(base.getUTCDate() - (dayNum - 1));
-        date = base.toISOString().slice(0, 10);
+      const rd = String(r.reportDate || '').slice(0, 10);
+      if (dayNum >= 1 && /-01$/.test(rd)) {
+        const [y, mo] = rd.split('-').map((x) => parseInt(x, 10));
+        if (Number.isFinite(y) && Number.isFinite(mo)) {
+          date = `${y}-${String(mo).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        }
       }
     }
 

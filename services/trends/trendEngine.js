@@ -3,6 +3,7 @@ const { PlantMetric, CustomTrend } = require('../../models/PlantMetric');
 const TrendDefinition = require('../../models/TrendDefinition');
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { expandDayColumnSeries } = require('../plantReports/seriesTimeline');
+const { isBadMetricKey } = require('../plantReports/metricKeys');
 const { getDateBounds, clampRange } = require('../plantReports/historicalDashboard');
 const { buildOperationalOverview } = require('../plantReports/operationalOverview');
 const { buildChemistryWaterPanel } = require('./chemistryWaterSeries');
@@ -39,8 +40,9 @@ function matchMetrics(allMetrics, def) {
   const maxKeys = def.maxKeys || 4;
   const hits = [];
   for (const m of allMetrics) {
+    if (isBadMetricKey(m.metricKey)) continue;
     if (def.category && def.category !== 'general' && m.category !== def.category) continue;
-    const label = `${m.label} ${m.metricKey}`;
+    const label = `${m.displayName || m.label} ${m.metricKey}`;
     const matched =
       patterns.length === 0
         ? true
@@ -165,7 +167,9 @@ async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
       unit: def.unit || matched[0]?.unit || '',
       theme: def.theme || 'default',
       metricKeys: keys,
-      labels: Object.fromEntries(matched.map((m) => [m.metricKey, m.label])),
+      labels: Object.fromEntries(
+        matched.map((m) => [m.metricKey, m.displayName || m.label])
+      ),
       series: [],
       summary: null,
       dataSource: def.dataSource || 'plant_metric_point',

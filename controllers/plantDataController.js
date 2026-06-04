@@ -262,6 +262,21 @@ exports.getMetricSeries = async (req, res) => {
 /** Alias for Trend Studio preview — same handler as GET /metrics/series */
 exports.getTrendPreview = exports.getMetricSeries;
 
+exports.getMetricPreview = async (req, res) => {
+  try {
+    const key = String(req.params.key || '').trim();
+    if (!key) return res.status(400).json({ message: 'metric key required' });
+
+    const { fetchMetricPreview } = require('../services/plantReports/metricPreview');
+    const data = await fetchMetricPreview(key);
+    if (!data) return res.status(404).json({ message: 'Metric not found' });
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('[metric-preview] error:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 function adminFromBearer(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;

@@ -91,8 +91,16 @@ async function main() {
   await mongoose.connect(uri, { retryWrites: false });
   console.log('MongoDB connected');
 
-  const deleted = await PlantMetricPoint.deleteMany({ sourceFile: { $regex: DELETE_SOURCE_RE } });
-  console.log(`Deleted ${deleted.deletedCount} PlantMetricPoint doc(s) matching Daily_water_consumption`);
+  const { BAD_METRIC_KEY_RE } = require('../services/plantReports/metricKeys');
+  const deleted = await PlantMetricPoint.deleteMany({
+    $or: [
+      { sourceFile: { $regex: DELETE_SOURCE_RE } },
+      { metricKey: { $regex: BAD_METRIC_KEY_RE }, category: 'water' },
+    ],
+  });
+  console.log(
+    `Deleted ${deleted.deletedCount} PlantMetricPoint doc(s) (water followup + bad day/col keys)`
+  );
 
   let batch;
   if (blobIngestConfigured()) {

@@ -1,6 +1,9 @@
 const TrendsSnapshot = require('../../models/TrendsSnapshot');
 const { flattenNestedSnapshot } = require('../chemistryHistoryService');
 
+const CHEMISTRY_EXCLUDE_RE =
+  /tank|daftank|daf\b|dmf|sw\s*tank|dm\s*tank|dt-?\d|st-?\d|level|storage/i;
+
 const WATER_SERIES_DEFS = [
   { key: 'totalGrConsumption', label: 'Total GR consumption', pick: (w) => num(w?.totalGrConsumption) },
   { key: 'swProduction', label: 'SW production', pick: (w) => num(w?.swProduction) },
@@ -45,6 +48,7 @@ function patternsFromDef(def) {
 }
 
 function keyMatchesPatterns(key, patterns) {
+  if (CHEMISTRY_EXCLUDE_RE.test(String(key || ''))) return false;
   if (!patterns.length) return true;
   return patterns.some((re) => re.test(key));
 }

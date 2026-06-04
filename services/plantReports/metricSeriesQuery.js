@@ -12,7 +12,7 @@ function buildMetricKeyClauses(keys) {
   const keyClauses = [{ metricKey: { $in: queryKeys } }];
   for (const k of keys) {
     const escaped = String(k).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    keyClauses.push({ metricKey: { $regex: new RegExp(`^${escaped}_day\\d+$`, 'i') } });
+    keyClauses.push({ metricKey: { $regex: new RegExp(`^${escaped}_day_?\\d+$`, 'i') } });
     keyClauses.push({
       metricKey: { $regex: new RegExp(`^${escaped}$`, 'i') },
     });

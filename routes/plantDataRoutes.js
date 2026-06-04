@@ -18,6 +18,7 @@ router.get('/trend-panels/:panelId', c.getTrendPanelById);
 router.get('/insight-strip', c.getInsightStrip);
 
 router.get('/metrics/series', protect, c.getMetricSeries);
+router.get('/metrics/:key/preview', protect, c.getMetricPreview);
 router.get('/trend-preview', protect, c.getTrendPreview);
 router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
 router.get('/management-trends', protect, c.getManagementTrends);

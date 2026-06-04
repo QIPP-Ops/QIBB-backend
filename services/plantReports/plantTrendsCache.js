@@ -158,7 +158,10 @@ function buildPlantTrendsCacheFromPoints(allPoints, options = {}) {
   const seriesByKey = {};
   for (const key of topKeys) {
     const keyRows = inRange.filter(
-      (r) => r.metricKey === key || String(r.metricKey).startsWith(`${key}_day`)
+      (r) =>
+        r.metricKey === key ||
+        /_day_?\d+$/i.test(String(r.metricKey)) &&
+          canonicalMetricKey(r.metricKey) === key
     );
     const series = expandDayColumnSeries(keyRows, [key, ...keyRows.map((r) => r.metricKey)]);
     if (series.length) seriesByKey[key] = series;
@@ -237,7 +240,11 @@ async function buildPlantTrendsCachePayload() {
 
   const seriesByKey = {};
   for (const key of topKeys) {
-    const keyRows = rows.filter((r) => r.metricKey === key || r.metricKey.startsWith(`${key}_day`));
+    const keyRows = rows.filter(
+      (r) =>
+        r.metricKey === key ||
+        (/_day_?\d+$/i.test(String(r.metricKey)) && canonicalMetricKey(r.metricKey) === key)
+    );
     const series = expandDayColumnSeries(keyRows, [key, ...keyRows.map((r) => r.metricKey)]);
     if (series.length) seriesByKey[key] = series;
   }

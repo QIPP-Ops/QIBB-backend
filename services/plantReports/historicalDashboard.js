@@ -94,10 +94,12 @@ const PANEL_DEFS = [
 ];
 
 function matchMetrics(allMetrics, panel) {
+  const { isBadMetricKey } = require('./metricKeys');
   const hits = [];
   for (const m of allMetrics) {
+    if (isBadMetricKey(m.metricKey)) continue;
     if (panel.category && m.category !== panel.category) continue;
-    const label = `${m.label} ${m.metricKey}`;
+    const label = `${m.displayName || m.label} ${m.metricKey}`;
     const matched = panel.matchers.some((re) => re.test(label));
     if (!matched) continue;
     if (hits.some((h) => h.metricKey === m.metricKey)) continue;
