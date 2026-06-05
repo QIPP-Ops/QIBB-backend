@@ -3,7 +3,9 @@ const fs = require('fs');
 
 const { validatePayload, VALID_KINDS } = require('./schema');
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = process.env.PLANT_REPORTS_V3_DIR
+  || (process.env.HOME ? path.join(process.env.HOME, 'data-v3') : null)
+  || path.join(__dirname, '../../data');
 
 function kindFilePath(kind) {
   return path.join(DATA_DIR, `${kind}.json`);
