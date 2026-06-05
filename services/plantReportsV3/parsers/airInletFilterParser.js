@@ -115,8 +115,19 @@ function parseDateText(text) {
   return null;
 }
 
+function normalizeHeader(text) {
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function parseDateFromFilename(filename) {
   const base = path.basename(String(filename || ''));
+  const dmyDot = base.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (dmyDot) {
+    return toIsoDate(parseInt(dmyDot[3], 10), parseInt(dmyDot[2], 10), parseInt(dmyDot[1], 10));
+  }
   const dmyDash = base.match(/(\d{2})-(\d{2})-(\d{4})/);
   if (dmyDash) {
     return toIsoDate(parseInt(dmyDash[3], 10), parseInt(dmyDash[2], 10), parseInt(dmyDash[1], 10));
@@ -167,34 +178,73 @@ function isGtDataRow(firstCellText) {
   return true;
 }
 
-function detectHeaderRow(ws) {
-  let header = null;
-  ws.eachRow((row, rowNumber) => {
-    if (header) {
-      return;
+function resolveExtractHeader(norm) {
+  for (const header of EXTRACT_HEADERS) {
+    if (norm === normalizeHeader(header)) {
+      return header;
     }
+  }
+  if (norm === 'gt mw' || norm === 'mw') {
+    return 'GT MW';
+  }
+  if (norm.includes('p1c')) {
+    return 'P1C (mbar)';
+  }
+  return null;
+}
+
+function detectHeaderRow(ws) {
+  for (let rowNumber = 1; rowNumber <= 8; rowNumber += 1) {
+    const row = ws.getRow(rowNumber);
+    if (!row) {
+      continue;
+    }
+
+    const columns = [];
     let hasGtMw = false;
     let hasP1c = false;
-    const columns = [];
 
     row.eachCell({ includeEmpty: false }, (cell, col) => {
-      const text = cellText(cell).trim();
-      if (text === 'GT MW') {
+      const norm = normalizeHeader(cellText(cell));
+      if (!norm || norm.includes('all gts') || norm.includes('air intake filter')) {
+        return;
+      }
+
+      const header = resolveExtractHeader(norm);
+      if (!header) {
+        return;
+      }
+
+      columns.push({ col, header });
+      if (header === 'GT MW') {
         hasGtMw = true;
       }
-      if (text === 'P1C (mbar)') {
+      if (header === 'P1C (mbar)') {
         hasP1c = true;
-      }
-      if (EXTRACT_HEADERS.includes(text)) {
-        columns.push({ col, header: text });
       }
     });
 
-    if (hasGtMw && hasP1c && columns.length > 0) {
-      header = { rowNumber, columns };
+    if (columns.length >= 3) {
+      return { rowNumber, columns };
     }
-  });
-  return header;
+    if ((hasGtMw || hasP1c) && columns.length >= 1) {
+      return { rowNumber, columns };
+    }
+  }
+
+  return null;
+}
+
+function gtLabelFromRow(row) {
+  const firstCell = cellText(row.getCell(1)).trim();
+  if (isGtDataRow(firstCell)) {
+    return normalizeGtLabel(firstCell);
+  }
+  const secondCell = cellText(row.getCell(2)).trim();
+  if (isGtDataRow(secondCell)) {
+    return normalizeGtLabel(secondCell);
+  }
+  return null;
 }
 
 function parse({ wb, filename, sourceFile }) {
@@ -225,11 +275,14 @@ function parse({ wb, filename, sourceFile }) {
     }
 
     const firstCell = cellText(row.getCell(1)).trim();
-    if (!firstCell || !isGtDataRow(firstCell)) {
+    if (!firstCell) {
       continue;
     }
 
-    const gt = normalizeGtLabel(firstCell);
+    const gt = gtLabelFromRow(row);
+    if (!gt) {
+      continue;
+    }
 
     for (const { col, header } of tableHeader.columns) {
       const value = parseValue(row.getCell(col));

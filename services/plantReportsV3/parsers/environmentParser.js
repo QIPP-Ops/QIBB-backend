@@ -4,7 +4,6 @@ const KIND = 'environment';
 
 const STACK_PARAMETERS = new Set(['NOx', 'SOx', 'CO as CO', 'Particulate', 'Stack Temp']);
 const SUB_VALUES = new Set(['Minimum', 'Maximum', 'Average']);
-const GT_LABEL_RE = /^GT#\d{2}$/;
 
 const MONTHS = {
   jan: 1,
@@ -25,6 +24,28 @@ const EXCEL_ERROR_RE = /^#(?:ref!|value!|name\?|div\/0!|null!|num!|n\/a)/i;
 
 function emptyResult() {
   return { kind: KIND, data: [] };
+}
+
+function normalizeHeader(text) {
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
+const NORMALIZED_SUB_VALUES = new Set([...SUB_VALUES].map((value) => normalizeHeader(value)));
+
+function normalizeGtLabel(text) {
+  const trimmed = String(text || '').trim();
+  const hashMatch = trimmed.match(/^GT#(\d{2})$/i);
+  if (hashMatch) {
+    return `GT#${hashMatch[1]}`;
+  }
+  const plainMatch = trimmed.match(/^GT[- ]?(\d{2})$/i);
+  if (plainMatch) {
+    return `GT#${plainMatch[1]}`;
+  }
+  return null;
 }
 
 function getEnvironmentSheet(wb) {
@@ -197,11 +218,26 @@ function rowJoinedText(row) {
 }
 
 function matchStackParameter(text) {
-  const trimmed = String(text || '').trim();
+  const norm = normalizeHeader(text);
   for (const param of STACK_PARAMETERS) {
-    if (trimmed === param) {
+    if (norm === normalizeHeader(param)) {
       return param;
     }
+  }
+  if (norm.includes('nox')) {
+    return 'NOx';
+  }
+  if (norm.includes('sox')) {
+    return 'SOx';
+  }
+  if (norm.includes('particulate')) {
+    return 'Particulate';
+  }
+  if (norm.includes('stack temp')) {
+    return 'Stack Temp';
+  }
+  if (norm === 'co as co' || norm === 'co') {
+    return 'CO as CO';
   }
   return null;
 }
@@ -209,8 +245,8 @@ function matchStackParameter(text) {
 function collectGtColumns(row) {
   const gtCols = [];
   row.eachCell({ includeEmpty: false }, (cell, col) => {
-    const label = cellText(cell).trim();
-    if (GT_LABEL_RE.test(label)) {
+    const label = normalizeGtLabel(cellText(cell));
+    if (label) {
       gtCols.push({ col, gt: label });
     }
   });
@@ -237,7 +273,7 @@ function buildSubColumnMap(gtRow, subRow) {
   const map = [];
   subRow.eachCell({ includeEmpty: false }, (cell, col) => {
     const subValue = cellText(cell).trim();
-    if (!SUB_VALUES.has(subValue)) {
+    if (!NORMALIZED_SUB_VALUES.has(normalizeHeader(subValue))) {
       return;
     }
     const gt = gtForColumn(gtCols, col);
@@ -257,7 +293,7 @@ function isGtHeaderRow(row) {
 function isStackBlockSubHeaderRow(row) {
   let count = 0;
   row.eachCell({ includeEmpty: false }, (cell) => {
-    if (SUB_VALUES.has(cellText(cell).trim())) {
+    if (NORMALIZED_SUB_VALUES.has(normalizeHeader(cellText(cell)))) {
       count += 1;
     }
   });
@@ -450,7 +486,7 @@ function parseAmbientConditions(ws, date, data, rowStart) {
       continue;
     }
 
-    const label = cellText(row.getCell(1)).trim();
+    const label = normalizeHeader(cellText(row.getCell(1)));
 
     if (/weather\s*condition/i.test(label)) {
       continue;
@@ -510,6 +546,33 @@ function findOutfallDataStart(ws) {
   return rowNumber;
 }
 
+function parseFlatRows(ws, date, data) {
+  const maxCol = Math.min(ws.columnCount || 40, 40);
+  ws.eachRow((row, rowNumber) => {
+    if (rowNumber < 2) {
+      return;
+    }
+
+    const param = cellText(row.getCell(1)).trim() || cellText(row.getCell(2)).trim();
+    const norm = normalizeHeader(param);
+    if (!param || norm === 'parameter' || norm === 'parameters') {
+      return;
+    }
+
+    for (let col = 4; col <= maxCol; col += 1) {
+      const value = parseFiniteNumber(row.getCell(col));
+      if (value == null) {
+        continue;
+      }
+      data.push({
+        date,
+        metric: param.replace(/\s+/g, ' ').trim(),
+        value,
+      });
+    }
+  });
+}
+
 function parse({ wb, filename, sourceFile }) {
   void sourceFile;
 
@@ -536,6 +599,10 @@ function parse({ wb, filename, sourceFile }) {
 
   const ambientStart = ambientRow || outfallStart;
   parseAmbientConditions(ws, date, data, ambientStart);
+
+  if (data.length === 0) {
+    parseFlatRows(ws, date, data);
+  }
 
   return { kind: KIND, data };
 }

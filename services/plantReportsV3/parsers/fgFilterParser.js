@@ -116,8 +116,19 @@ function parseDateText(text) {
   return null;
 }
 
+function normalizeHeader(text) {
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function parseDateFromFilename(filename) {
   const base = path.basename(String(filename || ''));
+  const dmyDot = base.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (dmyDot) {
+    return toIsoDate(parseInt(dmyDot[3], 10), parseInt(dmyDot[2], 10), parseInt(dmyDot[1], 10));
+  }
   const dmyDash = base.match(/(\d{2})-(\d{2})-(\d{4})/);
   if (dmyDash) {
     return toIsoDate(parseInt(dmyDash[3], 10), parseInt(dmyDash[2], 10), parseInt(dmyDash[1], 10));
@@ -171,34 +182,74 @@ function isGtPrimaryRow(firstCellText) {
   return GT_LABEL_RE.test(gt);
 }
 
-function detectHeaderRow(ws) {
-  let header = null;
-  ws.eachRow((row, rowNumber) => {
-    if (header) {
-      return;
+function resolveExtractHeader(norm) {
+  for (const header of EXTRACT_HEADERS) {
+    if (norm === normalizeHeader(header)) {
+      return header;
     }
-    let hasLoad = false;
-    let hasBpSpread = false;
+  }
+  if (norm === 'load' || norm === 'mw' || norm === 'gt load' || norm.includes('load')) {
+    return 'Load';
+  }
+  if (norm === 'bp spread' || norm.includes('bp spread') || norm.includes('spread')) {
+    return 'BP Spread';
+  }
+  return null;
+}
+
+function detectHeaderRow(ws) {
+  for (let rowNumber = 1; rowNumber <= 8; rowNumber += 1) {
+    const row = ws.getRow(rowNumber);
+    if (!row) {
+      continue;
+    }
+
     const columns = [];
+    let hasLoadLike = false;
+    let hasBpSpreadLike = false;
 
     row.eachCell({ includeEmpty: false }, (cell, col) => {
-      const text = cellText(cell).trim();
-      if (text === 'Load') {
-        hasLoad = true;
+      const raw = cellText(cell).trim();
+      const norm = normalizeHeader(raw);
+      if (!norm || norm.includes('all gts fuel gas filter')) {
+        return;
       }
-      if (text === 'BP Spread') {
-        hasBpSpread = true;
+
+      const header = resolveExtractHeader(norm);
+      if (!header) {
+        return;
       }
-      if (EXTRACT_HEADERS.includes(text)) {
-        columns.push({ col, header: text });
+
+      columns.push({ col, header });
+      if (header === 'Load') {
+        hasLoadLike = true;
+      }
+      if (header === 'BP Spread') {
+        hasBpSpreadLike = true;
       }
     });
 
-    if (hasLoad && hasBpSpread && columns.length > 0) {
-      header = { rowNumber, columns };
+    if (columns.length >= 3) {
+      return { rowNumber, columns };
     }
-  });
-  return header;
+    if ((hasLoadLike || hasBpSpreadLike) && columns.length >= 1) {
+      return { rowNumber, columns };
+    }
+  }
+
+  return null;
+}
+
+function gtLabelFromRow(row) {
+  const firstCell = cellText(row.getCell(1)).trim();
+  if (isGtPrimaryRow(firstCell)) {
+    return normalizeGtLabel(firstCell);
+  }
+  const secondCell = cellText(row.getCell(2)).trim();
+  if (isGtPrimaryRow(secondCell)) {
+    return normalizeGtLabel(secondCell);
+  }
+  return null;
 }
 
 function parse({ wb, filename, sourceFile }) {
@@ -237,8 +288,8 @@ function parse({ wb, filename, sourceFile }) {
       continue;
     }
 
-    const gt = normalizeGtLabel(firstCell);
-    if (!gt || !isGtPrimaryRow(firstCell)) {
+    const gt = gtLabelFromRow(row);
+    if (!gt) {
       continue;
     }
 

@@ -85,6 +85,13 @@ function emptyResult() {
   return { kind: KIND, data: [] };
 }
 
+function normalizeHeader(text) {
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function getHrsgSheet(wb) {
   if (!wb || !Array.isArray(wb.worksheets)) {
     return null;
@@ -216,7 +223,7 @@ function parseDateFromSheet(ws) {
       if (found) {
         return;
       }
-      if (cellText(cell).trim() === 'Date') {
+      if (normalizeHeader(cellText(cell)) === 'date') {
         const adjacent = parseDateText(cellText(row.getCell(col + 1)));
         if (adjacent) {
           found = adjacent;
@@ -302,18 +309,35 @@ function unitLabelFromNumber(unitNumber, stOnly) {
   return null;
 }
 
-function isInvalidUnitCell(text) {
+function parseUnitNumberFromCell(text) {
   const trimmed = String(text || '').trim();
-  if (!trimmed) {
-    return true;
+  if (!trimmed || RANGE_RE.test(trimmed)) {
+    return null;
   }
-  if (RANGE_RE.test(trimmed)) {
-    return true;
+
+  if (/^\d+$/.test(trimmed)) {
+    const num = parseInt(trimmed, 10);
+    return VALID_UNIT_NUMBERS.has(num) ? num : null;
   }
-  if (!/^\d+$/.test(trimmed)) {
-    return true;
+
+  const stMatch = trimmed.match(/^ST[- ]?(\d{2})$/i);
+  if (stMatch) {
+    const num = parseInt(stMatch[1], 10);
+    return VALID_UNIT_NUMBERS.has(num) ? num : null;
   }
-  return false;
+
+  const gtMatch = trimmed.match(/^GT[- ]?(\d{2})$/i);
+  if (gtMatch) {
+    const num = parseInt(gtMatch[1], 10);
+    return VALID_UNIT_NUMBERS.has(num) ? num : null;
+  }
+
+  return null;
+}
+
+function isUnitHeader(text) {
+  const norm = normalizeHeader(text);
+  return norm === 'unit' || norm === 'unit no.' || norm === 'unit no' || norm.startsWith('unit ');
 }
 
 function rowJoinedText(row) {
@@ -361,7 +385,7 @@ function findHeaderRow(ws, startRow, endRow) {
     }
     let unitCol = null;
     row.eachCell({ includeEmpty: false }, (cell, col) => {
-      if (cellText(cell).trim() === 'Unit No.') {
+      if (isUnitHeader(cellText(cell))) {
         unitCol = col;
       }
     });
@@ -379,7 +403,7 @@ function buildMetricColumns(headerRow, unitCol) {
       return;
     }
     const header = cellText(cell).trim();
-    if (!header || /recommend/i.test(header)) {
+    if (!header || /recommend/i.test(normalizeHeader(header))) {
       return;
     }
     columns.push({ col, header });
@@ -419,12 +443,7 @@ function parseSection(ws, marker, nextMarkerRow, date, data) {
       }
     }
 
-    const unitText = cellText(row.getCell(header.unitCol)).trim();
-    if (isInvalidUnitCell(unitText)) {
-      continue;
-    }
-
-    const unitNumber = parseInt(unitText, 10);
+    const unitNumber = parseUnitNumberFromCell(cellText(row.getCell(header.unitCol)).trim());
     const unit = unitLabelFromNumber(unitNumber, marker.def.stOnly);
     if (!unit) {
       continue;
@@ -444,9 +463,48 @@ function parseSection(ws, marker, nextMarkerRow, date, data) {
   }
 }
 
+function parseLegacyHrsgSheet(ws, date, data) {
+  const header = findHeaderRow(ws, 1, 20);
+  if (!header) {
+    return;
+  }
+
+  const metricColumns = buildMetricColumns(header.row, header.unitCol);
+  if (metricColumns.length === 0) {
+    return;
+  }
+
+  const endRow = ws.rowCount || 500;
+  for (let rowNumber = header.rowNumber + 1; rowNumber <= endRow; rowNumber += 1) {
+    const row = ws.getRow(rowNumber);
+    if (!row) {
+      continue;
+    }
+
+    const unitNumber = parseUnitNumberFromCell(cellText(row.getCell(header.unitCol)).trim());
+    const unit = unitLabelFromNumber(unitNumber, false) || unitLabelFromNumber(unitNumber, true);
+    if (!unit) {
+      continue;
+    }
+
+    for (const { col, header: columnHeader } of metricColumns) {
+      const value = parseValue(row.getCell(col));
+      if (value == null) {
+        continue;
+      }
+      data.push({
+        date,
+        metric: `HRSG_${columnHeader}_${unit}`,
+        value,
+      });
+    }
+  }
+}
+
 function parseSheet(ws, date, data) {
   const markers = findSectionMarkers(ws);
   if (markers.length === 0) {
+    parseLegacyHrsgSheet(ws, date, data);
     return;
   }
 
