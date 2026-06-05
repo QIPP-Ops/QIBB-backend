@@ -15,15 +15,20 @@ const NAME_KEYWORDS = [
   'fg-filter',
   'fg_filter',
   'fgfilter',
+  'fg filter',
   'fuel-gas',
   'fuel_gas',
   'air-intake',
   'air_intake',
+  'air intake',
   'air-inlet',
   'air_inlet',
+  'air inlet',
   'timer',
   'counter',
   'hrsg',
+  'ro-hrsg',
+  'ro hrsg',
 ];
 
 const processedSet = new Set();
@@ -81,7 +86,7 @@ async function poll(blobServiceClient) {
       }
 
       const safeName = path.basename(item.name).replace(/[^\w.\-() ]+/g, '_');
-      const tempFilePath = path.join(os.tmpdir(), `${Date.now()}-${safeName}`);
+      const tempFilePath = path.join(os.tmpdir(), `${safeName}-${Date.now()}`);
 
       try {
         const blockBlob = container.getBlockBlobClient(item.name);

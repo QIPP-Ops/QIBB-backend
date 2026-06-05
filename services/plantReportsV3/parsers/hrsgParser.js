@@ -181,6 +181,28 @@ function parseDateFromFilename(filename) {
     return ymd[0];
   }
 
+  const monthNames = [
+    'january',
+    'february',
+    'march',
+    'april',
+    'may',
+    'june',
+    'july',
+    'august',
+    'september',
+    'october',
+    'november',
+    'december',
+  ];
+  const monthMatch = base.toLowerCase().match(/([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+  if (monthMatch) {
+    const m = monthNames.indexOf(monthMatch[1]) + 1;
+    if (m > 0) {
+      return `${monthMatch[3]}-${String(m).padStart(2, '0')}-${String(monthMatch[2]).padStart(2, '0')}`;
+    }
+  }
+
   return null;
 }
 

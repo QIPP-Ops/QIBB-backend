@@ -30,6 +30,7 @@ function detectKind(filename) {
     name.includes('fg-filter') ||
     name.includes('fg_filter') ||
     name.includes('fgfilter') ||
+    name.includes('fg filter') ||
     name.includes('fuel-gas') ||
     name.includes('fuel_gas')
   ) {
@@ -38,15 +39,17 @@ function detectKind(filename) {
   if (
     name.includes('air-intake') ||
     name.includes('air_intake') ||
+    name.includes('air intake') ||
     name.includes('air-inlet') ||
-    name.includes('air_inlet')
+    name.includes('air_inlet') ||
+    name.includes('air inlet')
   ) {
     return 'air_inlet_filter';
   }
   if (name.includes('timer') || name.includes('counter')) {
     return 'timers_counters';
   }
-  if (name.includes('hrsg')) {
+  if (name.includes('hrsg') || name.includes('ro-hrsg') || name.includes('ro hrsg')) {
     return 'hrsg';
   }
 
