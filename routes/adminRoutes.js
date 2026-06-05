@@ -9,6 +9,7 @@ const ingestAdmin = require('../controllers/ingestAdminController');
 const trendDisplay = require('../controllers/trendDisplayController');
 const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
+const blobController = require('../controllers/blobController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -20,6 +21,7 @@ const pinLimiter = rateLimit({
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
 
+router.get('/list-blobs', protect, admin, blobController.listAllBlobs);
 router.get('/ingest-status', protect, admin, ingestAdmin.getIngestStatus);
 router.post('/ingest/trigger', protect, requireSuperAdmin, ingestAdmin.triggerIngest);
 

@@ -4,9 +4,23 @@ const {
   downloadBlobBuffer,
   blobIngestConfigured,
 } = require('../services/plantReports/blobReports');
+const { listAllContainerBlobs } = require('../services/plantReportsV3/azureSync');
 const { previewWorkbookBuffer } = require('../services/plantReports/workbookPreview');
 const FileMapping = require('../models/FileMapping');
 const { mappingCoversFile } = require('../services/plantReports/fileMappingService');
+
+exports.listAllBlobs = async (req, res) => {
+  try {
+    const result = await listAllContainerBlobs();
+    res.json({ success: true, data: result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/not configured/i.test(message)) {
+      return res.status(503).json({ message });
+    }
+    res.status(500).json({ message });
+  }
+};
 
 exports.listBlobFiles = async (req, res) => {
   try {

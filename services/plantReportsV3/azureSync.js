@@ -11,6 +11,7 @@ const NAME_KEYWORDS = [
   'water',
   'energy',
   'environment',
+  'environment report',
   'operation',
   'fg-filter',
   'fg_filter',
@@ -24,6 +25,7 @@ const NAME_KEYWORDS = [
   'air-inlet',
   'air_inlet',
   'air inlet',
+  'timers',
   'timer',
   'counter',
   'hrsg',
@@ -72,7 +74,11 @@ async function poll(blobServiceClient) {
     const container = blobServiceClient.getContainerClient(CONTAINER_NAME);
 
     for await (const item of container.listBlobsFlat()) {
-      if (!item.name || !isAcceptedBlob(item.name)) {
+      if (!item.name) {
+        continue;
+      }
+      if (!isAcceptedBlob(item.name)) {
+        console.log(`[azureSync] Rejected blob: ${item.name}`);
         continue;
       }
 
@@ -127,6 +133,35 @@ async function poll(blobServiceClient) {
   }
 }
 
+async function listAllContainerBlobs() {
+  const blobServiceClient = createBlobServiceClient();
+  if (!blobServiceClient) {
+    throw new Error(
+      'Blob storage not configured (AZURE_STORAGE_CONNECTION_STRING or BLOB_SAS_URL required)',
+    );
+  }
+
+  const container = blobServiceClient.getContainerClient(CONTAINER_NAME);
+  const names = [];
+
+  for await (const item of container.listBlobsFlat()) {
+    if (item.name) {
+      names.push(item.name);
+    }
+  }
+
+  names.sort((a, b) => a.localeCompare(b));
+  const totalCount = names.length;
+  const truncated = totalCount > 1000;
+
+  return {
+    container: CONTAINER_NAME,
+    totalCount,
+    truncated,
+    blobs: truncated ? names.slice(0, 500) : names,
+  };
+}
+
 module.exports = function startAzureSync() {
   const blobServiceClient = createBlobServiceClient();
 
@@ -151,3 +186,7 @@ module.exports = function startAzureSync() {
     `Azure sync started — polling every 2 hours. Container: ${CONTAINER_NAME}`,
   );
 };
+
+module.exports.isAcceptedBlob = isAcceptedBlob;
+module.exports.listAllContainerBlobs = listAllContainerBlobs;
+module.exports.NAME_KEYWORDS = NAME_KEYWORDS;
