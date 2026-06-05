@@ -145,6 +145,7 @@ function parse({ wb, filename, sourceFile }) {
 
   const maxDay = daysInMonth(ym.year, ym.month);
   const data = [];
+  const today = new Date().toISOString().slice(0, 10);
 
   ws.eachRow((row, rowNumber) => {
     if (rowNumber <= 1) {
@@ -169,8 +170,13 @@ function parse({ wb, filename, sourceFile }) {
         continue;
       }
 
+      const recordDate = toIsoDate(ym.year, ym.month, day);
+      if (recordDate > today) {
+        continue;
+      }
+
       data.push({
-        date: toIsoDate(ym.year, ym.month, day),
+        date: recordDate,
         metric,
         value,
       });

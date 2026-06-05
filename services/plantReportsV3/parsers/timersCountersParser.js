@@ -122,11 +122,22 @@ function parseDateText(text) {
   return null;
 }
 
+function normalizeHeader(text) {
+  return String(text || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
+
 function parseDateFromFilename(filename) {
   const base = path.basename(String(filename || ''));
   const dmyDot = base.match(/(\d{2})\.(\d{2})\.(\d{4})/);
   if (dmyDot) {
     return toIsoDate(parseInt(dmyDot[3], 10), parseInt(dmyDot[2], 10), parseInt(dmyDot[1], 10));
+  }
+  const dmyDash = base.match(/(\d{2})-(\d{2})-(\d{4})/);
+  if (dmyDash) {
+    return toIsoDate(parseInt(dmyDash[3], 10), parseInt(dmyDash[2], 10), parseInt(dmyDash[1], 10));
   }
   return null;
 }
@@ -203,15 +214,16 @@ function detectHeaderRow(ws) {
 
     row.eachCell({ includeEmpty: false }, (cell, col) => {
       const text = cellText(cell).trim();
-      if (text === 'Unit') {
+      const norm = normalizeHeader(text);
+      if (norm === 'unit') {
         unitCol = col;
-      } else if (text === METRIC_COLUMNS.avg) {
+      } else if (norm === normalizeHeader(METRIC_COLUMNS.avg)) {
         avgCol = col;
-      } else if (text === METRIC_COLUMNS.total) {
+      } else if (norm === normalizeHeader(METRIC_COLUMNS.total)) {
         totalCol = col;
-      } else if (text === METRIC_COLUMNS.mfeqh) {
+      } else if (norm === normalizeHeader(METRIC_COLUMNS.mfeqh)) {
         mfeqhCol = col;
-      } else if (text === METRIC_COLUMNS.aux) {
+      } else if (norm === normalizeHeader(METRIC_COLUMNS.aux)) {
         auxCol = col;
       }
     });
