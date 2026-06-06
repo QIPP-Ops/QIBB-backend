@@ -60,6 +60,8 @@ for (let i = DATA_START; i < rows.length; i++) {
   if (cellOn(row[10])) authorizations.push('skilledPerson');
   if (cellOn(row[11])) authorizations.push('permitReceiverStandard');
   if (cellOn(row[12])) authorizations.push('permitReceiverAccess');
+  if (cellOn(row[13])) authorizations.push('permitReceiverLive');
+  if (cellOn(row[14])) authorizations.push('permitReceiverRosh');
   if (cellOn(row[16])) authorizations.push('voltageLow');
   if (cellOn(row[17])) authorizations.push('voltageHigh');
   if (cellOn(row[19])) authorizations.push('standbyPerson');

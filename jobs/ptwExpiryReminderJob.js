@@ -5,7 +5,7 @@ const { sendMail, emailTemplate, isEmailConfigured } = require('../services/emai
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const { formatPtwAuthRoleName } = require('../utils/ptwAuthRoles');
 
-const REMINDER_DAYS = [30, 14, 7];
+const REMINDER_DAYS = [90, 30, 14, 7];
 const CRON_UTC = '0 6 * * *';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -128,11 +128,12 @@ async function deliverInAppReminders({
 
 // ─── Email delivery (alongside in-app; skips placeholder addresses) ───────────
 
-async function sendMemberExpiryEmail(member, roleName, expiryFormatted) {
-  const email = (member.email || '').trim();
+async function sendMemberExpiryEmail(member, roleName, expiryFormatted, overrideEmail) {
+  const email = (overrideEmail || member?.email || '').trim();
   if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return false;
   const subject = `PTW Authorization Expiry Reminder — ${roleName}`;
-  const text = `Dear ${member.name || 'Colleague'}, your PTW authorization for ${roleName} is expiring on ${expiryFormatted}. Please contact your supervisor to arrange renewal before this date. — Acwa Operations, QIPP`;
+  const name = member?.name || 'Colleague';
+  const text = `Dear ${name}, your PTW authorization for ${roleName} is expiring on ${expiryFormatted}. Please contact your supervisor to arrange renewal before this date. — Acwa Operations, QIPP`;
   try {
     await sendMail({
       to: email,
@@ -164,9 +165,10 @@ async function sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryForma
   }
 }
 
-async function deliverExpiryEmails({ member, crewAdmins, memberName, roleName, expiryFormatted }) {
-  if (member) {
-    await sendMemberExpiryEmail(member, roleName, expiryFormatted);
+async function deliverExpiryEmails({ member, crewAdmins, memberName, roleName, expiryFormatted, person }) {
+  const overrideEmail = String(person?.notifyEmail || '').trim();
+  if (member || overrideEmail) {
+    await sendMemberExpiryEmail(member, roleName, expiryFormatted, overrideEmail);
   }
   for (const admin of crewAdmins) {
     await sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryFormatted);
@@ -209,6 +211,7 @@ async function runPtwExpiryReminderSweep(now = new Date()) {
       memberName,
       roleName,
       expiryFormatted,
+      person,
     });
     results.reminded += 1;
   }

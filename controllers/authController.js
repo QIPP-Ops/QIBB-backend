@@ -32,10 +32,16 @@ async function findUserByEmail(email) {
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
 
-const AUTO_APPROVED_DOMAINS = ['acwapower.com', 'nomac.com', 'acwaops.com'];
+const AUTO_APPROVED_DOMAINS = ['acwapower.com', 'nomac.com'];
+const ALLOWED_EMAIL_DOMAINS = ['acwapower.com', 'nomac.com'];
+
+function isAllowedEmailDomain(email) {
+  const domain = getEmailDomain(normalizeEmail(email));
+  return ALLOWED_EMAIL_DOMAINS.includes(domain);
+}
 
 function getEmailDomain(email) {
-  return email.split('@')[1]?.toLowerCase() || '';
+  return String(email || '').split('@')[1]?.toLowerCase() || '';
 }
 
 // ─── Register options (public) ───────────────────────────────────────────────
@@ -73,14 +79,22 @@ exports.register = async (req, res) => {
     return res.status(400).json({ message: 'All personnel fields are required.' });
   }
 
+  const normalizedEmail = normalizeEmail(email);
+  if (!isAllowedEmailDomain(normalizedEmail)) {
+    return res.status(403).json({
+      message: 'Registration is limited to @nomac.com and @acwapower.com email addresses.',
+      code: 'DOMAIN_NOT_ALLOWED',
+    });
+  }
+
   try {
-    const existing = await AdminUser.findOne({ $or: [{ email }, { empId }] });
+    const existing = await AdminUser.findOne({ $or: [{ email: normalizedEmail }, { empId }] });
     if (existing) {
       if (existing.email === email) return res.status(409).json({ message: 'Email already registered.' });
       if (existing.empId === empId) return res.status(409).json({ message: 'Employee ID already registered.' });
     }
 
-    const domain       = getEmailDomain(email);
+    const domain       = getEmailDomain(normalizedEmail);
     const autoApproved = AUTO_APPROVED_DOMAINS.includes(domain);
 
     const otp          = Math.floor(100000 + Math.random() * 900000).toString();
@@ -90,7 +104,7 @@ exports.register = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = new AdminUser({
-      email,
+      email: normalizedEmail,
       passwordHash,
       name,
       empId,
@@ -231,6 +245,13 @@ exports.login = async (req, res) => {
   try {
     const user = await findUserByEmail(email);
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
+
+    if (!isAllowedEmailDomain(user.email) && user.email !== SUPER_ADMIN_EMAIL) {
+      return res.status(403).json({
+        message: 'Sign-in is limited to @nomac.com and @acwapower.com accounts.',
+        code: 'DOMAIN_NOT_ALLOWED',
+      });
+    }
 
     if (!user.passwordHash) {
       return res.status(401).json({ message: 'Invalid credentials.' });

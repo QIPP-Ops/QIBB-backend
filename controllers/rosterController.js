@@ -97,11 +97,32 @@ exports.patchPersonnelProfile = async (req, res) => {
       return res.status(403).json({ message: 'Admin only' });
     }
     const { empId } = req.params;
+    const { isSuperAdminUser } = require('../middleware/superAdmin');
+    const isSuperAdmin = isSuperAdminUser(req.user);
+
+    if (req.body?.newEmpId !== undefined) {
+      if (!isSuperAdmin) {
+        return res.status(403).json({ message: 'Super admin only' });
+      }
+      const newEmpId = String(req.body.newEmpId || '').trim();
+      if (!newEmpId) {
+        return res.status(400).json({ message: 'Employee ID is required.' });
+      }
+      if (newEmpId !== empId) {
+        const dup = await AdminUser.findOne({ empId: newEmpId });
+        if (dup) return res.status(409).json({ message: 'Employee ID already in use.' });
+      }
+      const user = await AdminUser.findOneAndUpdate(
+        { empId },
+        { $set: { empId: newEmpId } },
+        { new: true, runValidators: true }
+      ).select('-passwordHash');
+      if (!user) return res.status(404).json({ message: 'Personnel not found' });
+      return res.json({ success: true, data: rosterRowForClient(user) });
+    }
+
     const patch = {};
     if (req.body?.isERT !== undefined) patch.isERT = Boolean(req.body.isERT);
-    if (req.body?.employeeExternalId !== undefined) {
-      patch.employeeExternalId = String(req.body.employeeExternalId || '').trim();
-    }
     if (!Object.keys(patch).length) {
       return res.status(400).json({ message: 'No fields to update' });
     }

@@ -31,9 +31,12 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
 
     const { ensurePtwPersonnelSeeded } = require('./services/ptwAutoSeed');
     try {
-      const ptw = await ensurePtwPersonnelSeeded();
+      const forceReseed = process.env.PTW_FORCE_RESEED === '1';
+      const ptw = await ensurePtwPersonnelSeeded({ force: forceReseed });
       if (ptw.seeded) {
-        console.log(`[ptw] auto-seeded ${ptw.count} authorization entries (was ${ptw.previousCount})`);
+        console.log(
+          `[ptw] ${forceReseed ? 'force-' : ''}seeded ${ptw.count} authorization entries (was ${ptw.previousCount})`
+        );
       }
     } catch (ptwErr) {
       console.warn('[ptw] startup auto-seed skipped:', ptwErr.message);

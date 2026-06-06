@@ -28,6 +28,7 @@ const PtwPersonnelSchema = new mongoose.Schema({
   department:     { type: String, default: '' },
   authorizations: { type: [String], default: [] },
   validUntil:     { type: String, default: '' },
+  notifyEmail:    { type: String, default: '' },
   remarks:        { type: String, default: '' },
   canIssue:       { type: Boolean, default: false },
   canReceive:     { type: Boolean, default: false },
@@ -75,7 +76,18 @@ const AdminConfigSchema = new mongoose.Schema({
   achievements:            { type: [AchievementSchema],    default: [] },
   kpiTemplates:            { type: [KpiTemplateSchema],    default: [] },
   globalKpiEditingAllowed: { type: Boolean, default: true },
-  shiftCycleBaseDate:      { type: String,  default: '2026-01-01' }
+  shiftCycleBaseDate:      { type: String,  default: '2026-01-01' },
+  emailPresets: {
+    type: [
+      {
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        subject: { type: String, default: '' },
+        body: { type: String, default: '' },
+      },
+    ],
+    default: [],
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminConfig', AdminConfigSchema);

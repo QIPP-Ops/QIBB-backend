@@ -152,7 +152,7 @@ jobs:
           az webapp config appsettings set \
             --name qipp-api \
             --resource-group "${{ steps.app.outputs.resource-group }}" \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 PTW_FORCE_RESEED=1 \
             --output none
 
       # Stop the app so live node + plant ingest do not contend with SCM/Kudu during zip deploy.
@@ -287,3 +287,12 @@ jobs:
           done
           echo "::warning::Health check did not return 200 within 5 minutes (app may still be warming up)."
           exit 0
+
+      - name: Clear one-time PTW reseed flag
+        if: always() && steps.deploy.outcome == 'success'
+        run: |
+          az webapp config appsettings delete \
+            --name qipp-api \
+            --resource-group "${{ steps.app.outputs.resource-group }}" \
+            --setting-names PTW_FORCE_RESEED \
+            --output none || true

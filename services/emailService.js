@@ -24,7 +24,17 @@ function createTransporter() {
 }
 
 function getFromAddress() {
-  return `"ACWA Ops System" <${getSmtpUser()}>`;
+  const name = process.env.SMTP_FROM_NAME || "ACWA Ops System";
+  return `"${name}" <${getSmtpUser()}>`;
+}
+
+function getDefaultMailExtras() {
+  const replyTo = (process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || "").trim();
+  const cc = (process.env.SMTP_DEFAULT_CC || process.env.EMAIL_DEFAULT_CC || "").trim();
+  return {
+    ...(replyTo ? { replyTo } : {}),
+    ...(cc ? { cc } : {}),
+  };
 }
 
 async function sendMail(options) {
@@ -32,8 +42,10 @@ async function sendMail(options) {
     throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS or EMAIL_PASS required).');
   }
   const transporter = createTransporter();
+  const defaults = getDefaultMailExtras();
   await transporter.sendMail({
     from: getFromAddress(),
+    ...defaults,
     ...options,
   });
 }

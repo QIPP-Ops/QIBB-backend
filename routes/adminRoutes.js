@@ -10,6 +10,7 @@ const trendDisplay = require('../controllers/trendDisplayController');
 const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
 const blobController = require('../controllers/blobController');
+const emailBroadcast = require('../controllers/emailBroadcastController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -33,6 +34,9 @@ router.get('/settings/shift-report-reminders', protect, requireSuperAdmin, setti
 router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.patchShiftReportEmailReminders);
 router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
 router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
+router.get('/email-presets', protect, requireSuperAdmin, emailBroadcast.listEmailPresets);
+router.put('/email-presets', protect, requireSuperAdmin, emailBroadcast.saveEmailPresets);
+router.post('/email-broadcast', protect, requireSuperAdmin, emailBroadcast.sendEmailBroadcast);
 router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
 router.get('/trend-display', protect, trendDisplay.getTrendDisplay);
 router.patch('/trend-display', protect, requireSuperAdmin, trendDisplay.patchTrendDisplay);
