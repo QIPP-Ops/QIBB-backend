@@ -230,10 +230,31 @@ async function buildPlantTrendsCachePayload() {
     await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean()
   );
 
-  const topKeys = metrics.slice(0, 120).map((m) => m.metricKey);
+  const keyCounts = await PlantMetricPoint.aggregate([
+    { $match: { reportDate: { $gte: from, $lte: to } } },
+    { $group: { _id: '$metricKey', count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: 240 },
+  ]);
+  const topKeys = [];
+  const seenCanonical = new Set();
+  for (const row of keyCounts) {
+    const ck = canonicalMetricKey(row._id);
+    if (!ck || seenCanonical.has(ck)) continue;
+    seenCanonical.add(ck);
+    topKeys.push(ck);
+    if (topKeys.length >= 120) break;
+  }
+  if (!topKeys.length) {
+    topKeys.push(...metrics.slice(0, 40).map((m) => m.metricKey));
+  }
+
   const rows = await PlantMetricPoint.find({
-    metricKey: { $in: topKeys },
     reportDate: { $gte: from, $lte: to },
+    $or: topKeys.flatMap((key) => [
+      { metricKey: key },
+      { metricKey: { $regex: new RegExp(`^${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_day_?\\d+$`, 'i') } },
+    ]),
   })
     .sort({ reportDate: 1 })
     .lean();

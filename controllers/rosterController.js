@@ -97,11 +97,11 @@ exports.patchPersonnelProfile = async (req, res) => {
       return res.status(403).json({ message: 'Admin only' });
     }
     const { empId } = req.params;
-    const { isSuperAdminUser } = require('../middleware/superAdmin');
-    const isSuperAdmin = isSuperAdminUser(req.user);
+    const { isSuperAdmin } = require('../middleware/superAdmin');
+    const superAdmin = isSuperAdmin(req);
 
     if (req.body?.newEmpId !== undefined) {
-      if (!isSuperAdmin) {
+      if (!superAdmin) {
         return res.status(403).json({ message: 'Super admin only' });
       }
       const newEmpId = String(req.body.newEmpId || '').trim();

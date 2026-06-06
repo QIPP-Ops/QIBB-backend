@@ -141,7 +141,12 @@ exports.sendEmailBroadcast = async (req, res) => {
       return res.json({
         dryRun: true,
         recipientCount: recipients.length,
-        recipients: recipients.map((r) => ({ name: r.name, email: r.email, crew: r.crew })),
+        recipients: recipients.map((r) => ({
+          name: r.name,
+          email: r.email,
+          crew: r.crew,
+          empId: r.empId,
+        })),
       });
     }
 

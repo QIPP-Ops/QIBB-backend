@@ -35,6 +35,9 @@ describe('buildPlantTrendsCachePayload (Cosmos PlantMetricPoint)', () => {
         },
       ]),
     });
+    PlantMetricPoint.aggregate = jest.fn().mockResolvedValue([
+      { _id: 'plant_generation', count: 2 },
+    ]);
     PlantMetricPoint.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue([
@@ -85,8 +88,8 @@ describe('buildPlantTrendsCachePayload (Cosmos PlantMetricPoint)', () => {
     expect(payload.dateRange.from).toBe('2026-01-01');
     expect(PlantMetricPoint.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        metricKey: { $in: ['plant_generation'] },
         reportDate: { $gte: '2026-01-01', $lte: '2026-06-01' },
+        $or: expect.arrayContaining([{ metricKey: 'plant_generation' }]),
       })
     );
   });
