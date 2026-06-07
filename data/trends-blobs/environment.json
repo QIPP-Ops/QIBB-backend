@@ -1,11 +1,5833 @@
 [
   {
-    "date": "2026-05-01",
+    "date": "2026-05-19",
+    "source_file": "Environment Report 19.05.2026.xlsx",
     "stack_emissions": {
       "GT#11": {
-        "nox": { "avg": 45.2, "max": 50.1, "min": 40.0 }
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
       }
     },
-    "ambient": { "ambient_temp_max_c": 42.5 }
+    "outfall": {
+      "outfall_ph_south": 8.4,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 28.2,
+      "outfall_temp_north_c": 28.3
+    },
+    "ambient": {
+      "ambient_temp_max_c": 38.69,
+      "ambient_temp_min_c": 24.15,
+      "ambient_rh_max_pct": 61.07,
+      "ambient_rh_min_pct": 10.86,
+      "max_wind_velocity_ms": 7.57
+    }
+  },
+  {
+    "date": "2026-05-20",
+    "source_file": "Environment Report 20.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.4,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 28.2,
+      "outfall_temp_north_c": 28.3
+    },
+    "ambient": {
+      "ambient_temp_max_c": 34.7,
+      "ambient_temp_min_c": 25.4,
+      "ambient_rh_max_pct": 57.7,
+      "ambient_rh_min_pct": 21.8,
+      "max_wind_velocity_ms": 8.4
+    }
+  },
+  {
+    "date": "2026-05-21",
+    "source_file": "Environment Report 21.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.4,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 30.9,
+      "outfall_temp_north_c": 31.3
+    },
+    "ambient": {
+      "ambient_temp_max_c": 33.62,
+      "ambient_temp_min_c": 22.61,
+      "ambient_rh_max_pct": 61.6,
+      "ambient_rh_min_pct": 18.47,
+      "max_wind_velocity_ms": 6.65
+    }
+  },
+  {
+    "date": "2026-05-22",
+    "source_file": "Environment Report 22.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.4,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 27.9,
+      "outfall_temp_north_c": 26.8
+    },
+    "ambient": {
+      "ambient_temp_max_c": 35.15,
+      "ambient_temp_min_c": 25.13,
+      "ambient_rh_max_pct": 64.38,
+      "ambient_rh_min_pct": 22.59,
+      "max_wind_velocity_ms": 9.15
+    }
+  },
+  {
+    "date": "2026-05-23",
+    "source_file": "Environment Report 23.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.3,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 29.7,
+      "outfall_temp_north_c": 28.3
+    },
+    "ambient": {
+      "ambient_temp_max_c": 34.29,
+      "ambient_temp_min_c": 29.52,
+      "ambient_rh_max_pct": 50.06,
+      "ambient_rh_min_pct": 38.78,
+      "max_wind_velocity_ms": 7.08
+    }
+  },
+  {
+    "date": "2026-05-24",
+    "source_file": "Environment Report 24.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.3,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 33.2,
+      "outfall_temp_north_c": 32.1
+    },
+    "ambient": {
+      "ambient_temp_max_c": 42.55,
+      "ambient_temp_min_c": 25.84,
+      "ambient_rh_max_pct": 67.48,
+      "ambient_rh_min_pct": 11.2,
+      "max_wind_velocity_ms": 9.15
+    }
+  },
+  {
+    "date": "2026-05-25",
+    "source_file": "Environment Report 25.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.3,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 33.2,
+      "outfall_temp_north_c": 32.1
+    },
+    "ambient": {
+      "ambient_temp_max_c": 25.85,
+      "ambient_temp_min_c": 31.97,
+      "ambient_rh_max_pct": 65.1,
+      "ambient_rh_min_pct": 23.03,
+      "max_wind_velocity_ms": 7.07
+    }
+  },
+  {
+    "date": "2026-05-27",
+    "source_file": "Environment Report 27.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.3,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 33.2,
+      "outfall_temp_north_c": 32.1
+    },
+    "ambient": {
+      "ambient_temp_max_c": 40.5,
+      "ambient_temp_min_c": 26.2,
+      "ambient_rh_max_pct": 61.8,
+      "ambient_rh_min_pct": 6.6,
+      "max_wind_velocity_ms": 5.9
+    }
+  },
+  {
+    "date": "2026-05-28",
+    "source_file": "Environment Report 28.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.3,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 33.2,
+      "outfall_temp_north_c": 32.1
+    },
+    "ambient": {
+      "ambient_temp_max_c": 39.0,
+      "ambient_temp_min_c": 30.4,
+      "ambient_rh_max_pct": 62.7,
+      "ambient_rh_min_pct": 7.7,
+      "max_wind_velocity_ms": 5.1
+    }
+  },
+  {
+    "date": "2026-05-29",
+    "source_file": "Environment Report 29.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.2,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.6,
+      "outfall_temp_north_c": 33.0
+    },
+    "ambient": {
+      "ambient_temp_max_c": 48.17,
+      "ambient_temp_min_c": 29.13,
+      "ambient_rh_max_pct": 67.05,
+      "ambient_rh_min_pct": 4.66,
+      "max_wind_velocity_ms": 5.84
+    }
+  },
+  {
+    "date": "2026-05-30",
+    "source_file": "Environment Report 30.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.2,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 29.8,
+      "outfall_temp_north_c": 29.3
+    },
+    "ambient": {
+      "ambient_temp_max_c": 38.33,
+      "ambient_temp_min_c": 27.49,
+      "ambient_rh_max_pct": 62.76,
+      "ambient_rh_min_pct": 23.8,
+      "max_wind_velocity_ms": 8.23
+    }
+  },
+  {
+    "date": "2026-05-31",
+    "source_file": "Environment Report 31.05.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 31.2,
+      "outfall_temp_north_c": 30.4
+    },
+    "ambient": {
+      "ambient_temp_max_c": 36.3,
+      "ambient_temp_min_c": 25.54,
+      "ambient_rh_max_pct": 49.28,
+      "ambient_rh_min_pct": 25.41,
+      "max_wind_velocity_ms": 6.94
+    }
+  },
+  {
+    "date": "2026-06-01",
+    "source_file": "Environment Report 01.06.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.3,
+      "outfall_temp_north_c": 31.9
+    },
+    "ambient": {
+      "ambient_temp_max_c": 37.77,
+      "ambient_temp_min_c": 25.32,
+      "ambient_rh_max_pct": 61.47,
+      "ambient_rh_min_pct": 24.19,
+      "max_wind_velocity_ms": 5.83
+    }
+  },
+  {
+    "date": "2026-06-02",
+    "source_file": "Environment Report 02.06.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.3,
+      "outfall_temp_north_c": 31.9
+    },
+    "ambient": {
+      "ambient_temp_max_c": 41.27,
+      "ambient_temp_min_c": 26.55,
+      "ambient_rh_max_pct": 63.04,
+      "ambient_rh_min_pct": 12.26,
+      "max_wind_velocity_ms": 5.83
+    }
+  },
+  {
+    "date": "2026-06-03",
+    "source_file": "Environment Report 03.06.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.3,
+      "outfall_temp_north_c": 31.9
+    },
+    "ambient": {
+      "ambient_temp_max_c": 42.16,
+      "ambient_temp_min_c": 28.09,
+      "ambient_rh_max_pct": 68.85,
+      "ambient_rh_min_pct": 8.28,
+      "max_wind_velocity_ms": 5.8
+    }
+  },
+  {
+    "date": "2026-06-04",
+    "source_file": "Environment Report 04.06.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.3,
+      "outfall_temp_north_c": 31.9
+    },
+    "ambient": {
+      "ambient_temp_max_c": 40.6,
+      "ambient_temp_min_c": 29.4,
+      "ambient_rh_max_pct": 62.8,
+      "ambient_rh_min_pct": 13.9,
+      "max_wind_velocity_ms": 6.6
+    }
+  },
+  {
+    "date": "2026-06-05",
+    "source_file": "Environment Report 05.06.2026.xlsx",
+    "stack_emissions": {
+      "GT#11": {
+        "nox": {
+          "min": 0.35,
+          "max": 0.35,
+          "avg": 0.35
+        },
+        "sox": {
+          "min": 0.69,
+          "max": 0.69,
+          "avg": 0.69
+        },
+        "co": {
+          "min": 15.86,
+          "max": 15.86,
+          "avg": 15.86
+        },
+        "particulate": {
+          "min": 24.62,
+          "max": 24.62,
+          "avg": 24.62
+        },
+        "stack_temp_c": {
+          "min": 101.22,
+          "max": 101.22,
+          "avg": 101.22
+        }
+      },
+      "GT#12": {
+        "nox": {
+          "min": 0.29,
+          "max": 0.29,
+          "avg": 0.29
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 8.69,
+          "max": 8.69,
+          "avg": 8.69
+        },
+        "particulate": {
+          "min": 56.29,
+          "max": 56.29,
+          "avg": 56.29
+        },
+        "stack_temp_c": {
+          "min": 104.17,
+          "max": 104.17,
+          "avg": 104.17
+        }
+      },
+      "GT#21": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#22": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#31": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#32": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#41": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#42": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#51": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#52": {
+        "nox": {
+          "min": 1.97,
+          "max": 1.97,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 5.09,
+          "max": 5.09,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 16.63,
+          "max": 16.63,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 112.04,
+          "max": 112.04,
+          "avg": 100.64
+        }
+      },
+      "GT#61": {
+        "nox": {
+          "min": 26.68,
+          "max": 26.68,
+          "avg": 26.68
+        },
+        "sox": {
+          "min": 10.29,
+          "max": 10.29,
+          "avg": 10.29
+        },
+        "co": {
+          "min": 9.8,
+          "max": 9.79,
+          "avg": 9.79
+        },
+        "particulate": {
+          "min": 11.36,
+          "max": 11.36,
+          "avg": 11.36
+        },
+        "stack_temp_c": {
+          "min": 100.64,
+          "max": 100.64,
+          "avg": 100.64
+        }
+      },
+      "GT#62": {
+        "nox": {
+          "min": 10.24,
+          "max": 10.24,
+          "avg": 10.24
+        },
+        "sox": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "co": {
+          "min": 0.0,
+          "max": 0.0,
+          "avg": 0.0
+        },
+        "particulate": {
+          "min": 5.22,
+          "max": 5.22,
+          "avg": 5.22
+        },
+        "stack_temp_c": {
+          "min": 99.19,
+          "max": 99.19,
+          "avg": 99.19
+        }
+      }
+    },
+    "outfall": {
+      "outfall_ph_south": 8.1,
+      "outfall_ph_north": null,
+      "outfall_temp_south_c": 32.3,
+      "outfall_temp_north_c": 31.9
+    },
+    "ambient": {
+      "ambient_temp_max_c": 40.8,
+      "ambient_temp_min_c": 28.4,
+      "ambient_rh_max_pct": 39.4,
+      "ambient_rh_min_pct": 11.9,
+      "max_wind_velocity_ms": 7.1
+    }
   }
 ]
