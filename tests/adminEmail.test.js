@@ -6,9 +6,10 @@ jest.mock('../services/dailyDigestService', () => ({
 }));
 
 describe('admin email template', () => {
-  test('emailTemplate header uses Acwa Operations | QIPP branding', () => {
+  test('emailTemplate header uses inline ACWA logo on light background', () => {
     const html = emailTemplate('Test', '<p>body</p>');
-    expect(html).toContain('Acwa Operations | QIPP');
+    expect(html).toContain('background:#F9F7FC');
+    expect(html).toContain('<svg');
     expect(html).toContain('automated message');
   });
 });

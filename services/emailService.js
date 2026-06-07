@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { getSmtpUser, getSmtpPassword, isEmailConfigured } = require('../config/smtp');
+const { ACWA_EMAIL_LOGO_SVG } = require('./emailBrandAssets');
 
 function createTransporter() {
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
@@ -61,9 +62,8 @@ function emailTemplate(title, bodyHtml) {
     <style>
       body { margin:0; padding:0; background:#f4f4f8; font-family:'Segoe UI',Arial,sans-serif; }
       .wrapper { max-width:520px; margin:40px auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.08); }
-      .header { background:#2E2044; padding:32px 40px; text-align:center; }
-      .header img { height:36px; margin-bottom:12px; }
-      .header h1 { color:#D2F050; font-size:13px; font-weight:800; letter-spacing:0.2em; text-transform:uppercase; margin:0; }
+      .header { background:#F9F7FC; padding:28px 40px; text-align:center; border-bottom:1px solid #E3DCF5; }
+      .header .logo { display:inline-block; line-height:0; }
       .body { padding:40px; color:#2E2044; }
       .body h2 { font-size:22px; font-weight:800; margin:0 0 8px; }
       .body p { font-size:15px; line-height:1.6; color:#555; margin:0 0 16px; }
@@ -76,8 +76,7 @@ function emailTemplate(title, bodyHtml) {
   <body>
     <div class="wrapper">
       <div class="header">
-        <img src="${process.env.FRONTEND_URL || 'https://qipp.live'}/acwa-operations-logo.png" alt="acwa operations" style="max-height:48px" />
-        <h1>Acwa Operations | QIPP</h1>
+        <div class="logo">${ACWA_EMAIL_LOGO_SVG}</div>
       </div>
       <div class="body">
         <h2>${title}</h2>

@@ -139,6 +139,23 @@ function findFirstNumericInRow(row, startCol, maxCols) {
   return null;
 }
 
+function validateKpiValue(metricKey, value) {
+  if (value == null || !Number.isFinite(value)) return null;
+  if (metricKey === 'daily_op_net_efficiency_pct') {
+    if (value <= 0 || value > 100) return null;
+    return value;
+  }
+  if (metricKey === 'daily_op_heat_rate_kjkwh') {
+    if (value < 4000 || value > 20000) return null;
+    return value;
+  }
+  if (metricKey === 'daily_op_plf_pct' || metricKey === 'daily_op_commercial_availability_pct') {
+    if (value <= 0 || value > 100) return null;
+    return value;
+  }
+  return value;
+}
+
 function rowMatchesKeywords(row, keywords, maxCols) {
   const t = normalizeText(rowText(row, maxCols));
   if (!t) return false;
@@ -239,7 +256,7 @@ function parse({ wb, filename, sourceFile }) {
     for (let r = 1; r <= maxRows; r++) {
       const row = ws.getRow(r);
       if (!rowMatchesKeywords(row, def.keywords, maxCols)) continue;
-      value = findFirstNumericInRow(row, 2, maxCols);
+      value = validateKpiValue(def.metricKey, findFirstNumericInRow(row, 2, maxCols));
       break;
     }
     points.push(
