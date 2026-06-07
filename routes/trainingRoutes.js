@@ -21,8 +21,11 @@ router.post('/catalog/add-to-curriculum', protect, c.addCatalogToCurriculum);
 
 router.post('/quiz/upload', protect, requireSuperAdmin, quizUpload, c.uploadQuiz);
 router.get('/quiz/list', protect, c.listQuizzes);
+router.get('/quiz/attempts', protect, c.listQuizAttempts);
 router.delete('/quiz/:quizId', protect, requireSuperAdmin, c.deleteQuiz);
-router.get('/quiz/:quizId/results', protect, requireSuperAdmin, c.getQuizResults);
+router.get('/quiz/:quizId/results', protect, c.getQuizResults);
+router.patch('/quiz/:quizId/reward', protect, requireSuperAdmin, c.updateQuizReward);
+router.post('/quiz/:quizId/attempts', protect, c.recordQuizAttempt);
 router.get('/quiz/:quizId/html', protect, c.getQuizHtml);
 router.get('/quiz/:quizId/prize-image', protect, c.getQuizPrizeImage);
 router.post('/quiz/assign', protect, c.assignQuiz);

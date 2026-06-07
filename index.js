@@ -42,6 +42,16 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
       console.warn('[ptw] startup auto-seed skipped:', ptwErr.message);
     }
 
+    const { ensureBuiltinQuizzesSeeded } = require('./services/quizAutoSeed');
+    try {
+      const quizSeed = await ensureBuiltinQuizzesSeeded();
+      if (quizSeed.seeded) {
+        console.log(`[quiz] ${quizSeed.action} built-in quiz ${quizSeed.quizId}`);
+      }
+    } catch (quizErr) {
+      console.warn('[quiz] startup auto-seed skipped:', quizErr.message);
+    }
+
     startPlantIngestScheduler();
     startShiftReportReminderScheduler();
     startDailyDigestCron();
