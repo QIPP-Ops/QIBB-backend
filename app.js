@@ -6,7 +6,6 @@ const rateLimit = require('express-rate-limit');
 
 const requestLogger = require('./middleware/requestLogger');
 
-const environmentalReportRoutes = require('./routes/environmentalReportRoutes');
 const rosterRoutes = require('./routes/rosterRoutes');
 const rosterOpsRoutes = require('./routes/rosterOpsRoutes');
 const kpiRoutes = require('./routes/kpiRoutes');
@@ -14,10 +13,6 @@ const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const ptwRoutes = require('./routes/ptwRoutes');
 const trendsRoutes = require('./routes/trendsRoutes');
-const waterBalanceRoutes = require('./routes/waterBalanceRoutes');
-const energyRoutes = require('./routes/energyRoutes');
-const gtFilterRoutes = require('./routes/gtFilterRoutes');
-const dailyOperationRoutes = require('./routes/dailyOperationRoutes');
 const plantDataRoutes = require('./routes/plantDataRoutes');
 const chemistryRoutes = require('./routes/chemistryRoutes');
 const trainingRoutes = require('./routes/trainingRoutes');
@@ -116,17 +111,12 @@ app.get('/ready', (_req, res) => {
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/trends', trendsRoutes);
-app.use('/api/environmental-reports', environmentalReportRoutes);
 app.use('/api/reports-v3', require('./services/plantReportsV3/routes/reportsV3Router'));
 app.use('/api/roster', rosterRoutes);
 app.use('/api/roster-ops', rosterOpsRoutes);
 app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ptw', ptwRoutes);
-app.use('/api/water-balance', waterBalanceRoutes);
-app.use('/api/energy', energyRoutes);
-app.use('/api/gt-filter', gtFilterRoutes);
-app.use('/api/daily-operation', dailyOperationRoutes);
 app.use('/api/plant-data', plantDataRoutes);
 app.use('/api/chemistry', chemistryRoutes);
 app.use('/api/training', trainingRoutes);

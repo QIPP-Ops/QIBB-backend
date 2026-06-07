@@ -33,6 +33,7 @@ router.delete('/metrics/:metricKey', protect, requireSuperAdmin, c.deleteMetric)
 router.patch('/metrics/visibility', protect, c.setMetricVisibility);
 
 router.get('/metric-display-names', c.getMetricDisplayNames);
+router.get('/trend-studio-metrics', c.getTrendStudioMetrics);
 router.get('/custom-trends', protect, opsLead, c.listCustomTrends);
 router.post('/custom-trends', protect, requireSuperAdmin, c.saveCustomTrend);
 router.patch('/custom-trends/:id', protect, requireSuperAdmin, c.patchCustomTrend);

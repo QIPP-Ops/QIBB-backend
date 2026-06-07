@@ -1,24 +1,22 @@
-jest.mock('../models/IngestLog', () => ({
-  findOne: jest.fn(() => ({
-    sort: jest.fn().mockReturnValue({
-      lean: jest.fn().mockResolvedValue(null),
-    }),
+jest.mock('../services/plantReports/buildTrendsBundleFromSixBlobs', () => ({
+  buildTrendsBundleFromSixBlobs: jest.fn(() => ({
+    payload: {
+      generatedAt: '2026-06-01T12:00:00.000Z',
+      metrics: [{ metricKey: 'a' }, { metricKey: 'b' }],
+      seriesByKey: { a: [{ date: '2026-06-01', value: 1 }] },
+      bundleMeta: { totalPoints: 10 },
+      blobSource: true,
+    },
   })),
-  find: jest.fn(() => ({
-    select: jest.fn().mockReturnValue({
-      lean: jest.fn().mockResolvedValue([]),
-    }),
-  })),
+  hasUsableTrendsBundle: jest.fn(() => true),
 }));
 
-jest.mock('../services/plantReports/plantTrendsCache', () => ({
-  getPlantTrendsCachePath: jest.fn(() => '/home/data/plant-trends-cache.json'),
-  readPlantTrendsCacheFromDisk: jest.fn(),
+jest.mock('../services/plantReports/trendsBlobBundle', () => ({
+  BUNDLED_DIR: '/data/trends-blobs',
+  listBundledKinds: jest.fn(() => ['daily_ops', 'water']),
+  hasBundledTrends: jest.fn(() => true),
 }));
 
-const IngestLog = require('../models/IngestLog');
-const { readPlantTrendsCacheFromDisk } = require('../services/plantReports/plantTrendsCache');
-const { getIngestCronStatus } = require('../jobs/ingestCron');
 const ingestAdmin = require('../controllers/ingestAdminController');
 
 function mockRes() {
@@ -34,44 +32,25 @@ function mockRes() {
   return res;
 }
 
-describe('GET ingest-status', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    readPlantTrendsCacheFromDisk.mockReturnValue({
-      generatedAt: '2026-06-01',
-      metrics: [{ metricKey: 'a' }, { metricKey: 'b' }],
-      seriesByKey: {},
-    });
-  });
-
-  it('returns safe defaults when cache read throws', async () => {
-    readPlantTrendsCacheFromDisk.mockImplementation(() => {
-      throw new Error('EROFS: read-only file system');
-    });
-
+describe('GET ingest-status (bundle-based)', () => {
+  it('returns six-blob bundle metrics count', async () => {
     const res = mockRes();
     await ingestAdmin.getIngestStatus({}, res);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.metricsInCache).toBe(0);
-    expect(res.body.data.cachePath).toMatch(/plant-trends-cache\.json$/);
+    expect(res.body.data.source).toBe('six-blob-bundle');
+    expect(res.body.data.metricsInCache).toBe(2);
+    expect(res.body.data.ingestDeprecated).toBe(true);
     expect(res.body.data.unmatchedFiles).toEqual([]);
   });
+});
 
-  it('includes metricsInCache and cachePath from plantTrendsCache helpers', async () => {
+describe('POST ingest trigger (deprecated)', () => {
+  it('returns 410 for legacy ingest', async () => {
     const res = mockRes();
-    await ingestAdmin.getIngestStatus({}, res);
-
-    expect(res.body.data.metricsInCache).toBe(2);
-    expect(res.body.data.totalMetricsInCache).toBe(2);
-    expect(res.body.data.cachePath).toBe('/home/data/plant-trends-cache.json');
-    expect(Array.isArray(res.body.data.unmatchedFiles)).toBe(true);
-  });
-
-  it('getIngestCronStatus resolves cache path via getPlantTrendsCachePath', async () => {
-    const status = await getIngestCronStatus();
-    expect(status.cachePath).toBe('/home/data/plant-trends-cache.json');
-    expect(status.metricsInCache).toBe(2);
+    await ingestAdmin.triggerIngest({ user: { id: 'admin', role: 'admin' } }, res);
+    expect(res.statusCode).toBe(410);
+    expect(res.body.message).toMatch(/removed/i);
   });
 });

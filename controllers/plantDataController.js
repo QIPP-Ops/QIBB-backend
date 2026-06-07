@@ -7,7 +7,6 @@ const {
   CustomTrend,
   ManagementTrendAccess,
 } = require('../models/PlantMetric');
-const { runPlantIngestion } = require('../services/plantReports/runIngestion');
 const {
   blobIngestConfigured,
   CONTAINER,
@@ -85,26 +84,12 @@ exports.getHighlights = async (req, res) => {
   res.json({ success: true, data: items });
 };
 
-exports.runIngestNow = async (req, res) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Admin only' });
-  }
-  try {
-    const forceAll = req.query.forceAll === '1' || req.body?.forceAll === true;
-    const result = await runPlantIngestion({ forceAll });
-    await logAction({
-      actor: req.user,
-      action: AUDIT_ACTIONS.MANUAL_INGEST_TRIGGERED,
-      targetType: 'ingest',
-      targetId: 'plant_ingest',
-      targetName: 'Plant ingestion',
-      after: { forceAll },
-      req,
-    });
-    res.json({ success: true, data: result });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+exports.runIngestNow = async (_req, res) => {
+  res.status(410).json({
+    success: false,
+    message:
+      'Legacy Cosmos plant ingest removed. Trends load from the six-blob bundle — run npm run sync:trends-blobs on the API host.',
+  });
 };
 
 exports.getMetricDateRange = async (_req, res) => {
@@ -668,6 +653,39 @@ exports.getMetricDisplayNames = async (_req, res) => {
     res.json({ success: true, data: map });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+/** Trend Studio metric catalog — six-blob bundle only (no Mongo PlantMetric). */
+exports.getTrendStudioMetrics = async (_req, res) => {
+  try {
+    const {
+      buildTrendsBundleFromSixBlobs,
+      hasUsableTrendsBundle,
+    } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+    const { BUNDLED_DIR } = require('../services/plantReports/trendsBlobBundle');
+    const { payload } = buildTrendsBundleFromSixBlobs();
+
+    if (!hasUsableTrendsBundle(payload)) {
+      return res.status(503).json({
+        success: false,
+        message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run sync:trends-blobs.`,
+        bundledDir: BUNDLED_DIR,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        metrics: payload.metrics ?? [],
+        dateRange: payload.dateRange ?? null,
+        bundleMeta: payload.bundleMeta ?? null,
+        generatedAt: payload.generatedAt ?? null,
+        blobSource: true,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

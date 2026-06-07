@@ -2,12 +2,10 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { validateEnv } = require('./config/validateEnv');
 const app = require('./app');
-const { startPlantIngestScheduler } = require('./services/plantReports/ingestScheduler');
 const { startShiftReportReminderScheduler } = require('./services/shiftReportReminderService');
 const { startDailyDigestCron } = require('./jobs/dailyDigestCron');
 const { startLeaveAccrualCron } = require('./jobs/leaveAccrualCron');
 const { startMonthlyLeaveSummaryCron } = require('./jobs/monthlyLeaveSummaryCron');
-const { startIngestCron } = require('./jobs/ingestCron');
 const { startPtwExpiryReminderCron } = require('./jobs/ptwExpiryReminderJob');
 
 validateEnv();
@@ -19,15 +17,6 @@ const { getMongoUri } = require('./config/database');
 mongoose.connect(getMongoUri(), { retryWrites: false })
   .then(async () => {
     console.log('MongoDB connected');
-
-    if (process.env.NODE_ENV === 'production') {
-      try {
-        const { runProductionBootCleanup } = require('./services/plantReports/productionBootCleanup');
-        await runProductionBootCleanup();
-      } catch (bootCleanupErr) {
-        console.warn('[boot-cleanup] skipped or failed:', bootCleanupErr.message);
-      }
-    }
 
     const { ensurePtwPersonnelSeeded } = require('./services/ptwAutoSeed');
     try {
@@ -52,56 +41,12 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
       console.warn('[quiz] startup auto-seed skipped:', quizErr.message);
     }
 
-    startPlantIngestScheduler();
     startShiftReportReminderScheduler();
     startDailyDigestCron();
     startLeaveAccrualCron();
     startMonthlyLeaveSummaryCron();
-    startIngestCron();
     startPtwExpiryReminderCron();
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
-    const { blobIngestConfigured } = require('./services/plantReports/blobReports');
-    if (blobIngestConfigured() && process.env.PLANT_INGEST_ON_STARTUP !== '0') {
-      setTimeout(async () => {
-        try {
-          const {
-            hasUsablePlantTrendsCache,
-            seedPlantTrendsCacheFromBundledIfNeeded,
-            getPlantTrendsCachePath,
-          } = require('./services/plantReports/plantTrendsCache');
-          seedPlantTrendsCacheFromBundledIfNeeded();
-          const forceStartup =
-            process.env.PLANT_INGEST_STARTUP_FORCE === '1' ||
-            process.argv.includes('--force-ingest');
-          if (!forceStartup && hasUsablePlantTrendsCache()) {
-            console.log(
-              `[plant-ingest] startup skipped — trends cache present at ${getPlantTrendsCachePath()} (set PLANT_INGEST_STARTUP_FORCE=1 to re-parse)`
-            );
-            return;
-          }
-
-          const { runPlantIngestion } = require('./services/plantReports/runIngestion');
-          const PlantIngestionState = require('./models/PlantIngestionState');
-          const state = await PlantIngestionState.findOne({ key: 'global' }).lean();
-          const needsFullIngest =
-            forceStartup ||
-            !state?.lastSuccessAt ||
-            (state.pointsUpserted || 0) === 0 ||
-            (state.filesProcessed || 0) === 0;
-          const result = await runPlantIngestion({ forceAll: needsFullIngest });
-          if (result.ok) {
-            console.log(
-              `[plant-ingest] startup: ${result.filesProcessed} files, ${result.pointsUpserted} points, trends snapshot: ${result.trendsSnapshot?.ok ? 'ok' : 'skipped'}`
-            );
-          } else {
-            console.warn('[plant-ingest] startup:', result.message || 'not ok');
-          }
-        } catch (err) {
-          console.error('[plant-ingest] startup failed:', err.message);
-        }
-      }, 12000);
-    }
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err);

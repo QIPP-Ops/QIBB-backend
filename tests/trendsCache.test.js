@@ -13,15 +13,8 @@ jest.mock('../middleware/auth', () => ({
   },
 }));
 
-jest.mock('../controllers/plantDataController', () => {
-  const actual = jest.requireActual('../controllers/plantDataController');
-  return {
-    ...actual,
-    runIngestNow: jest.fn((_req, res) => res.json({ success: true, data: { ok: true } })),
-  };
-});
-
 const ingestRoutes = require('../routes/ingestRoutes');
+const plantDataRoutes = require('../routes/plantDataRoutes');
 const { getTrendsCache, getTrendsBundle } = require('../controllers/plantDataController');
 const {
   hasTrendSeriesData,
@@ -45,12 +38,27 @@ function makeApp(mountPath, router) {
   return app;
 }
 
-describe('ingest trigger route', () => {
-  it('POST /api/ingest/trigger returns success', async () => {
+describe('ingest trigger route (deprecated)', () => {
+  it('POST /api/ingest/trigger returns 410', async () => {
     const app = makeApp('/api/ingest', ingestRoutes);
     const res = await request(app).post('/api/ingest/trigger').send({ forceAll: true });
+    expect(res.status).toBe(410);
+    expect(res.body.message).toMatch(/removed/i);
+  });
+});
+
+describe('trend-studio-metrics route', () => {
+  beforeAll(seedFixtures);
+  beforeEach(resetTrendsBundleCache);
+
+  it('GET /trend-studio-metrics returns bundle metrics', async () => {
+    const app = makeApp('/plant-data', plantDataRoutes);
+    const res = await request(app).get('/plant-data/trend-studio-metrics');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.metrics)).toBe(true);
+    expect(res.body.data.metrics.length).toBeGreaterThan(0);
+    expect(res.body.data.blobSource).toBe(true);
   });
 });
 

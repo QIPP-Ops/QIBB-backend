@@ -4,6 +4,25 @@
 
 ---
 
+## MongoDB usage (what still uses it)
+
+**Mongo/Cosmos is NOT used for trend metric values or time series on qipp.live.**
+
+| Feature | Mongo? | Notes |
+|---------|--------|-------|
+| Auth / users / JWT | **Yes** | Login, roles, super admin |
+| Roster / leave | **Yes** | Shift schedules, leave accrual |
+| PTW | **Yes** | Permits, authorization seed |
+| Quiz / training | **Yes** | Assignments, completions |
+| Email / notifications | **Yes** | SMTP digests, chemistry alarms |
+| Custom trend layouts | **Yes** | Trend Studio save/rename/delete only |
+| Metric limits | **Yes** | Admin limit editor |
+| Management trend access | **Yes** | Who can build trends |
+| Trend display label overrides | **Optional** | `TrendDisplayConfig` merges onto bundle labels |
+| **Trend values / charts** | **No** | Six-blob bundle only |
+
+---
+
 ## FAQ: Why is data not loading / blobs empty?
 
 ### `data/trends-blobs/` only has `.gitkeep` on GitHub?
@@ -52,147 +71,40 @@ Sync: `npm run sync:trends-blobs` (requires `AZURE_STORAGE_CONNECTION_STRING`).
 
 ---
 
-## Azure blob JSON shapes (examples)
-
-Blobs are **pre-parsed** JSON from the Azure Function pipeline — not raw Excel.
-
-### `daily_ops.json` — nested units (Plant KPIs / Generation & Load)
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "total_plant_load_mw": 450,
-    "units": {
-      "11": { "type": "GT", "avg_load_mw": 120, "total_gen_mwh": 2880, "mfeqh_hours": 22 },
-      "20": { "type": "ST", "avg_load_mw": 80, "total_gen_mwh": 1920, "mfeqh_hours": 24 }
-    }
-  }
-]
-```
-
-### `water.json` — flat daily water balance fields
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "gr1_consumption_m3": 1200,
-    "gr2_consumption_m3": 980,
-    "total_production_m3": 5000
-  }
-]
-```
-
-### `hrsg.json` — nested units (chemistry per HRSG)
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "units": {
-      "20": { "condensate_ph": 8.2, "bfw_conductivity": 0.15 }
-    }
-  }
-]
-```
-
-### `environment.json` — stack emissions + ambient
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "stack_emissions": {
-      "GT#11": { "nox": { "avg": 45.2, "max": 50.1, "min": 40.0 } }
-    },
-    "ambient": { "ambient_temp_max_c": 42.5 }
-  }
-]
-```
-
-### `fg_filter.json` — nested GT fuel-gas filter DP
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "gts": {
-      "11": { "fg_filter_dp": 12.5 }
-    }
-  }
-]
-```
-
-### `air_intake.json` — readings array format
-
-```json
-[
-  {
-    "date": "2026-05-01",
-    "readings": [
-      { "gt": "11", "air_inlet_dp": 8.2 }
-    ]
-  }
-]
-```
-
-Normalization: `trendBlobNormalize.js` converts all shapes → `{date, metric, value}[]` → unified `seriesByKey`.
-
----
-
 ## Backend endpoints (trends hot path)
 
 | Route | Auth | Source | Purpose |
 |-------|------|--------|---------|
 | `GET /api/plant-data/trends-bundle` | Public | Six blobs merged | **Primary hot path** — unified payload + `bundleMeta` |
 | `GET /api/plant-data/trends-cache` | Public | Same as trends-bundle | Backward-compatible alias |
+| `GET /api/plant-data/trend-studio-metrics` | Public | Bundle metadata | Metric catalog for Trend Studio (no Mongo) |
+| `GET /api/plant-data/metric-display-names` | Public | Bundle + optional overrides | Display names + date ranges |
 | `GET /api/plant-data/trends-blobs/:kind` | Public | Raw blob JSON | Debug / Trend Studio JSON preview |
 | `GET /api/plant-data/trends-blobs/status` | Public | Filesystem | Which bundled blobs exist |
-| `GET /api/plant-data/home-trends` | JWT | Bundle + trendEngine | Home dashboard KPI panels |
-| `GET /api/plant-data/trend-panels?route=` | JWT | Bundle + TrendDefinition | Route-scoped chart panels |
+| `GET /api/plant-data/custom-trends` | JWT | Mongo | Saved trend layouts only |
+| `POST /api/plant-data/custom-trends` | Super admin | Mongo | Save custom layout |
 
-**Removed / deprecated as primary sources:**
+**Removed / deprecated:**
 
-| Route / file | Status |
-|--------------|--------|
+| Route / module | Status |
+|----------------|--------|
+| `POST /api/ingest/trigger`, `POST /api/plant-data/ingest` | **410** — legacy Cosmos ingest removed |
+| `POST /api/trends/sync-blob` | **410** — use `sync:trends-blobs` |
+| `/api/water-balance`, `/api/energy`, `/api/gt-filter`, `/api/daily-operation` | **Deleted** — use bundle |
+| `/api/environmental-reports` | **Deleted** — use `environment` blob |
+| `ingestScheduler`, `ingestCron`, `runIngestion` | **Deleted** |
 | `data/plant-trends-cache.json` | **Removed** — not on hot path |
-| Cosmos rebuild scripts (`rebuild-trends-cache*`) | **Removed** — legacy ingest only |
-| `GET /api/trends` | **410** |
-| `GET /api/trends/history` | **410** |
-| `services/plantReportsV3/output/*.json` stubs | **Removed** — orphaned placeholders |
+| `GET /api/trends`, `GET /api/trends/history` | **410** |
 
 ---
 
-## Bundle JSON format
+## Trend Studio (`/trend-studio`, super admin)
 
-API wraps payload as `{ success: true, data: { ... } }`. Inner shape:
-
-```json
-{
-  "generatedAt": "ISO-8601",
-  "dateRange": { "from", "to", "minDate", "maxDate", "pointCount" },
-  "metrics": [
-    { "metricKey": "slug_key", "label": "Display Name", "category": "daily_ops|hrsg_chemistry|...", "unit": "" }
-  ],
-  "seriesByKey": {
-    "metric_key_slug": [{ "date": "YYYY-MM-DD", "value": 123.4 }]
-  },
-  "blobSource": true,
-  "blobKinds": ["daily_ops", "water", "hrsg", "fg_filter", "air_intake", "environment"],
-  "bundleMeta": {
-    "kindsLoaded": ["daily_ops", "water", "..."],
-    "totalMetrics": 142,
-    "totalPoints": 18500,
-    "formats": { "daily_ops": "nested", "water": "flat", "air_intake": "readings_array" }
-  }
-}
-```
-
-- In-memory cache with blob mtime signature + `ETag` header.
-- `Cache-Control: public, max-age=300`.
-- Frontend client cache key: `six-blob-trends-bundle`, TTL 2h.
-- Frontend `loadPlantTrendsCache({ onProgress })` reports per-blob loading UX.
+- **Metric list:** `loadPlantTrendsCache()` → bundle `metrics[]` + `seriesByKey` (no `PlantMetric` catalog)
+- **Display names:** bundle labels + `metricCategory`; `GET /metric-display-names` from bundle
+- **Charts / preview:** client-side from cache (`metricSeriesFromCache`, `metricPreviewFromCache`)
+- **Raw blob preview:** `GET /trends-blobs/:kind` (kept)
+- **Mongo (optional, non-blocking):** `listCustomTrends`, `adminApi.getUsers`, save/rename/delete layouts, metric limits, management access — failures show a warning banner, not a blocking toast
 
 ---
 
@@ -200,66 +112,50 @@ API wraps payload as `{ success: true, data: { ... } }`. Inner shape:
 
 | Frontend route | Kind | Data path |
 |----------------|------|-----------|
-| `/daily-operation` | `daily_ops` | Bundle (UI: **Generation & Load**) |
+| `/daily-operation` | `daily_ops` | Bundle via `reportsV3Api` → `loadPlantTrendsCache` |
 | `/water-balance` | `water` | Bundle |
 | `/chemistry` | `hrsg` | Bundle |
-| `/environment` | `environment` | Bundle (merged from `/reports/environmental` redirect) |
+| `/environment` | `environment` | Bundle |
 | `/gt-filter` | `fg_filter` + `air_inlet_filter` | Bundle |
-| `/energy` | `energy` (derived from daily_ops) | Bundle only |
-| `/timers-counters` | `timers_counters` (derived from daily_ops) | Bundle only |
+| `/energy` | `energy` (derived) | Bundle |
+| `/timers-counters` | `timers_counters` (derived) | Bundle |
 | `/` home | Bundle via `loadPlantTrendsCache()` | Single request |
-| `/trend-studio` | Bundle | **Super admin only** (Trend Studio — metric builder) |
+| `/trend-studio` | Bundle | Super admin — metric builder |
 
 **Route consolidation:**
-- `/admin-portal/trends` → redirects to `/trend-studio` (canonical)
-- `/reports/trends` → redirects to `/historical-trends`
+- `/admin-portal/trends` → redirects to `/trend-studio` (next.config)
 - `/reports/environmental` → redirects to `/environment`
-- Reports hub (`/reports`) = shift highlights, PTW, trainings — **no trend charts**
 
 ---
 
-## `data/` JSON files — what remains and why
-
-| File | Keep? | Purpose |
-|------|-------|---------|
-| `data/trends-blobs/*.json` | **Yes** | Six-blob trends source (synced from Azure) |
-| `data/roster.json` | **Yes** | Seed roster / leave timeline for dev |
-| `data/ptw-authorization-2026.json` | **Yes** | PTW authorization seed |
-| `data/training-catalog.json` | **Yes** | Training catalog seed |
-| `data/completed-courses-seed.json` | **Yes** | Training progress seed |
-| `data/data.json` | **Yes** | General seed data |
-| `data/plant_data.json` | **Yes** | Plant performance KPI seed (`seed.js`) |
-| `data/qipp-safety-dashboard.json` | **Yes** | Safety dashboard seed |
-| ~~`data/plant-trends-cache.json`~~ | **Deleted** | Legacy cache stub — superseded by six-blob bundle |
-| ~~`data/plant_data_dash.json`~~ | **Deleted** | Unused duplicate dashboard seed |
-
----
-
-## Key modules
+## Key modules (keep)
 
 ### Backend
 
 | Module | Role |
 |--------|------|
-| `trendsBlobBundle.js` | Read raw blobs from disk with mtime memory cache |
+| `sync-trends-blobs-from-azure.js` | Download from Azure `qipp-data` |
 | `trendBlobNormalize.js` | Nested/flat blob JSON → `{date, metric, value}[]` |
-| `buildTrendsBundleFromSixBlobs.js` | Merge six blobs → unified payload + `bundleMeta` + ETag |
+| `buildTrendsBundleFromSixBlobs.js` | Merge six blobs → unified payload |
 | `metricCategory.js` | Canonical category inference |
-| `sync-trends-blobs-from-azure.js` | Download from Azure `qipp-data` container |
+| `metricDisplayNames.js` | Bundle-based display name map |
 
 ### Frontend
 
 | Module | Role |
 |--------|------|
-| `plantTrendsCache.ts` | `loadPlantTrendsCache()` → `GET /trends-bundle` + progress callback |
-| `trends-load-progress.tsx` | Loading UX: "Loading blob 2/6 — Water Balance…" (home, historical hub, Trend Studio) |
-| `trendRecordsFromCache.ts` | Bundle `seriesByKey` → flat records per kind |
-| `portal-access.ts` | Historical trends = portal admin; Trend Studio = super admin |
+| `plantTrendsCache.ts` | `loadPlantTrendsCache()` → `GET /trends-bundle` |
+| `trendRecordsFromCache.ts` | Bundle → flat records per kind |
+| `reportsV3Api` (client) | Bundle-only wrapper (no API records fetch for six kinds) |
 
 ---
 
-## Legacy ingest (non-hot-path)
+## `data/` JSON files
 
-Cosmos ingest and V3 jsonStore remain for admin tooling but are **not** on the public trends hot path. Do not wire new UI to them.
-
-Removed obsolete scripts: `rebuild-trends-cache*`, `verify-trends-cache`, `run-plant-ingest-local`, `probe-sample-reports`, `test-ingest-sample`, `reingest-daily-water`, `cleanup-*`.
+| File | Keep? | Purpose |
+|------|-------|---------|
+| `data/trends-blobs/*.json` | **Yes** | Six-blob trends source |
+| `data/roster.json` | **Yes** | Roster seed |
+| `data/ptw-authorization-2026.json` | **Yes** | PTW seed |
+| `data/training-catalog.json` | **Yes** | Training seed |
+| Other seed files | **Yes** | Auth/admin features |

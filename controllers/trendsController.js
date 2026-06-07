@@ -1,7 +1,4 @@
 const TrendsSnapshot = require('../models/TrendsSnapshot');
-const { blobIngestConfigured } = require('../services/plantReports/blobReports');
-const { syncTrendsSnapshotFromBlob } = require('../services/plantReports/syncTrendsSnapshot');
-const { runPlantIngestion } = require('../services/plantReports/runIngestion');
 const {
   parseWaterConsumption,
   parseEnergyReport,
@@ -36,28 +33,12 @@ exports.syncFromSharePoint = async (_req, res) => {
   });
 };
 
-/** Sync KPI trends visuals + plant metrics from Azure Blob container `report` */
-exports.syncFromBlob = async (req, res) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Admin only' });
-  }
-  if (!blobIngestConfigured()) {
-    return res.status(400).json({
-      message: 'Blob not configured. Set BLOB_SAS_URL or AZURE_STORAGE_CONNECTION_STRING on the API.',
-    });
-  }
-  try {
-    const forceAll = req.query.forceAll === '1' || req.body?.forceAll === true;
-    const ingest = await runPlantIngestion({ forceAll });
-    const snapshot = ingest.trendsSnapshot || (await syncTrendsSnapshotFromBlob());
-    res.json({
-      message: 'Blob sync complete',
-      ingest,
-      trendsSnapshot: snapshot,
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Blob sync failed', error: err.message });
-  }
+/** @deprecated Legacy Cosmos ingest — trends use six-blob bundle only. */
+exports.syncFromBlob = async (_req, res) => {
+  res.status(410).json({
+    message:
+      'Legacy blob ingest to Cosmos removed. Sync qipp-data JSON with npm run sync:trends-blobs.',
+  });
 };
 
 // ─── POST /api/trends/upload — manual file upload fallback ───────────────────
