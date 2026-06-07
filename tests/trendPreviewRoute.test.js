@@ -9,10 +9,10 @@ jest.mock('../middleware/auth', () => ({
 }));
 
 jest.mock('../services/plantReports/metricSeriesQuery', () => ({
-  fetchMetricSeriesFromMongo: jest.fn(),
+  fetchMetricSeries: jest.fn(),
 }));
 
-const { fetchMetricSeriesFromMongo } = require('../services/plantReports/metricSeriesQuery');
+const { fetchMetricSeries } = require('../services/plantReports/metricSeriesQuery');
 const plantDataRoutes = require('../routes/plantDataRoutes');
 
 function makeApp() {
@@ -25,7 +25,7 @@ function makeApp() {
 describe('GET /plant-data/trend-preview', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    fetchMetricSeriesFromMongo.mockResolvedValue({
+    fetchMetricSeries.mockReturnValue({
       series: [{ date: '2026-05-01', plant_generation: 42 }],
       rowCount: 1,
       from: '2026-01-01',
@@ -34,7 +34,7 @@ describe('GET /plant-data/trend-preview', () => {
     });
   });
 
-  it('returns series from PlantMetricPoint query service', async () => {
+  it('returns series from six-blob bundle query service', async () => {
     const app = makeApp();
     const res = await request(app)
       .get('/plant-data/trend-preview')
@@ -43,7 +43,7 @@ describe('GET /plant-data/trend-preview', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.series).toHaveLength(1);
-    expect(fetchMetricSeriesFromMongo).toHaveBeenCalledWith(
+    expect(fetchMetricSeries).toHaveBeenCalledWith(
       ['plant_generation'],
       '2026-01-01',
       '2026-06-01'

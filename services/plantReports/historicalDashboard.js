@@ -142,6 +142,16 @@ function panelSummary(series, primaryKey) {
 }
 
 async function getDateBounds() {
+  try {
+    const { getBundleDateBounds } = require('./metricSeriesFromBundle');
+    const bounds = getBundleDateBounds();
+    if (bounds.minDate && bounds.maxDate) {
+      return bounds;
+    }
+  } catch {
+    /* fall through to legacy Mongo if bundle unavailable */
+  }
+
   const agg = await PlantMetricPoint.aggregate([
     {
       $group: {

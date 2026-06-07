@@ -1,6 +1,7 @@
 const PlantMetricPoint = require('../../models/PlantMetricPoint');
 const { expandDayColumnSeries } = require('./seriesTimeline');
 const { expandMetricKeysForQuery, canonicalMetricKey } = require('./metricKeys');
+const { fetchMetricSeriesFromBundle } = require('./metricSeriesFromBundle');
 
 function normalizeDateStr(value) {
   if (!value) return '';
@@ -20,9 +21,7 @@ function buildMetricKeyClauses(keys) {
   return keyClauses;
 }
 
-/**
- * Load chart series for metric keys from PlantMetricPoint (Trend Studio preview).
- */
+/** @deprecated Legacy Mongo path — use fetchMetricSeriesFromBundle. */
 async function fetchMetricSeriesFromMongo(keys, fromStr, toStr) {
   const keysList = [...new Set(keys.map((k) => String(k || '').trim()).filter(Boolean))];
   const from = normalizeDateStr(fromStr);
@@ -56,7 +55,14 @@ async function fetchMetricSeriesFromMongo(keys, fromStr, toStr) {
   };
 }
 
+/** Primary hot path — six-blob bundle on disk (no Mongo). */
+function fetchMetricSeries(keys, fromStr, toStr) {
+  return fetchMetricSeriesFromBundle(keys, fromStr, toStr);
+}
+
 module.exports = {
+  fetchMetricSeries,
+  fetchMetricSeriesFromBundle,
   fetchMetricSeriesFromMongo,
   buildMetricKeyClauses,
   normalizeDateStr,

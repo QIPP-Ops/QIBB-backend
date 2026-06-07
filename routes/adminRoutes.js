@@ -24,6 +24,7 @@ const pinLimiter = rateLimit({
 
 router.get('/list-blobs', protect, admin, blobController.listAllBlobs);
 router.get('/ingest-status', protect, admin, ingestAdmin.getIngestStatus);
+router.get('/sync-trends-blobs/progress', protect, admin, ingestAdmin.getSyncProgress);
 router.post('/ingest/trigger', protect, requireSuperAdmin, ingestAdmin.triggerIngest);
 
 router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);

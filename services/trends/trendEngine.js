@@ -8,6 +8,10 @@ const { getDateBounds, clampRange } = require('../plantReports/historicalDashboa
 const { buildOperationalOverview } = require('../plantReports/operationalOverview');
 const { buildChemistryWaterPanel } = require('./chemistryWaterSeries');
 const { TREND_DEFINITION_SEEDS } = require('./trendDefinitionSeeds');
+const {
+  fetchMetricSeriesFromBundle,
+  metricsFromBundle,
+} = require('../plantReports/metricSeriesFromBundle');
 
 let seedingDefinitions = null;
 
@@ -129,6 +133,16 @@ async function loadDefinitions(filter = {}) {
   return defs;
 }
 
+async function loadAllMetrics() {
+  try {
+    const fromBundle = metricsFromBundle();
+    if (fromBundle.length) return fromBundle;
+  } catch {
+    /* optional bundle */
+  }
+  return PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+}
+
 async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
   if (def.dataSource === 'chemistry_water') {
     return buildChemistryWaterPanel(def, from, to);
@@ -153,14 +167,7 @@ async function buildPanelPayload(def, from, to, allMetrics, usedKeys) {
   }
   matched.forEach((m) => usedKeys.add(m.metricKey));
   const keys = matched.map((m) => m.metricKey);
-  const queryKeys = expandMetricKeysForQuery(keys);
-  const rows = await PlantMetricPoint.find({
-    metricKey: { $in: queryKeys },
-    reportDate: { $gte: from, $lte: to },
-  })
-    .sort({ reportDate: 1 })
-    .lean();
-  const series = expandDayColumnSeries(rows, keys);
+  const { series } = fetchMetricSeriesFromBundle(keys, from, to);
   if (!series.length) {
     return {
       id: def.panelId,
@@ -207,7 +214,7 @@ async function queryPanelById(panelId, dateRange = {}) {
   const defs = await loadDefinitions({ panelId });
   const def = defs[0];
   if (!def) return null;
-  const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+  const allMetrics = await loadAllMetrics();
   const usedKeys = new Set();
   return buildPanelPayload(def, from, to, allMetrics, usedKeys);
 }
@@ -216,7 +223,7 @@ async function queryPanelsForRoute(route, dateRange = {}) {
   const bounds = await getDateBounds();
   const { from, to } = clampRange(dateRange.from, dateRange.to, bounds);
   const defs = await loadDefinitions({ route, showOnTrends: route === '/reports/trends' ? true : undefined });
-  const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+  const allMetrics = await loadAllMetrics();
   const usedKeys = new Set();
   const panels = [];
   for (const def of defs) {
@@ -256,9 +263,8 @@ async function buildHistoricalDashboard(query = {}) {
   const bounds = await getDateBounds();
   const { from, to } = clampRange(query.from, query.to, bounds);
   const defs = await loadDefinitions({ route: '/reports/trends', showOnTrends: true });
-  const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } })
-    .sort({ category: 1, label: 1 })
-    .lean();
+  const allMetrics = await loadAllMetrics()
+    .then((rows) => rows.sort((a, b) => (a.category || '').localeCompare(b.category || '') || (a.label || '').localeCompare(b.label || '')));
   const usedKeys = new Set();
   const panels = [];
   for (const def of defs) {
@@ -267,14 +273,28 @@ async function buildHistoricalDashboard(query = {}) {
   }
 
   const latestDate = to;
-  const latestRows = await PlantMetricPoint.find({ reportDate: latestDate }).lean();
-  const catTotals = {};
-  for (const r of latestRows) {
-    catTotals[r.category] = (catTotals[r.category] || 0) + Math.abs(r.value);
+  let categoryBreakdown = [];
+  try {
+    const { buildTrendsBundleFromSixBlobs } = require('../plantReports/buildTrendsBundleFromSixBlobs');
+    const { payload } = buildTrendsBundleFromSixBlobs();
+    const catTotals = {};
+    for (const m of payload?.metrics ?? []) {
+      const cat = m.category || 'general';
+      catTotals[cat] = (catTotals[cat] || 0) + 1;
+    }
+    categoryBreakdown = Object.entries(catTotals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  } catch {
+    const latestRows = await PlantMetricPoint.find({ reportDate: latestDate }).lean();
+    const catTotals = {};
+    for (const r of latestRows) {
+      catTotals[r.category] = (catTotals[r.category] || 0) + Math.abs(r.value);
+    }
+    categoryBreakdown = Object.entries(catTotals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }
-  const categoryBreakdown = Object.entries(catTotals)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
 
   const snapshots = await TrendsSnapshot.find({
     createdAt: {
@@ -312,7 +332,7 @@ async function buildHomeTrendsPayload(dateRange = {}) {
       d.panelId.startsWith('home_kpi_') ||
       d.panelId.startsWith('home_chem_')
   );
-  const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+  const allMetrics = await loadAllMetrics();
   const usedKeys = new Set();
   const panels = [];
   for (const def of chartDefs) {
@@ -326,15 +346,10 @@ async function buildHomeTrendsPayload(dateRange = {}) {
     .lean();
   const custom = [];
   for (const t of customTrends) {
-    const rows = await PlantMetricPoint.find({
-      metricKey: { $in: t.metricKeys },
-      reportDate: { $gte: from, $lte: to },
-    })
-      .sort({ reportDate: 1 })
-      .lean();
+    const { series } = fetchMetricSeriesFromBundle(t.metricKeys, from, to);
     custom.push({
       ...t,
-      series: expandDayColumnSeries(rows, t.metricKeys),
+      series,
     });
   }
 
@@ -347,7 +362,7 @@ async function buildManagementDashboard(dateRange = {}) {
   const bounds = await getDateBounds();
   const { from, to } = clampRange(dateRange.from, dateRange.to, bounds);
   const defs = await loadDefinitions({ showOnManagement: true });
-  const allMetrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+  const allMetrics = await loadAllMetrics();
   const usedKeys = new Set();
   const panels = [];
   for (const def of defs) {

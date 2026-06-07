@@ -4,7 +4,7 @@ jest.mock('../services/plantReports/buildTrendsBundleFromSixBlobs', () => ({
       generatedAt: '2026-06-01T12:00:00.000Z',
       metrics: [{ metricKey: 'a' }, { metricKey: 'b' }],
       seriesByKey: { a: [{ date: '2026-06-01', value: 1 }] },
-      bundleMeta: { totalPoints: 10 },
+      bundleMeta: { totalPoints: 10, totalMetrics: 2, kindsLoaded: ['daily_ops', 'water'] },
       blobSource: true,
     },
   })),
@@ -17,7 +17,26 @@ jest.mock('../services/plantReports/trendsBlobBundle', () => ({
   hasBundledTrends: jest.fn(() => true),
 }));
 
+jest.mock('../services/plantReports/syncTrendsBlobsService', () => ({
+  syncTrendsBlobsFromAzure: jest.fn(),
+  getSyncState: jest.fn(() => ({
+    running: false,
+    current: 0,
+    total: 6,
+    percent: 0,
+    label: '',
+    errors: [],
+    lastResult: null,
+  })),
+  BLOB_KINDS: ['daily_ops', 'water', 'hrsg', 'fg_filter', 'air_intake', 'environment'],
+}));
+
+jest.mock('../services/auditLogService', () => ({
+  logAction: jest.fn(),
+}));
+
 const ingestAdmin = require('../controllers/ingestAdminController');
+const { syncTrendsBlobsFromAzure } = require('../services/plantReports/syncTrendsBlobsService');
 
 function mockRes() {
   const res = { statusCode: 200, body: null };
@@ -41,16 +60,31 @@ describe('GET ingest-status (bundle-based)', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.source).toBe('six-blob-bundle');
     expect(res.body.data.metricsInCache).toBe(2);
+    expect(res.body.data.filesProcessed).toBe(2);
+    expect(res.body.data.metricsWritten).toBe(2);
     expect(res.body.data.ingestDeprecated).toBe(true);
-    expect(res.body.data.unmatchedFiles).toEqual([]);
   });
 });
 
-describe('POST ingest trigger (deprecated)', () => {
-  it('returns 410 for legacy ingest', async () => {
+describe('POST ingest trigger (blob sync)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    syncTrendsBlobsFromAzure.mockResolvedValue({
+      success: true,
+      filesProcessed: 6,
+      filesTotal: 6,
+      metricsWritten: 544,
+      totalMetricsInCache: 544,
+      errors: [],
+    });
+  });
+
+  it('runs Azure blob sync and returns result', async () => {
     const res = mockRes();
     await ingestAdmin.triggerIngest({ user: { id: 'admin', role: 'admin' } }, res);
-    expect(res.statusCode).toBe(410);
-    expect(res.body.message).toMatch(/removed/i);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.filesProcessed).toBe(6);
+    expect(syncTrendsBlobsFromAzure).toHaveBeenCalled();
   });
 });

@@ -242,8 +242,8 @@ exports.getMetricSeries = async (req, res) => {
       toStr = toStr || new Date().toISOString().slice(0, 10);
     }
 
-    const { fetchMetricSeriesFromMongo } = require('../services/plantReports/metricSeriesQuery');
-    const { series, from, to } = await fetchMetricSeriesFromMongo(keys, fromStr, toStr);
+    const { fetchMetricSeries } = require('../services/plantReports/metricSeriesQuery');
+    const { series, from, to } = fetchMetricSeries(keys, fromStr, toStr);
 
     res.json({
       success: true,
@@ -714,4 +714,40 @@ exports.listManagementTrendAccess = async (req, res) => {
   }
   const rows = await ManagementTrendAccess.find().lean();
   res.json({ success: true, data: rows });
+};
+
+/** Super admin — download six qipp-data blobs from Azure (same as npm run sync:trends-blobs). */
+exports.syncTrendsBlobs = async (req, res) => {
+  const { syncTrendsBlobsFromAzure, getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
+  try {
+    const result = await syncTrendsBlobsFromAzure();
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.MANUAL_INGEST_TRIGGERED,
+      targetType: 'ingest',
+      targetId: 'sync-trends-blobs',
+      targetName: 'Azure trends blob sync',
+      after: {
+        filesProcessed: result.filesProcessed,
+        metricsWritten: result.metricsWritten,
+        errors: result.errors,
+      },
+      req,
+    });
+    res.json({ success: result.success, data: result });
+  } catch (err) {
+    if (err.code === 'SYNC_IN_PROGRESS') {
+      return res.status(409).json({ success: false, message: err.message, data: getSyncState() });
+    }
+    if (err.code === 'MISSING_AZURE_CONFIG') {
+      return res.status(503).json({ success: false, message: err.message });
+    }
+    console.error('[sync-trends-blobs]', err.message);
+    res.status(500).json({ success: false, message: err.message || 'Blob sync failed' });
+  }
+};
+
+exports.getSyncTrendsBlobsProgress = async (_req, res) => {
+  const { getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
+  res.json({ success: true, data: getSyncState() });
 };
