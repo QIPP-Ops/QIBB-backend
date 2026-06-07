@@ -51,6 +51,16 @@ jobs:
           JWT_SECRET: test-jwt-secret-at-least-32-chars-long
           COSMOS_URI: mongodb://127.0.0.1:27017/qipp-ci-test
 
+      - name: Sync trends blobs from Azure (optional)
+        run: |
+          if [ -n "${AZURE_STORAGE_CONNECTION_STRING:-}" ]; then
+            npm run sync:trends-blobs
+          else
+            echo "AZURE_STORAGE_CONNECTION_STRING not set — skipping blob sync (using committed stubs or .gitkeep)."
+          fi
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+
       - name: Install production dependencies only
         run: |
           rm -rf node_modules

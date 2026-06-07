@@ -1,3 +1,10 @@
-# Bundled qipp-data JSON blobs (daily_ops.json, water.json, hrsg.json, etc.)
-# Run from repo root: npm run sync:trends-blobs
-# Requires AZURE_STORAGE_CONNECTION_STRING
+# Placeholder so data/trends-blobs/ is tracked in git when JSON blobs are not committed.
+#
+# A red X on .gitkeep in your IDE is normal — it only means "no blob JSON in repo yet",
+# NOT a runtime error. The API serves metrics from the six *.json files when present:
+#   daily_ops.json, water.json, hrsg.json, fg_filter.json, air_intake.json, environment.json
+#
+# Populate locally: copy blobs from Downloads OR run:
+#   npm run sync:trends-blobs   (requires AZURE_STORAGE_CONNECTION_STRING)
+#
+# CI deploy (main_qipp-api.yml) runs the same sync when the GitHub secret is set.

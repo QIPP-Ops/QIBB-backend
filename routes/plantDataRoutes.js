@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { opsLead } = require('../middleware/opsLead');
+const { requireSuperAdmin } = require('../middleware/superAdmin');
 const c = require('../controllers/plantDataController');
 
 router.get('/status', protect, c.getStatus);
@@ -27,15 +28,15 @@ router.get('/historical-dashboard', protect, c.getHistoricalDashboard);
 router.get('/management-trends', protect, c.getManagementTrends);
 router.get('/home-trends', protect, c.getHomeTrends);
 router.get('/metrics', protect, opsLead, c.listMetrics);
-router.post('/metrics', protect, c.upsertMetric);
-router.delete('/metrics/:metricKey', protect, c.deleteMetric);
+router.post('/metrics', protect, requireSuperAdmin, c.upsertMetric);
+router.delete('/metrics/:metricKey', protect, requireSuperAdmin, c.deleteMetric);
 router.patch('/metrics/visibility', protect, c.setMetricVisibility);
 
 router.get('/metric-display-names', c.getMetricDisplayNames);
 router.get('/custom-trends', protect, opsLead, c.listCustomTrends);
-router.post('/custom-trends', protect, opsLead, c.saveCustomTrend);
-router.patch('/custom-trends/:id', protect, opsLead, c.patchCustomTrend);
-router.delete('/custom-trends/:id', protect, opsLead, c.deleteCustomTrend);
+router.post('/custom-trends', protect, requireSuperAdmin, c.saveCustomTrend);
+router.patch('/custom-trends/:id', protect, requireSuperAdmin, c.patchCustomTrend);
+router.delete('/custom-trends/:id', protect, requireSuperAdmin, c.deleteCustomTrend);
 
 router.get('/management-access', protect, c.listManagementTrendAccess);
 router.patch('/management-access', protect, c.setManagementTrendAccess);

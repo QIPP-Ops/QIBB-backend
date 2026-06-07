@@ -27,6 +27,13 @@ const DEFAULT_PRESETS = [
     body:
       '<p>Dear {{name}},</p><p>Your shift report for <strong>{{date}}</strong> has not been submitted yet. Please complete it in QIPP.</p>',
   },
+  {
+    id: 'monthly-planned-leaves',
+    name: 'Monthly planned leaves',
+    subject: 'Planned leave roster — {{month}}',
+    body:
+      '<p>Dear {{name}},</p><p>Please find attached the <strong>planned leave timeline</strong> for <strong>{{month}}</strong> (crew roster filtered to leave segments overlapping that month).</p><p>Contact your supervisor if you need to adjust leave plans.</p>',
+  },
 ];
 
 async function getOrCreateConfig() {
@@ -114,6 +121,7 @@ exports.sendEmailBroadcast = async (req, res) => {
       cc = [],
       bcc = [],
       dryRun = false,
+      month: monthParam,
     } = req.body || {};
 
     const config = await getOrCreateConfig();
@@ -131,6 +139,21 @@ exports.sendEmailBroadcast = async (req, res) => {
       return res.status(400).json({ message: 'subject and body are required' });
     }
 
+    let leaveAttachment = null;
+    if (presetId === 'monthly-planned-leaves') {
+      const yearMonth = String(monthParam || variables.month || '').trim();
+      if (!yearMonth) {
+        return res.status(400).json({ message: 'month (YYYY-MM) is required for monthly planned leaves preset' });
+      }
+      try {
+        const { buildMonthlyPlannedLeavesWorkbook } = require('../services/monthlyPlannedLeavesExcel');
+        leaveAttachment = await buildMonthlyPlannedLeavesWorkbook(yearMonth);
+        variables.month = leaveAttachment.monthLabel;
+      } catch (err) {
+        return res.status(400).json({ message: err.message });
+      }
+    }
+
     const filters = parseRecipientFilters(req.body);
     const recipients = await resolveRecipients(filters);
     if (!recipients.length) {
@@ -141,6 +164,9 @@ exports.sendEmailBroadcast = async (req, res) => {
       return res.json({
         dryRun: true,
         recipientCount: recipients.length,
+        attachment: leaveAttachment
+          ? { filename: leaveAttachment.filename, rowCount: leaveAttachment.rowCount }
+          : null,
         recipients: recipients.map((r) => ({
           name: r.name,
           email: r.email,
@@ -165,6 +191,7 @@ exports.sendEmailBroadcast = async (req, res) => {
         empId: user.empId,
         deadline: variables.deadline || '',
         date: variables.date || '',
+        month: variables.month || '',
       };
       const subj = substituteTemplate(finalSubject, vars);
       const html = emailTemplate(subj, substituteTemplate(finalBody, vars));
@@ -175,6 +202,18 @@ exports.sendEmailBroadcast = async (req, res) => {
           html,
           ...(ccList.length ? { cc: ccList.join(', ') } : {}),
           ...(bccList.length ? { bcc: bccList.join(', ') } : {}),
+          ...(leaveAttachment
+            ? {
+                attachments: [
+                  {
+                    filename: leaveAttachment.filename,
+                    content: leaveAttachment.buffer,
+                    contentType:
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                  },
+                ],
+              }
+            : {}),
         });
         sent += 1;
       } catch (err) {
