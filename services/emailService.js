@@ -1,7 +1,7 @@
 const nodemailer = require('nodemailer');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { getSmtpUser, getSmtpPassword, isEmailConfigured } = require('../config/smtp');
-const { ACWA_EMAIL_LOGO_SVG } = require('./emailBrandAssets');
+const { ACWA_EMAIL_LOGO_SVG, BRAND_MOTTO_HTML } = require('./emailBrandAssets');
 
 function createTransporter() {
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
@@ -70,7 +70,10 @@ function emailTemplate(title, bodyHtml) {
       .otp-box { background:#f4f4f8; border-radius:12px; padding:20px; text-align:center; margin:24px 0; }
       .otp-box span { font-size:40px; font-weight:900; letter-spacing:0.3em; color:#9273DA; }
       .btn { display:inline-block; background:#9273DA; color:#fff !important; text-decoration:none; font-weight:700; font-size:15px; padding:14px 32px; border-radius:10px; margin:16px 0; }
-      .footer { background:#f9f7fc; padding:20px 40px; text-align:center; font-size:12px; color:#aaa; border-top:1px solid #eee; }
+      .footer { background:#9273DA; padding:24px 40px; text-align:center; font-size:12px; color:#fff; border-top:1px solid rgba(255,255,255,0.15); }
+      .brand-motto { font-size:18px; line-height:1.35; font-weight:600; margin-bottom:10px; }
+      .motto-white { color:#ffffff; }
+      .motto-muted { color:#2E2044; }
     </style>
   </head>
   <body>
@@ -83,7 +86,7 @@ function emailTemplate(title, bodyHtml) {
         ${bodyHtml}
       </div>
       <div class="footer">
-        Delivering power. Improving lives.<br/>
+        ${BRAND_MOTTO_HTML}
         This is an automated message — do not reply.
       </div>
     </div>
