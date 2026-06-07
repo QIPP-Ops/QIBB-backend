@@ -1,236 +1,130 @@
 # QIPP Trends & Metrics Data Map
 
-> Generated after pipeline cleanup (June 2026). Architecture: **Azure blobs → backend ingest/sync → `plant-trends-cache.json` (+ optional `trends-blobs/`) → frontend reads backend API only.**
+> Updated June 2026. Architecture: **Azure qipp-data container → six JSON blobs → `GET /api/plant-data/trends-bundle` → frontend reads backend ONLY.**
 
 ---
 
-## Primary data flow
+## Primary data flow (six-blob-only)
 
 ```mermaid
 flowchart LR
   Azure[Azure qipp-data container]
-  LegacyIngest[Legacy plantReports ingest]
-  V3Sync[plantReportsV3 azureSync]
-  Cosmos[(Cosmos PlantMetricPoint)]
-  Cache[(plant-trends-cache.json)]
+  Sync[npm run sync:trends-blobs]
   Blobs[(data/trends-blobs/*.json)]
-  V3Store[(data-v3/*.json)]
-  API[/api/plant-data/trends-cache]
-  V3API[/api/reports-v3/records]
-  FE[Frontend loadPlantTrendsCache + reportsV3Api]
+  Bundle[buildTrendsBundleFromSixBlobs]
+  API[/api/plant-data/trends-bundle]
+  Alias[/api/plant-data/trends-cache alias]
+  FE[loadPlantTrendsCache]
 
-  Azure --> LegacyIngest
-  Azure --> V3Sync
-  LegacyIngest --> Cosmos
-  Cosmos --> Cache
-  Azure --> Blobs
-  V3Sync --> V3Store
-  Cache --> API
-  Blobs --> API
-  V3Store --> V3API
+  Azure --> Sync
+  Sync --> Blobs
+  Blobs --> Bundle
+  Bundle --> API
+  API --> Alias
   API --> FE
-  V3API --> FE
+  Alias --> FE
 ```
+
+**The six blob kinds (sole source of truth for trends/metrics on qipp.live):**
+
+| Kind key | Blob file | Bundled path |
+|----------|-----------|--------------|
+| `daily_ops` | `daily_ops.json` | `data/trends-blobs/daily_ops.json` |
+| `water` | `water.json` | `data/trends-blobs/water.json` |
+| `hrsg` | `hrsg.json` | `data/trends-blobs/hrsg.json` |
+| `fg_filter` | `fg_filter.json` | `data/trends-blobs/fg_filter.json` |
+| `air_intake` | `air_intake.json` | `data/trends-blobs/air_intake.json` |
+| `environment` | `environment.json` | `data/trends-blobs/environment.json` |
+
+Sync: `npm run sync:trends-blobs` (requires `AZURE_STORAGE_CONNECTION_STRING`).
 
 ---
 
-## Backend endpoints (trends / metrics / plant-data)
+## Backend endpoints (trends hot path)
 
 | Route | Auth | Source | Purpose |
 |-------|------|--------|---------|
-| `GET /api/plant-data/trends-cache` | Public | Disk `plant-trends-cache.json` | **Primary hot path** — full cache payload |
-| `GET /api/plant-data/trends-cache?rebuild=1` | Admin | Cosmos → rebuild | Force cache rebuild |
-| `GET /api/plant-data/trends-blobs/:kind` | Public | `data/trends-blobs/{kind}.json` | Raw bundled blob JSON (admin/debug; frontend no longer proxies) |
+| `GET /api/plant-data/trends-bundle` | Public | Six blobs merged | **Primary hot path** — unified payload |
+| `GET /api/plant-data/trends-cache` | Public | Same as trends-bundle | Backward-compatible alias |
+| `GET /api/plant-data/trends-blobs/:kind` | Public | Raw blob JSON | Admin/debug per-kind raw JSON |
 | `GET /api/plant-data/trends-blobs/status` | Public | Filesystem | Which bundled blobs exist |
-| `GET /api/plant-data/home-trends` | JWT | Cache + trendEngine | Home dashboard KPI panels |
-| `GET /api/plant-data/management-trends` | JWT | Cache + trendEngine | Management operational dashboard |
-| `GET /api/plant-data/trend-panels?route=` | JWT | Cache + TrendDefinition | Route-scoped chart panels |
-| `GET /api/plant-data/trend-panels/:panelId` | JWT | Cache + TrendDefinition | Single panel series |
-| `GET /api/plant-data/metrics/series?keys=` | JWT | Cosmos / cache | Multi-metric time series |
-| `GET /api/plant-data/metrics/:key/preview` | JWT | Cache `seriesByKey` | Admin metric preview |
-| `GET /api/plant-data/trend-preview` | JWT | Cache | Admin trend preview |
-| `GET /api/plant-data/metric-display-names` | Public | DB + cache metadata | Display name map |
-| `GET /api/plant-data/metrics/date-range` | Public | Cosmos bounds | Global min/max dates |
-| `GET /api/plant-data/historical-dashboard` | JWT | Cosmos | Legacy historical dashboard |
-| `GET /api/reports-v3/records?kind=` | JWT | V3 jsonStore | Flat `{date, metric, value}[]` for **energy**, **timers_counters** |
-| `GET /api/reports-v3/metrics?kind=` | JWT | V3 jsonStore | Metric name list per kind |
-| `GET /api/reports-v3/latest-date?kind=` | JWT | V3 jsonStore | Latest date per kind |
-| `GET /api/trends` | JWT | TrendsSnapshot (Cosmos) | Chemistry merge snapshots |
-| `GET /api/trends/history` | JWT | TrendsSnapshot | Historical chemistry snapshots |
-| `GET /api/trends/saved` | JWT | SavedTrend model | Trend Studio saved charts |
+| `GET /api/plant-data/home-trends` | JWT | Bundle + trendEngine | Home dashboard KPI panels |
+| `GET /api/plant-data/trend-panels?route=` | JWT | Bundle + TrendDefinition | Route-scoped chart panels |
 
-**Legacy routes (still mounted, no frontend consumers):** `/api/energy`, `/api/water-balance`, `/api/gt-filter`, `/api/daily-operation` — candidates for future removal once external clients confirmed absent.
+**Removed / deprecated as primary sources:**
+
+| Route | Status |
+|-------|--------|
+| `plant-trends-cache.json` / Cosmos rebuild on hot path | **Removed** — not used by trends-bundle |
+| `GET /api/trends` | **410** — TrendsSnapshot chemistry merge removed |
+| `GET /api/trends/history` | **410** — use trends-bundle |
+| `GET /api/reports-v3/records?kind=energy\|timers_counters` | Routes through six-blob bundle (derived from daily_ops) or empty |
+| `GET /api/plant-data/chemistry-water-overview` | Returns pointer to bundle (hrsg + water) |
 
 ---
 
-## Cache JSON format (`plant-trends-cache.json`)
+## Bundle JSON format
 
 API wraps payload as `{ success: true, data: { ... } }`. Inner shape:
 
 ```json
 {
   "generatedAt": "ISO-8601",
-  "dateRange": { "from", "to", "minDate", "maxDate", "pointCount", "snapshotCount" },
+  "dateRange": { "from", "to", "minDate", "maxDate", "pointCount" },
   "metrics": [
-    { "metricKey": "slug_key", "label": "Display Name", "category": "chemistry|energy|...", "unit": "" }
+    { "metricKey": "slug_key", "label": "Display Name", "category": "daily_ops|hrsg_chemistry|...", "unit": "" }
   ],
   "seriesByKey": {
-    "metric_key_slug": [
-      { "date": "YYYY-MM-DD", "value": 123.4, "metric_key_slug": 123.4 }
-    ]
+    "metric_key_slug": [{ "date": "YYYY-MM-DD", "value": 123.4, "metric_key_slug": 123.4 }]
   },
-  "chemistryWater": { "latest": {...}, "snapshots": [...] }
+  "blobSource": true,
+  "blobKinds": ["daily_ops", "water", "hrsg", "fg_filter", "air_intake", "environment"]
 }
 ```
 
-- **Not flat rows on the wire** — time series are **nested by metric key** in `seriesByKey`.
-- Frontend converts back to flat `{date, metric, value}` via `trendRecordsFromCache.ts` / `recordsFromPlantCacheForKind()` for historical pages.
-- Categories in cache today mix legacy values (`chemistry`, `energy`, `water`) with inferred kinds; see **Recommended taxonomy** below.
-
----
-
-## Azure blob → file mapping (`qipp-data` container)
-
-| Kind key | Blob file | Sync script | Bundled path |
-|----------|-----------|-------------|--------------|
-| `daily_ops` | `daily_ops.json` | `npm run sync:trends-blobs` | `data/trends-blobs/daily_ops.json` |
-| `water` | `water.json` | same | `data/trends-blobs/water.json` |
-| `hrsg` | `hrsg.json` | same | `data/trends-blobs/hrsg.json` |
-| `fg_filter` | `fg_filter.json` | same | `data/trends-blobs/fg_filter.json` |
-| `air_intake` | `air_intake.json` | same | `data/trends-blobs/air_intake.json` |
-| `environment` | `environment.json` | same | `data/trends-blobs/environment.json` |
-
-V3 jsonStore kinds (separate from bundled six): `water`, `energy`, `environment`, `daily_ops`, `fg_filter`, `air_inlet_filter`, `timers_counters`, `hrsg` — stored under `data-v3/` (or `/home/data-v3` on Azure).
+- In-memory cache with blob mtime signature + `ETag` header.
+- `Cache-Control: public, max-age=300`.
+- Frontend client cache key: `six-blob-trends-bundle`, TTL 2h.
 
 ---
 
 ## Trend sources by page
 
-### Historical trend pages (flat records from cache)
-
-| Frontend route | reportsV3Api kind | Backend data path | Record format | Notes |
-|----------------|-------------------|-------------------|---------------|-------|
-| `/daily-operation` | `daily_ops` | `GET /plant-data/trends-cache` → `recordsFromPlantCacheForKind` | Flat `{date, metric, value}` derived from `seriesByKey` | Load, MWh, MFEQH per GT/ST |
-| `/water-balance` | `water` | Same cache path | Flat rows | Consumption, production, tank levels |
-| `/chemistry` | `hrsg` | Same cache path | Flat rows | HRSG / RO / ST chemistry parameters |
-| `/environment` | `environment` | Same cache path | Flat rows | NOx, SOx, stack, ambient |
-| `/gt-filter` | `fg_filter` + `air_inlet_filter` | Same cache path | Flat rows | FG filter DP + air intake P1C/DP |
-| `/energy` | `energy` | `GET /reports-v3/records?kind=energy` | Native flat V3 `{date, metric, value}[]` | **Not yet in plant-trends-cache** |
-| `/timers-counters` | `timers_counters` | `GET /reports-v3/records?kind=timers_counters` | Native flat V3 | **Not yet in plant-trends-cache** |
-
-Implementation: `QIBB-frontend/src/lib/api.ts` — `reportsV3Api.getRecords()` uses cache for `isTrendBlobKind()` kinds, else hits `/reports-v3/records`.
-
-### Home & management dashboards
-
-| Frontend | Backend endpoint | Metrics source |
-|----------|------------------|----------------|
-| `/` home KPI sections | `loadPlantTrendsCache()` + `GET /plant-data/home-trends` | `seriesByKey` + TrendDefinition panels |
-| `/` chemistry water section | Cache `chemistryWater` + cache series | HRSG/water KPI tiles |
-| Management dashboard | `GET /plant-data/management-trends` | Cache + trendEngine |
-| `/reports/trends` Smart Trends | `loadPlantTrendsCache()` | Full cache, user-selected metrics |
-| `/trend-studio` | Cache + `/reports-v3/records` + SavedTrend API | Mixed kinds |
-| `/admin-portal/trends` | Cache + metric preview | Admin metric catalog |
-
-### Chemistry deep-dive
-
-| Frontend | Data |
-|----------|------|
-| `/chemistry/trends/[parameterKey]` | Cache via `chemistryHistory.ts` / `loadPlantTrendsCache` |
-| Chemistry merge (RO/ST) | `GET /api/trends` TrendsSnapshot + cache fallback (`use-chemistry-merge-trends.ts`) |
+| Frontend route | Kind | Data path |
+|----------------|------|-----------|
+| `/daily-operation` | `daily_ops` | Bundle → `recordsFromPlantCacheForKind` |
+| `/water-balance` | `water` | Bundle |
+| `/chemistry` | `hrsg` | Bundle |
+| `/environment` | `environment` | Bundle |
+| `/gt-filter` | `fg_filter` + `air_inlet_filter` | Bundle |
+| `/energy` | `energy` (derived from daily_ops) | Bundle only — no reports-v3 |
+| `/timers-counters` | `timers_counters` (derived from daily_ops MFEQH) | Bundle only |
+| `/` home, `/trend-studio`, admin trends | Bundle via `loadPlantTrendsCache()` | Single request |
 
 ---
 
-## Ingest pipelines (active — do not delete)
+## Key modules
 
-| Pipeline | Schedule | Output | Role |
-|----------|----------|--------|------|
-| `ingestScheduler.js` | 15 min | Cosmos + cache rebuild | Legacy Excel blob parsers |
-| `jobs/ingestCron.js` | 2 h | Cosmos + cache rebuild | Deduped legacy ingest |
-| `plantReportsV3/azureSync.js` | 2 h | `data-v3/*.json` | V3 parsers for energy/timers + upload path |
-| `sync-trends-blobs-from-azure.js` | Manual / CI | `data/trends-blobs/` | Bundle raw JSON for backend fallback route |
-| Startup ingest (`index.js`) | Once | Cache if missing | Cold-start seed |
-
-Legacy parsers under `services/plantReports/parsers/` remain **required** until cache build migrates fully off Cosmos aggregation.
-
----
-
-## Removed in cleanup (June 2026)
-
-| Item | Reason |
-|------|--------|
-| `QIBB-backend-main/`, `QIBB-frontend-master/` | Stale duplicate checkouts (10 commits behind) |
-| `services/plantReportsV3/trendSync.js` | Never wired to production |
-| `scripts/discover-plant-reports.js` | Standalone CLI, unused |
-| `npm run ingest:parse-json` | Referenced missing script |
-| Frontend `src/app/api/trends/**` (6 routes) | Replaced by backend cache |
-| `trendBlobRecords.ts`, `trendBlobAuth.ts`, `azure-blob.ts` | Dead blob proxy stack |
-| `loadMergedTrendBlobCache`, `fetchTrendBlobRecords*` | Zero callers after cache-only routing |
-| Frontend `dailyOperationApi`, `energyApi`, `gtFilterApi`, `waterBalanceApi` | No component imports |
-
----
-
-## Recommended taxonomy
-
-### Problem
-
-`inferMetricCategory` previously inferred categories from **metric name substrings**, producing unstable types and listing metric **values** as separate “types” in admin UIs.
-
-### Canonical kinds (implemented)
-
-Shared module: `services/trends/metricCategory.js` (backend) and `src/lib/metricCategory.ts` (frontend).
-
-| Kind | Use for |
-|------|---------|
-| `hrsg_chemistry` | HRSG, RO, ST chemistry, condensate, BFW, pH, conductivity |
-| `environment` | Emissions, stack, ambient |
-| `fg_filter` | Fuel-gas filter DP |
-| `air_intake` | Air inlet / P1C / intake DP |
-| `chillers` | Chiller / cooling water (when present) |
-| `water_consumption` | GR consumption, usage, delta |
-| `water_production` | SW/DM production, makeup |
-| `tanks` | Tank levels |
-| `daily_ops` | Shift/daily operation, plant load from ops reports |
-| `energy` | MWh, load, heat rate, efficiency |
-| `timers_counters` | MFEQH, starts, trips, counters |
-| `other` | Fallback |
-
-### Usage
-
-```js
-const { inferMetricCategory } = require('./services/trends/metricCategory');
-inferMetricCategory('gr1_consumpt_m3', 'GR-1 Consumption', 'water'); // → water_consumption
-```
-
-Pass **`sourceKind`** (blob/V3 kind) whenever available — avoids misclassification from metric labels alone.
-
-### Next steps (not yet implemented)
-
-1. Migrate `plant-trends-cache.json` `metrics[].category` to canonical kinds on rebuild.
-2. Route `energy` and `timers_counters` through cache like the other six kinds (eliminate dual V3 path).
-3. Retire legacy `/api/energy` etc. after confirming no external consumers.
-4. Consolidate `ingestScheduler` + `ingestCron` to single schedule once Cosmos dependency removed.
-
----
-
-## Key frontend modules
+### Backend
 
 | Module | Role |
 |--------|------|
-| `plantTrendsCache.ts` | `loadPlantTrendsCache()` → `GET /plant-data/trends-cache` |
-| `trendRecordsFromCache.ts` | Cache `seriesByKey` → flat records per kind |
-| `trendsFromCache.ts` | Chart helpers from cache |
-| `trendPanelsLoad.ts` | Home/management panel hydration |
-| `trendsBlobClient.ts` | Kind constants + normalize helpers (fetch removed) |
+| `trendsBlobBundle.js` | Read raw blobs from disk with mtime memory cache |
+| `trendBlobNormalize.js` | Nested/flat blob JSON → `{date, metric, value}[]` |
+| `buildTrendsBundleFromSixBlobs.js` | Merge six blobs → unified payload + ETag cache |
+| `metricCategory.js` | Canonical category inference |
+
+### Frontend
+
+| Module | Role |
+|--------|------|
+| `plantTrendsCache.ts` | `loadPlantTrendsCache()` → `GET /trends-bundle` |
+| `trendRecordsFromCache.ts` | Bundle `seriesByKey` → flat records per kind |
+| `trendsBlobClient.ts` | Kind constants + normalize helpers |
 | `metricCategory.ts` | Canonical category inference |
 
 ---
 
-## Key backend modules
+## Legacy ingest (non-hot-path)
 
-| Module | Role |
-|--------|------|
-| `plantTrendsCache.js` | Build/write/read cache file |
-| `trendsBlobBundle.js` | Serve bundled blob JSON |
-| `trendEngine.js` | Panel/KPI assembly for home/management routes |
-| `plantReportsV3/azureSync.js` | V3 blob → jsonStore |
-| `metricCategory.js` | Canonical category inference |
+Cosmos ingest, `plant-trends-cache.json` rebuild scripts, and V3 jsonStore remain for admin/ingest tooling but are **not** on the public trends hot path. Do not wire new UI to them.

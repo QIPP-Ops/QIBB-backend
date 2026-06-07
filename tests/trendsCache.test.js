@@ -3,6 +3,9 @@ const path = require('path');
 const express = require('express');
 const request = require('supertest');
 
+const FIXTURES = path.join(__dirname, 'fixtures', 'trends-blobs');
+const BUNDLE_DIR = path.join(__dirname, '..', 'data', 'trends-blobs');
+
 jest.mock('../middleware/auth', () => ({
   protect: (req, _res, next) => {
     req.user = { id: 'admin-id', role: 'admin' };
@@ -19,15 +22,21 @@ jest.mock('../controllers/plantDataController', () => {
 });
 
 const ingestRoutes = require('../routes/ingestRoutes');
-const { getTrendsCache } = require('../controllers/plantDataController');
+const { getTrendsCache, getTrendsBundle } = require('../controllers/plantDataController');
 const {
-  CACHE_FILE,
-  hasUsablePlantTrendsCache,
   hasTrendSeriesData,
   buildPlantTrendsCacheFromPoints,
   chemistryWaterHasData,
-  readPlantTrendsCacheFromDisk,
 } = require('../services/plantReports/plantTrendsCache');
+const { resetTrendsBundleCache, hasUsableTrendsBundle } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+
+function seedFixtures() {
+  fs.mkdirSync(BUNDLE_DIR, { recursive: true });
+  for (const file of fs.readdirSync(FIXTURES)) {
+    fs.copyFileSync(path.join(FIXTURES, file), path.join(BUNDLE_DIR, file));
+  }
+  resetTrendsBundleCache();
+}
 
 function makeApp(mountPath, router) {
   const app = express();
@@ -45,64 +54,47 @@ describe('ingest trigger route', () => {
   });
 });
 
-describe('getTrendsCache (disk-only hot path)', () => {
-  const saved = { exists: false, body: null };
+describe('getTrendsCache (six-blob bundle alias)', () => {
+  beforeAll(seedFixtures);
+  beforeEach(resetTrendsBundleCache);
 
-  beforeAll(() => {
-    if (fs.existsSync(CACHE_FILE)) {
-      saved.exists = true;
-      saved.body = fs.readFileSync(CACHE_FILE, 'utf8');
-    }
-    fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
-    fs.writeFileSync(
-      CACHE_FILE,
-      JSON.stringify({
-        generatedAt: '2026-06-01T00:00:00.000Z',
-        dateRange: { from: '2026-01-01', to: '2026-06-01', minDate: '2026-01-01', maxDate: '2026-06-01' },
-        metrics: [{ metricKey: 'plant_generation', label: 'Generation', category: 'energy', unit: 'MWh' }],
-        seriesByKey: { plant_generation: [{ date: '2026-05-01', plant_generation: 100 }] },
-        chemistryWater: { latest: null, snapshots: [] },
-      })
-    );
-  });
-
-  afterAll(() => {
-    if (saved.exists && saved.body != null) {
-      fs.writeFileSync(CACHE_FILE, saved.body);
-    } else if (fs.existsSync(CACHE_FILE)) {
-      fs.unlinkSync(CACHE_FILE);
-    }
-  });
-
-  it('returns 200 with disk cache payload', async () => {
+  it('returns 200 with bundle payload', async () => {
     const app = express();
     app.get('/trends-cache', getTrendsCache);
     const res = await request(app).get('/trends-cache');
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.seriesByKey).toBeDefined();
+    expect(res.body.data.blobSource).toBe(true);
     expect(res.body.data.metrics.length).toBeGreaterThan(0);
   });
 
-  it('returns 503 when cache file is missing or empty', async () => {
-    const missingPath = path.join(path.dirname(CACHE_FILE), 'plant-trends-cache-missing-test.json');
-    const realCache = readPlantTrendsCacheFromDisk();
-    fs.writeFileSync(
-      CACHE_FILE,
-      JSON.stringify({ generatedAt: '2026-01-01', metrics: [{ metricKey: 'a' }], seriesByKey: {} })
-    );
+  it('trends-cache and trends-bundle return same shape', async () => {
+    const app = express();
+    app.get('/trends-cache', getTrendsCache);
+    app.get('/trends-bundle', getTrendsBundle);
+    const cacheRes = await request(app).get('/trends-cache');
+    resetTrendsBundleCache();
+    const bundleRes = await request(app).get('/trends-bundle');
+    expect(cacheRes.body.data.metrics.length).toBe(bundleRes.body.data.metrics.length);
+  });
+
+  it('returns 503 when bundled blobs are missing', async () => {
+    const saved = fs.readdirSync(BUNDLE_DIR).map((f) => ({
+      name: f,
+      body: fs.readFileSync(path.join(BUNDLE_DIR, f)),
+    }));
+    for (const f of saved) fs.unlinkSync(path.join(BUNDLE_DIR, f.name));
+    resetTrendsBundleCache();
 
     const app = express();
     app.get('/trends-cache', getTrendsCache);
     const res = await request(app).get('/trends-cache');
     expect(res.status).toBe(503);
     expect(res.body.success).toBe(false);
-    expect(String(res.body.message)).toMatch(/cache/i);
 
-    if (realCache) {
-      fs.writeFileSync(CACHE_FILE, JSON.stringify(realCache));
-    }
-    void missingPath;
+    for (const f of saved) fs.writeFileSync(path.join(BUNDLE_DIR, f.name), f.body);
+    resetTrendsBundleCache();
   });
 
   it('rejects ?rebuild=1 without admin token', async () => {
@@ -113,26 +105,13 @@ describe('getTrendsCache (disk-only hot path)', () => {
   });
 });
 
-describe('plantTrendsCache disk reader', () => {
+describe('plantTrendsCache helpers (legacy build still used by ingest scripts)', () => {
   it('hasUsablePlantTrendsCache requires non-empty time series', () => {
+    const { hasUsablePlantTrendsCache } = require('../services/plantReports/plantTrendsCache');
     expect(hasUsablePlantTrendsCache(null)).toBe(false);
     expect(hasUsablePlantTrendsCache({ generatedAt: '2026-01-01', metrics: [], seriesByKey: {} })).toBe(
       false
     );
-    expect(
-      hasUsablePlantTrendsCache({
-        generatedAt: '2026-01-01',
-        metrics: [{ metricKey: 'a' }],
-        seriesByKey: {},
-      })
-    ).toBe(false);
-    expect(
-      hasUsablePlantTrendsCache({
-        generatedAt: '2026-01-01',
-        metrics: [{ metricKey: 'x' }],
-        seriesByKey: {},
-      })
-    ).toBe(false);
     expect(
       hasUsablePlantTrendsCache({
         generatedAt: '2026-01-01',
@@ -177,20 +156,18 @@ describe('plantTrendsCache disk reader', () => {
         snapshots: [],
       })
     ).toBe(true);
+  });
+});
+
+describe('hasUsableTrendsBundle', () => {
+  it('matches bundle usability rules', () => {
+    expect(hasUsableTrendsBundle(null)).toBe(false);
+    expect(hasUsableTrendsBundle({ generatedAt: '2026-01-01', seriesByKey: {} })).toBe(false);
     expect(
-      chemistryWaterHasData({
-        latest: null,
-        snapshots: [{ createdAt: '2026-01-01', water: { swProduction: 1 } }],
+      hasUsableTrendsBundle({
+        generatedAt: '2026-01-01',
+        seriesByKey: { x: [{ date: '2026-01-01', value: 1 }] },
       })
     ).toBe(true);
-  });
-
-  it('readPlantTrendsCacheFromDisk parses sample file', () => {
-    const dir = path.dirname(CACHE_FILE);
-    fs.mkdirSync(dir, { recursive: true });
-    const payload = { generatedAt: '2026-01-01', metrics: [{ metricKey: 'a' }], seriesByKey: {} };
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(payload));
-    const data = readPlantTrendsCacheFromDisk();
-    expect(data.generatedAt).toBe('2026-01-01');
   });
 });

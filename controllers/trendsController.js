@@ -12,45 +12,20 @@ const {
 
 // ─── GET /api/trends — latest snapshot ───────────────────────────────────────
 
-exports.getLatestTrends = async (req, res) => {
-  try {
-    const latest = await TrendsSnapshot.findOne().sort({ createdAt: -1 });
-    if (!latest) return res.status(404).json({ message: 'No trends data yet.' });
-    res.json(latest);
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching trends', error: err.message });
-  }
+exports.getLatestTrends = async (_req, res) => {
+  res.status(410).json({
+    message:
+      'TrendsSnapshot chemistry merge removed. Use GET /api/plant-data/trends-bundle (hrsg + water blobs).',
+  });
 };
 
 // ─── GET /api/trends/history?days=30 ─────────────────────────────────────────
 
-exports.getTrendsHistory = async (req, res) => {
-  try {
-    const fromStr = String(req.query.from || '').trim().slice(0, 10);
-    const toStr = String(req.query.to || '').trim().slice(0, 10);
-    let createdAtFilter;
-
-    if (fromStr && toStr) {
-      createdAtFilter = {
-        $gte: new Date(`${fromStr}T00:00:00.000Z`),
-        $lte: new Date(`${toStr}T23:59:59.999Z`),
-      };
-    } else {
-      const days = Math.min(parseInt(req.query.days, 10) || 365, 1825);
-      const since = new Date();
-      since.setDate(since.getDate() - days);
-      createdAtFilter = { $gte: since };
-    }
-
-    const snapshots = await TrendsSnapshot.find({ createdAt: createdAtFilter })
-      .sort({ createdAt: 1 })
-      .limit(2000)
-      .select('createdAt water energy dailyOps chemistry');
-
-    res.json(snapshots);
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching history', error: err.message });
-  }
+exports.getTrendsHistory = async (_req, res) => {
+  res.status(410).json({
+    message:
+      'TrendsSnapshot history removed. Use GET /api/plant-data/trends-bundle for time series.',
+  });
 };
 
 // ─── POST /api/trends/sync — trigger manual sync from SharePoint ──────────────

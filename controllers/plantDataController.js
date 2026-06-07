@@ -207,15 +207,33 @@ exports.getOperationalOverview = async (req, res) => {
   }
 };
 
-/** Public read-only — latest chemistry/water + snapshot history for home dashboard */
-exports.getChemistryWaterOverview = async (req, res) => {
+/** Public read-only — chemistry/water overview derived from six-blob bundle (hrsg + water). */
+exports.getChemistryWaterOverview = async (_req, res) => {
   try {
-    const { fetchChemistryWaterSection, yearStartIso } = require('../services/plantReports/plantTrendsCache');
-    const fromStr = String(req.query.from || '').trim().slice(0, 10) || yearStartIso();
-    const toStr =
-      String(req.query.to || '').trim().slice(0, 10) || new Date().toISOString().slice(0, 10);
-    const data = await fetchChemistryWaterSection(fromStr, toStr);
-    res.json({ success: true, data });
+    const {
+      buildTrendsBundleFromSixBlobs,
+      hasUsableTrendsBundle,
+    } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+    const { payload } = buildTrendsBundleFromSixBlobs();
+    if (!hasUsableTrendsBundle(payload)) {
+      return res.json({
+        success: true,
+        data: {
+          latest: null,
+          snapshots: [],
+          message: 'No chemistry/water data in six-blob bundle. Run npm run sync:trends-blobs.',
+        },
+      });
+    }
+    res.json({
+      success: true,
+      data: {
+        latest: null,
+        snapshots: [],
+        blobSource: true,
+        message: 'Chemistry/water time series are in GET /plant-data/trends-bundle (hrsg + water kinds).',
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -379,16 +397,38 @@ exports.getTrendsBlobBundleStatus = async (_req, res) => {
   }
 };
 
-/** Serve pre-built data/plant-trends-cache.json only (no live Cosmos scan on hot path). */
-exports.getTrendsCache = async (req, res) => {
-  try {
-    const {
-      readPlantTrendsCacheFromDisk,
-      hasUsablePlantTrendsCache,
-      writePlantTrendsCache,
-      getPlantTrendsCachePath,
-    } = require('../services/plantReports/plantTrendsCache');
+function sendTrendsBundleResponse(req, res) {
+  const {
+    buildTrendsBundleFromSixBlobs,
+    hasUsableTrendsBundle,
+  } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+  const { BUNDLED_DIR } = require('../services/plantReports/trendsBlobBundle');
 
+  const force = req.query.rebuild === '1';
+  const { payload, etag } = buildTrendsBundleFromSixBlobs({ force });
+
+  if (!hasUsableTrendsBundle(payload)) {
+    return res.status(503).json({
+      success: false,
+      message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run sync:trends-blobs.`,
+      bundledDir: BUNDLED_DIR,
+      data: payload || null,
+    });
+  }
+
+  if (req.headers['if-none-match'] === etag) {
+    res.status(304).end();
+    return;
+  }
+
+  res.set('Cache-Control', `public, max-age=${TRENDS_BLOB_CACHE_MAX_AGE}`);
+  res.set('ETag', etag);
+  res.json({ success: true, data: payload });
+}
+
+/** Primary hot path — merged six qipp-data blobs (seriesByKey + metrics + dateRange). */
+exports.getTrendsBundle = async (req, res) => {
+  try {
     if (req.query.rebuild === '1') {
       const { hasPortalAdminAccess } = require('../middleware/superAdmin');
       const user = adminFromBearer(req);
@@ -398,28 +438,17 @@ exports.getTrendsCache = async (req, res) => {
           message: 'Admin Bearer token required for ?rebuild=1',
         });
       }
-      await writePlantTrendsCache();
+      const { resetTrendsBundleCache } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+      resetTrendsBundleCache();
     }
-
-    const data = readPlantTrendsCacheFromDisk();
-    if (!hasUsablePlantTrendsCache(data)) {
-      const cachePath = getPlantTrendsCachePath();
-      const azureHint = process.env.WEBSITE_SITE_NAME
-        ? ' On Azure App Service set PLANT_TRENDS_CACHE_DIR=/home/data, redeploy, then trigger ingest (writable wwwroot is not supported).'
-        : '';
-      return res.status(503).json({
-        success: false,
-        message: `Plant trends cache is missing or empty at ${cachePath}. Run ingest or npm run ingest:local -- --cache-only to rebuild.${azureHint}`,
-        cachePath,
-        data: data || null,
-      });
-    }
-    res.set('Cache-Control', `public, max-age=${TRENDS_BLOB_CACHE_MAX_AGE}`);
-    res.json({ success: true, data });
+    sendTrendsBundleResponse(req, res);
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+/** Backward-compatible alias — same payload as GET /trends-bundle. */
+exports.getTrendsCache = exports.getTrendsBundle;
 
 exports.listMetrics = async (req, res) => {
   const dbUser = await loadDbUser(req);
