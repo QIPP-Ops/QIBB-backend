@@ -17,6 +17,7 @@
     "verify:trends-cache": "node scripts/verify-trends-cache.js",
     "rebuild:trends-cache": "node scripts/rebuild-trends-cache.js",
     "rebuild:trends-cache-from-raw": "node scripts/rebuild-trends-cache-from-raw.js",
+    "sync:trends-blobs": "node scripts/sync-trends-blobs-from-azure.js",
     "migrate:trend-definitions": "node scripts/migrate-trend-definitions.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",

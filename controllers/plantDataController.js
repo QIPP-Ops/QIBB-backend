@@ -291,6 +291,94 @@ function adminFromBearer(req) {
   }
 }
 
+const TRENDS_BLOB_CACHE_MAX_AGE = 300;
+
+function filterBundledRecordsByDate(records, from, to) {
+  if (!Array.isArray(records) || (!from && !to)) return records;
+  const fromDay = from?.trim().slice(0, 10);
+  const toDay = to?.trim().slice(0, 10);
+  return records.filter((record) => {
+    if (!record || typeof record !== 'object') return false;
+    const day = String(record.date || record.Date || '').slice(0, 10);
+    if (!day) return false;
+    if (fromDay && day < fromDay) return false;
+    if (toDay && day > toDay) return false;
+    return true;
+  });
+}
+
+function findLatestDateInRecords(records) {
+  if (!Array.isArray(records) || !records.length) return null;
+  let max = '';
+  for (const record of records) {
+    if (!record || typeof record !== 'object') continue;
+    const day = String(record.date || record.Date || '').slice(0, 10);
+    if (day > max) max = day;
+  }
+  return max || null;
+}
+
+/** Serve bundled qipp-data JSON from data/trends-blobs/ (fast local disk read). */
+exports.getTrendsBlobBundle = async (req, res) => {
+  try {
+    const {
+      readBundledRaw,
+      listBundledKinds,
+      KIND_TO_FILE,
+    } = require('../services/plantReports/trendsBlobBundle');
+    const kind = String(req.params.kind || '').trim();
+    if (!kind || !KIND_TO_FILE[kind]) {
+      return res.status(404).json({ success: false, message: `Unknown trends blob kind: ${kind}` });
+    }
+
+    const raw = readBundledRaw(kind);
+    if (raw == null) {
+      return res.status(404).json({
+        success: false,
+        message: `Bundled trends blob missing for ${kind}. Run npm run sync:trends-blobs.`,
+      });
+    }
+
+    const { from, to, latestDate } = req.query;
+    if (latestDate === '1') {
+      const records = Array.isArray(raw) ? raw : raw?.data;
+      return res.json({ latestDate: findLatestDateInRecords(records) });
+    }
+
+    let payload = raw;
+    if (from || to) {
+      const records = Array.isArray(raw) ? raw : raw?.data;
+      if (Array.isArray(records)) {
+        const filtered = filterBundledRecordsByDate(records, from, to);
+        payload = Array.isArray(raw) ? filtered : { ...raw, data: filtered };
+      }
+    }
+
+    res.set('Cache-Control', `public, max-age=${TRENDS_BLOB_CACHE_MAX_AGE}`);
+    return res.json(payload);
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getTrendsBlobBundleStatus = async (_req, res) => {
+  try {
+    const {
+      listBundledKinds,
+      BUNDLED_DIR,
+      hasBundledTrends,
+    } = require('../services/plantReports/trendsBlobBundle');
+    res.json({
+      success: true,
+      bundledDir: BUNDLED_DIR,
+      kinds: listBundledKinds(),
+      ready: hasBundledTrends(),
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 /** Serve pre-built data/plant-trends-cache.json only (no live Cosmos scan on hot path). */
 exports.getTrendsCache = async (req, res) => {
   try {
@@ -326,6 +414,7 @@ exports.getTrendsCache = async (req, res) => {
         data: data || null,
       });
     }
+    res.set('Cache-Control', `public, max-age=${TRENDS_BLOB_CACHE_MAX_AGE}`);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

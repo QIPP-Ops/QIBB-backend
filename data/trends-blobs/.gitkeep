@@ -1,0 +1,3 @@
+# Bundled qipp-data JSON blobs (daily_ops.json, water.json, hrsg.json, etc.)
+# Run from repo root: npm run sync:trends-blobs
+# Requires AZURE_STORAGE_CONNECTION_STRING
