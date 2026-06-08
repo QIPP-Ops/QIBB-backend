@@ -368,12 +368,15 @@ exports.getTrendsBlobBundleStatus = async (_req, res) => {
   try {
     const {
       listBundledKinds,
-      BUNDLED_DIR,
+      getTrendsBlobDirs,
       hasBundledTrends,
     } = require('../services/plantReports/trendsBlobBundle');
+    const { writableDir, seedDir } = getTrendsBlobDirs();
     res.json({
       success: true,
-      bundledDir: BUNDLED_DIR,
+      bundledDir: writableDir,
+      writableDir,
+      seedDir,
       kinds: listBundledKinds(),
       ready: hasBundledTrends(),
     });

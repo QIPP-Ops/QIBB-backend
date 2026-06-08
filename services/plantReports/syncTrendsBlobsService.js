@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { BlobServiceClient } = require('@azure/storage-blob');
-const { BUNDLED_DIR, KIND_TO_FILE } = require('./trendsBlobBundle');
+const { getTrendsBlobsWritableDir, KIND_TO_FILE } = require('./trendsBlobBundle');
 const { resetTrendsBundleCache } = require('./buildTrendsBundleFromSixBlobs');
 
 const CONTAINER = 'qipp-data';
@@ -58,7 +58,8 @@ async function syncTrendsBlobsFromAzure(options = {}) {
   setProgress(0, 'Starting Azure blob sync…');
   options.onProgress?.(getSyncState());
 
-  fs.mkdirSync(BUNDLED_DIR, { recursive: true });
+  const trendsDir = getTrendsBlobsWritableDir();
+  fs.mkdirSync(trendsDir, { recursive: true });
   const client = BlobServiceClient.fromConnectionString(connectionString);
   const container = client.getContainerClient(CONTAINER);
 
@@ -69,7 +70,7 @@ async function syncTrendsBlobsFromAzure(options = {}) {
     for (let i = 0; i < BLOB_KINDS.length; i++) {
       const kind = BLOB_KINDS[i];
       const fileName = KIND_TO_FILE[kind];
-      const target = path.join(BUNDLED_DIR, fileName);
+      const target = path.join(trendsDir, fileName);
       const step = i + 1;
       setProgress(step, `Syncing blob ${step}/${BLOB_KINDS.length} — ${fileName}…`);
       options.onProgress?.(getSyncState());

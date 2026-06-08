@@ -162,7 +162,7 @@ jobs:
           az webapp config appsettings set \
             --name qipp-api \
             --resource-group "${{ steps.app.outputs.resource-group }}" \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 PLANT_TRENDS_CACHE_DIR=/home/data PTW_FORCE_RESEED=1 \
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false WEBSITE_RUN_FROM_PACKAGE=1 PLANT_TRENDS_CACHE_DIR=/home/data TRENDS_BLOBS_DIR=/home/data/trends-blobs PTW_FORCE_RESEED=1 \
             --output none
 
       # Stop the app so live node + plant ingest do not contend with SCM/Kudu during zip deploy.
