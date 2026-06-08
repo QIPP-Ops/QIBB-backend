@@ -2,6 +2,11 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminUser = require('../models/AdminUser');
 const Notification = require('../models/Notification');
 const { findPtwPersonForUser, hasAuth } = require('../middleware/ptwAccess');
+const {
+  computePtwExpiryInfo,
+  mergePtwWithRosterMember,
+  resolveMemberEmail,
+} = require('../utils/ptwPersonnelMerge');
 
 const AUTH_LEVEL = {
   isolationAuthority: 1,
@@ -202,6 +207,9 @@ async function scoreMember(member, context) {
 
   const targetLevel = ptwTargetLevelForRole(member.role);
   const heldLevel = maxAuthLevel(ptwPerson);
+  const merged = mergePtwWithRosterMember(ptwPerson, member);
+  const expiry = computePtwExpiryInfo(ptwPerson?.validUntil);
+  const email = resolveMemberEmail(member, ptwPerson);
 
   return {
     memberId: String(member._id),
@@ -219,6 +227,15 @@ async function scoreMember(member, context) {
         : heldLevel > 0
           ? 'partial'
           : 'none',
+    validUntil: expiry.validUntil,
+    validUntilFormatted: expiry.validUntilFormatted,
+    daysUntilExpiry: expiry.daysUntilExpiry,
+    expiringWithin30: expiry.expiringWithin30,
+    expiringWithin60: expiry.expiringWithin60,
+    ptwExpired: expiry.expired,
+    missingEmail: !email,
+    rosterMismatch: merged.rosterMismatch,
+    ptwAuthorizations: ptwPerson?.authorizations || [],
   };
 }
 

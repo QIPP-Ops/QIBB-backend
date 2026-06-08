@@ -29,6 +29,10 @@ jest.mock('../services/emailService', () => ({
 
 jest.mock('../utils/placeholderEmail', () => ({
   isPlaceholderEmail: jest.fn().mockReturnValue(false),
+  isValidEmailFormat: jest.fn((email) => {
+    const e = String(email || '').trim();
+    return e.includes('@') && e.split('@')[1]?.includes('.');
+  }),
 }));
 
 describe('ptwExpiryReminderJob', () => {
@@ -53,7 +57,9 @@ describe('ptwExpiryReminderJob', () => {
     await sendMemberExpiryEmail(
       { name: 'Ali Ops', email: 'ali@acwaops.com' },
       'Permit Issuer',
-      '15 Jun 2026'
+      '15 Jun 2026',
+      30,
+      { name: 'Ali Ops', validUntil: '2026-06-15' }
     );
 
     expect(sendMail).toHaveBeenCalledWith(
@@ -63,8 +69,10 @@ describe('ptwExpiryReminderJob', () => {
       })
     );
     const html = sendMail.mock.calls[0][0].html;
-    expect(html).toContain('Dear Ali Ops');
+    expect(html).toContain('Ali Ops');
+    expect(html).toContain('Dear');
     expect(html).toContain('15 Jun 2026');
+    expect(html).toContain('30 days');
     expect(html).toContain('Acwa Operations, QIPP');
   });
 
@@ -76,7 +84,9 @@ describe('ptwExpiryReminderJob', () => {
     const sent = await sendMemberExpiryEmail(
       { name: 'Roster User', email: 'user@roster.acwaops.local' },
       'Permit Issuer',
-      '15 Jun 2026'
+      '15 Jun 2026',
+      14,
+      { name: 'Roster User' }
     );
 
     expect(sent).toBe(false);
@@ -90,7 +100,8 @@ describe('ptwExpiryReminderJob', () => {
       { name: 'Crew Admin', email: 'admin.crew@acwaops.com' },
       'Ali Ops',
       'Permit Issuer',
-      '15 Jun 2026'
+      '15 Jun 2026',
+      7
     );
 
     expect(sendMail).toHaveBeenCalledWith(
@@ -100,7 +111,8 @@ describe('ptwExpiryReminderJob', () => {
       })
     );
     const html = sendMail.mock.calls[0][0].html;
-    expect(html).toContain("Ali Ops's PTW authorization");
+    expect(html).toContain("Ali Ops");
+    expect(html).toContain('PTW authorization');
     expect(html).toContain('15 Jun 2026');
   });
 
@@ -115,6 +127,8 @@ describe('ptwExpiryReminderJob', () => {
       memberName: 'Ali Ops',
       roleName: 'Permit Issuer',
       expiryFormatted: '15 Jun 2026',
+      daysLeft: 14,
+      person: { name: 'Ali Ops', notifyEmail: 'ali@roster.acwaops.local' },
     });
 
     expect(sendMail).toHaveBeenCalledTimes(1);
@@ -146,31 +160,32 @@ describe('ptwExpiryReminderJob', () => {
         }),
     });
 
-    AdminUser.findOne.mockReturnValue({
-      lean: () =>
-        Promise.resolve({
-          _id: 'member1',
-          name: 'Ali Ops',
-          empId: 'E100',
-          email: 'ali@acwaops.com',
-          crew: 'A',
-        }),
-    });
+    const member = {
+      _id: 'member1',
+      name: 'Ali Ops',
+      empId: 'E100',
+      email: 'ali@acwaops.com',
+      crew: 'A',
+    };
+    const crewAdmin = {
+      _id: 'admin1',
+      name: 'Crew Admin',
+      empId: 'E9',
+      email: 'crew.admin@acwaops.com',
+      crew: 'A',
+      accessRole: 'admin',
+    };
 
-    AdminUser.find.mockReturnValue({
+    AdminUser.find.mockImplementation((query) => ({
       select: () => ({
-        lean: () =>
-          Promise.resolve([
-            {
-              _id: 'admin1',
-              name: 'Crew Admin',
-              empId: 'E9',
-              email: 'crew.admin@acwaops.com',
-              crew: 'A',
-            },
-          ]),
+        lean: () => {
+          if (query?.accessRole === 'admin') {
+            return Promise.resolve([crewAdmin]);
+          }
+          return Promise.resolve([member, crewAdmin]);
+        },
       }),
-    });
+    }));
 
     const now = new Date();
     const result = await runPtwExpiryReminderSweep(now);

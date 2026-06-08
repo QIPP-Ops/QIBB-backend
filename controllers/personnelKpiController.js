@@ -54,6 +54,15 @@ exports.getMemberKpi = async (req, res) => {
       ptwScore: data.ptwScore,
       individualKPI: data.individualKPI,
       ptwStatus: data.ptwStatus,
+      validUntil: data.validUntil,
+      validUntilFormatted: data.validUntilFormatted,
+      daysUntilExpiry: data.daysUntilExpiry,
+      expiringWithin30: data.expiringWithin30,
+      expiringWithin60: data.expiringWithin60,
+      ptwExpired: data.ptwExpired,
+      missingEmail: data.missingEmail,
+      rosterMismatch: data.rosterMismatch,
+      ptwAuthorizations: data.ptwAuthorizations,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

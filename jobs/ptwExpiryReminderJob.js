@@ -4,48 +4,16 @@ const { createNotification } = require('../services/notificationService');
 const { sendMail, emailTemplate, isEmailConfigured } = require('../services/emailService');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const { formatPtwAuthRoleName } = require('../utils/ptwAuthRoles');
+const {
+  parseValidUntil,
+  formatExpiryDate,
+  daysUntil,
+  findAdminUserForPtwPerson,
+  resolveMemberEmail,
+} = require('../utils/ptwPersonnelMerge');
 
 const REMINDER_DAYS = [90, 30, 14, 7];
 const CRON_UTC = '0 6 * * *';
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-function normalizeName(name) {
-  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function startOfUtcDay(d) {
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
-
-function daysUntil(from, to) {
-  const ms = startOfUtcDay(to).getTime() - startOfUtcDay(from).getTime();
-  return Math.round(ms / 86400000);
-}
-
-function parseValidUntil(raw) {
-  const s = String(raw || '').trim();
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    const d = new Date(`${s.slice(0, 10)}T12:00:00.000Z`);
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const dmy = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (dmy) {
-    const d = new Date(Date.UTC(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]), 12));
-    return Number.isNaN(d.getTime()) ? null : d;
-  }
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function formatExpiryDate(date) {
-  const d = date instanceof Date ? date : new Date(date);
-  const day = d.getUTCDate();
-  const mon = MONTHS[d.getUTCMonth()];
-  const year = d.getUTCFullYear();
-  return `${day} ${mon} ${year}`;
-}
 
 function getFrontendBaseUrlSafe() {
   try {
@@ -57,23 +25,10 @@ function getFrontendBaseUrlSafe() {
 }
 
 async function findMemberUserForPtwPerson(person) {
-  const empId = String(person.empId || person.empNo || '').trim();
-  if (empId) {
-    const byEmp = await AdminUser.findOne({ empId, isApproved: true }).lean();
-    if (byEmp) return byEmp;
-  }
-  const email = String(person.email || '').trim();
-  if (email) {
-    const byEmail = await AdminUser.findOne({
-      email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
-      isApproved: true,
-    }).lean();
-    if (byEmail) return byEmail;
-  }
-  const name = normalizeName(person.name);
-  if (!name) return null;
-  const candidates = await AdminUser.find({ isApproved: true }).select('_id name email empId crew').lean();
-  return candidates.find((u) => normalizeName(u.name) === name) || null;
+  const candidates = await AdminUser.find({ isApproved: true })
+    .select('_id name email empId crew')
+    .lean();
+  return findAdminUserForPtwPerson(person, candidates);
 }
 
 async function findCrewAdmins(crew) {
@@ -128,17 +83,35 @@ async function deliverInAppReminders({
 
 // ─── Email delivery (alongside in-app; skips placeholder addresses) ───────────
 
-async function sendMemberExpiryEmail(member, roleName, expiryFormatted, overrideEmail) {
-  const email = (overrideEmail || member?.email || '').trim();
+function buildMemberExpiryBody(name, roleName, expiryFormatted, daysLeft) {
+  return `
+    <p>Dear <strong>${name}</strong>,</p>
+    <p>Your PTW authorization for <strong>${roleName}</strong> expires in <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong>.</p>
+    <div class="otp-box"><span style="font-size:22px;letter-spacing:0.05em;">${expiryFormatted}</span></div>
+    <p>Please contact your supervisor to arrange renewal before this date.</p>
+    <p style="font-size:13px;color:#6B5E8A;">— Acwa Operations, QIPP</p>
+  `;
+}
+
+function buildCrewAdminExpiryBody(memberName, roleName, expiryFormatted, daysLeft) {
+  return `
+    <p><strong>${memberName}</strong>'s PTW authorization for <strong>${roleName}</strong> expires in <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong>.</p>
+    <div class="otp-box"><span style="font-size:22px;letter-spacing:0.05em;">${expiryFormatted}</span></div>
+    <p>Please follow up on renewal.</p>
+    <p style="font-size:13px;color:#6B5E8A;">— Acwa Operations, QIPP</p>
+  `;
+}
+
+async function sendMemberExpiryEmail(member, roleName, expiryFormatted, daysLeft, person) {
+  const email = resolveMemberEmail(member, person);
   if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return false;
   const subject = `PTW Authorization Expiry Reminder — ${roleName}`;
-  const name = member?.name || 'Colleague';
-  const text = `Dear ${name}, your PTW authorization for ${roleName} is expiring on ${expiryFormatted}. Please contact your supervisor to arrange renewal before this date. — Acwa Operations, QIPP`;
+  const name = member?.name || person?.name || 'Colleague';
   try {
     await sendMail({
       to: email,
       subject,
-      html: emailTemplate(subject, `<p>${text}</p>`),
+      html: emailTemplate(subject, buildMemberExpiryBody(name, roleName, expiryFormatted, daysLeft)),
     });
     return true;
   } catch (err) {
@@ -147,16 +120,18 @@ async function sendMemberExpiryEmail(member, roleName, expiryFormatted, override
   }
 }
 
-async function sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryFormatted) {
+async function sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryFormatted, daysLeft) {
   const email = (admin.email || '').trim();
   if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return false;
   const subject = `PTW Expiry Alert — ${memberName}`;
-  const text = `${memberName}'s PTW authorization for ${roleName} expires on ${expiryFormatted}. Please follow up on renewal. — Acwa Operations, QIPP`;
   try {
     await sendMail({
       to: email,
       subject,
-      html: emailTemplate(subject, `<p>${text}</p>`),
+      html: emailTemplate(
+        subject,
+        buildCrewAdminExpiryBody(memberName, roleName, expiryFormatted, daysLeft)
+      ),
     });
     return true;
   } catch (err) {
@@ -165,13 +140,20 @@ async function sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryForma
   }
 }
 
-async function deliverExpiryEmails({ member, crewAdmins, memberName, roleName, expiryFormatted, person }) {
-  const overrideEmail = String(person?.notifyEmail || '').trim();
-  if (member || overrideEmail) {
-    await sendMemberExpiryEmail(member, roleName, expiryFormatted, overrideEmail);
+async function deliverExpiryEmails({
+  member,
+  crewAdmins,
+  memberName,
+  roleName,
+  expiryFormatted,
+  daysLeft,
+  person,
+}) {
+  if (member || person) {
+    await sendMemberExpiryEmail(member, roleName, expiryFormatted, daysLeft, person);
   }
   for (const admin of crewAdmins) {
-    await sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryFormatted);
+    await sendCrewAdminExpiryEmail(admin, memberName, roleName, expiryFormatted, daysLeft);
   }
 }
 
@@ -211,6 +193,7 @@ async function runPtwExpiryReminderSweep(now = new Date()) {
       memberName,
       roleName,
       expiryFormatted,
+      daysLeft,
       person,
     });
     results.reminded += 1;

@@ -1,30 +1,11 @@
 const AdminConfig = require('../models/AdminConfig');
-
-function normalizeEmail(email) {
-  return String(email || '').trim().toLowerCase();
-}
-
-function normalizeName(name) {
-  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
-}
+const { findPtwPersonInList } = require('../utils/ptwPersonnelMerge');
 
 async function findPtwPersonForUser(user) {
   if (!user) return null;
   const config = await AdminConfig.findOne().lean();
   if (!config?.ptwPersonnel?.length) return null;
-
-  const email = normalizeEmail(user.email);
-  const name = normalizeName(user.name);
-
-  const empId = String(user.empId || '').trim();
-
-  return config.ptwPersonnel.find((p) => {
-    if (empId && String(p.empId || '').trim() === empId) return true;
-    if (empId && String(p.empNo || '').trim() === empId) return true;
-    if (p.email && normalizeEmail(p.email) === email) return true;
-    if (p.name && normalizeName(p.name) === name) return true;
-    return false;
-  }) || null;
+  return findPtwPersonInList(user, config.ptwPersonnel);
 }
 
 function hasAuth(person, ...keys) {
