@@ -1,7 +1,5 @@
 const AdminConfig = require('../models/AdminConfig');
 const AdminUser   = require('../models/AdminUser');
-const PlantMetricPoint = require('../models/PlantMetricPoint');
-const { PlantMetric, CustomTrend } = require('../models/PlantMetric');
 const bcrypt      = require('bcryptjs');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { logPtwEvent } = require('../services/ptwAuditService');
@@ -22,91 +20,79 @@ exports.getStatus = async (req, res) => {
   }
 };
 
-const TREND_SOURCE_PREFIXES = [
-  ['daily_op_', 'Daily Operation Report'],
-  ['ro_hrsg_', 'RO-HRSG Report'],
-  ['timers_counters_', 'Timers & Counters'],
-  ['environment_', 'Environment Report'],
-  ['gt_fg_filter_dp_', 'GT FG Filter DP'],
-  ['gt_air_intake_filter_dp_', 'GT Air Intake Filter DP'],
-  ['water_', 'Daily Water Consumption'],
-  ['energy_', 'Daily Energy Produced'],
-  ['operation_shift_', 'Operation Shift Report'],
-];
+const TREND_BLOB_LABELS = {
+  daily_ops: 'Daily Operations',
+  water: 'Water',
+  hrsg: 'HRSG Chemistry',
+  fg_filter: 'FG Filter DP',
+  air_intake: 'Air Intake Filter DP',
+  environment: 'Environment',
+};
 
-function sourceForMetricKey(metricKey) {
-  const key = String(metricKey || '').toLowerCase();
-  const match = TREND_SOURCE_PREFIXES.find(([prefix]) => key.startsWith(prefix));
-  return match ? match[1] : 'Auto-detected';
+const TREND_BLOB_PAGES = ['home', 'historical-trends', 'trend-studio'];
+const TREND_DATA_SOURCE = 'Azure qipp-data → trends-bundle';
+
+function healthFromLastDataPoint(lastDataPoint, now = Date.now()) {
+  if (!lastDataPoint) return 'red';
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const sevenDaysMs = 7 * oneDayMs;
+  const ageMs = now - new Date(`${String(lastDataPoint).slice(0, 10)}T00:00:00.000Z`).getTime();
+  if (ageMs <= oneDayMs) return 'green';
+  if (ageMs <= sevenDaysMs) return 'yellow';
+  return 'red';
 }
 
 exports.getTrendSources = async (_req, res) => {
   try {
-    const trends = await CustomTrend.find()
-      .sort({ updatedAt: -1 })
-      .select('_id name metricKeys showOnHomePage')
-      .lean();
+    const {
+      buildTrendsBundleFromSixBlobs,
+      slugMetricKey,
+    } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
+    const {
+      KIND_TO_FILE,
+      readBundledRaw,
+    } = require('../services/plantReports/trendsBlobBundle');
+    const {
+      BLOB_FILE_KIND,
+      normalizeTrendBlobByKind,
+    } = require('../services/plantReports/trendBlobNormalize');
+    const { getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
 
-    const allMetricKeys = [...new Set(trends.flatMap((t) => t.metricKeys || []).filter(Boolean))];
-
-    const [metrics, latestByKey] = await Promise.all([
-      allMetricKeys.length
-        ? PlantMetric.find({ metricKey: { $in: allMetricKeys } })
-          .select('metricKey sourceFilePattern')
-          .lean()
-        : [],
-      allMetricKeys.length
-        ? PlantMetricPoint.aggregate([
-          { $match: { metricKey: { $in: allMetricKeys } } },
-          { $group: { _id: '$metricKey', lastDataPoint: { $max: '$reportDate' } } },
-        ])
-        : [],
-    ]);
-
-    const patternByKey = new Map(
-      metrics.map((m) => [m.metricKey, String(m.sourceFilePattern || '').trim()]).filter(([, p]) => p)
-    );
-    const lastByKey = new Map(latestByKey.map((row) => [row._id, row.lastDataPoint]));
-
+    const { payload } = buildTrendsBundleFromSixBlobs();
+    const sync = getSyncState();
+    const syncAt = sync.lastResult?.lastRunAt || payload?.generatedAt || null;
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const sevenDaysMs = 7 * oneDayMs;
 
-    const rows = trends.map((trend) => {
-      const metricKeys = [...new Set((trend.metricKeys || []).filter(Boolean))];
-      const pageSet = new Set(['reports']);
-      if (trend.showOnHomePage) pageSet.add('home');
-      if (metricKeys.length) pageSet.add('admin-portal-trends');
+    const rows = Object.keys(KIND_TO_FILE).map((kind) => {
+      const normalizeKind = BLOB_FILE_KIND[kind] || kind;
+      const raw = readBundledRaw(kind);
+      const blobRows = raw != null ? normalizeTrendBlobByKind(normalizeKind, raw) : [];
+      const metricKeys = [...new Set(blobRows.map((row) => slugMetricKey(row.metric)).filter(Boolean))];
+      const dates = blobRows.map((row) => String(row.date || '').slice(0, 10)).filter(Boolean).sort();
+      const lastDataPoint = dates[dates.length - 1] ?? null;
 
-      const detectedSources = [...new Set(metricKeys.map(sourceForMetricKey).filter((s) => s !== 'Auto-detected'))];
-      const dataSource = detectedSources.length === 1 ? detectedSources[0] : 'Auto-detected';
-
-      let lastDataPoint = null;
-      for (const key of metricKeys) {
-        const candidate = lastByKey.get(key);
-        if (candidate && (!lastDataPoint || String(candidate) > String(lastDataPoint))) {
-          lastDataPoint = candidate;
-        }
+      let healthStatus = healthFromLastDataPoint(lastDataPoint, now);
+      if (!lastDataPoint && sync.errors?.length) healthStatus = 'red';
+      else if (!lastDataPoint && syncAt) {
+        const syncAgeMs = now - new Date(syncAt).getTime();
+        healthStatus = syncAgeMs <= 7 * 24 * 60 * 60 * 1000 ? 'yellow' : 'red';
       }
-
-      let healthStatus = 'red';
-      if (lastDataPoint) {
-        const ageMs = now - new Date(`${String(lastDataPoint).slice(0, 10)}T00:00:00.000Z`).getTime();
-        if (ageMs <= oneDayMs) healthStatus = 'green';
-        else if (ageMs <= sevenDaysMs) healthStatus = 'yellow';
-      }
-
-      const matchedFilePatterns = [...new Set(metricKeys.map((k) => patternByKey.get(k)).filter(Boolean))];
 
       return {
-        trendId: String(trend._id),
-        name: trend.name,
-        pages: Array.from(pageSet),
-        dataSource,
-        lastDataPoint: lastDataPoint ? String(lastDataPoint).slice(0, 10) : null,
+        trendId: kind,
+        name: TREND_BLOB_LABELS[kind] || kind,
+        pages: [...TREND_BLOB_PAGES],
+        dataSource: TREND_DATA_SOURCE,
+        lastDataPoint,
         healthStatus,
         metricKeys,
-        matchedFilePatterns,
+        matchedFilePatterns: [KIND_TO_FILE[kind]],
+        bundleMeta: {
+          metricsInKind: metricKeys.length,
+          pointsInKind: blobRows.length,
+          kindsLoaded: payload?.bundleMeta?.kindsLoaded ?? [],
+          lastSyncAt: syncAt,
+        },
       };
     });
 

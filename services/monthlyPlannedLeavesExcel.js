@@ -1,7 +1,9 @@
+const path = require('path');
 const ExcelJS = require('exceljs');
 const AdminUser = require('../models/AdminUser');
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const ROSTER_PATH = path.join(__dirname, '../data/roster.json');
 
 function parseYearMonth(yearMonth) {
   const ym = String(yearMonth || '').trim();
@@ -14,54 +16,129 @@ function parseYearMonth(yearMonth) {
   return { ym, start, end };
 }
 
-function toYmd(d) {
-  return d.toISOString().slice(0, 10);
+function toYmd(value) {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
 }
 
 function leaveOverlapsMonth(leave, monthStart, monthEnd) {
-  if (!leave?.start || !leave?.end) return false;
-  const s = new Date(`${String(leave.start).slice(0, 10)}T00:00:00Z`);
-  const e = new Date(`${String(leave.end).slice(0, 10)}T00:00:00Z`);
+  const startYmd = toYmd(leave?.start);
+  const endYmd = toYmd(leave?.end);
+  if (!startYmd || !endYmd) return false;
+  const s = new Date(`${startYmd}T00:00:00Z`);
+  const e = new Date(`${endYmd}T00:00:00Z`);
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return false;
   return s <= monthEnd && e >= monthStart;
 }
 
 function daysInMonthOverlap(leave, monthStart, monthEnd) {
-  const s = new Date(`${String(leave.start).slice(0, 10)}T00:00:00Z`);
-  const e = new Date(`${String(leave.end).slice(0, 10)}T00:00:00Z`);
+  const startYmd = toYmd(leave.start);
+  const endYmd = toYmd(leave.end);
+  if (!startYmd || !endYmd) return 0;
+  const s = new Date(`${startYmd}T00:00:00Z`);
+  const e = new Date(`${endYmd}T00:00:00Z`);
   const overlapStart = s < monthStart ? monthStart : s;
   const overlapEnd = e > monthEnd ? monthEnd : e;
   if (overlapEnd < overlapStart) return 0;
   return Math.floor((overlapEnd - overlapStart) / 86400000) + 1;
 }
 
+function normalizeCrewLabel(crew) {
+  const raw = String(crew || 'General').trim();
+  const upper = raw.toUpperCase();
+  if (!raw || upper === 'GENERAL' || upper === 'G') return 'General';
+  const stripped = upper.startsWith('CREW ') ? upper.replace(/^CREW\s+/i, '').trim() : upper;
+  if (/^[A-D]$/.test(stripped)) return `Crew ${stripped}`;
+  return raw;
+}
+
+function rowKey(empId, leaveStart, leaveEnd, leaveType) {
+  return `${String(empId || '').trim()}|${leaveStart}|${leaveEnd}|${leaveType}`;
+}
+
+function pushLeaveRow(rows, seen, user, leave, monthStart, monthEnd) {
+  if (!leaveOverlapsMonth(leave, monthStart, monthEnd)) return;
+  const leaveStart = toYmd(leave.start);
+  const leaveEnd = toYmd(leave.end);
+  const leaveType = String(leave.type || 'Planned').trim();
+  const empId = String(user.empId || '').trim();
+  const key = rowKey(empId, leaveStart, leaveEnd, leaveType);
+  if (seen.has(key)) return;
+  seen.add(key);
+  rows.push({
+    empId,
+    name: user.fullName || user.name || '',
+    crew: normalizeCrewLabel(user.crew),
+    role: user.role || '',
+    leaveStart,
+    leaveEnd,
+    daysInMonth: daysInMonthOverlap(leave, monthStart, monthEnd),
+    leaveType,
+  });
+}
+
+function loadRosterJsonRows(monthStart, monthEnd) {
+  let roster = [];
+  try {
+    roster = require(ROSTER_PATH);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(roster)) return [];
+
+  const rows = [];
+  const seen = new Set();
+  for (const person of roster) {
+    for (const leave of person.leaves || []) {
+      pushLeaveRow(rows, seen, person, leave, monthStart, monthEnd);
+    }
+  }
+  return rows;
+}
+
+async function fetchDbLeaveRows(monthStart, monthEnd) {
+  const users = await AdminUser.find({ isActive: { $ne: false } })
+    .select('name fullName empId crew role leaves')
+    .lean();
+
+  const rows = [];
+  const seen = new Set();
+  for (const user of users) {
+    for (const leave of user.leaves || []) {
+      pushLeaveRow(rows, seen, user, leave, monthStart, monthEnd);
+    }
+  }
+  return rows;
+}
+
 /**
- * Build an Excel workbook listing roster leave segments overlapping the given month.
+ * Build an Excel workbook listing all leave segments overlapping the given month.
+ * Sources: AdminUser roster records (same as roster API) plus roster.json fallback.
  */
 async function buildMonthlyPlannedLeavesWorkbook(yearMonth) {
   const { ym, start, end } = parseYearMonth(yearMonth);
   const monthStart = start;
   const monthEnd = end;
 
-  const users = await AdminUser.find({ isApproved: true, isActive: { $ne: false } })
-    .select('name fullName empId crew role leaves')
-    .lean();
+  const dbRows = await fetchDbLeaveRows(monthStart, monthEnd);
+  const seen = new Set(
+    dbRows.map((row) => rowKey(row.empId, row.leaveStart, row.leaveEnd, row.leaveType))
+  );
 
-  const rows = [];
-  for (const user of users) {
-    for (const leave of user.leaves || []) {
-      if (!leaveOverlapsMonth(leave, monthStart, monthEnd)) continue;
-      rows.push({
-        empId: user.empId || '',
-        name: user.fullName || user.name || '',
-        crew: user.crew || '',
-        role: user.role || '',
-        leaveStart: String(leave.start).slice(0, 10),
-        leaveEnd: String(leave.end).slice(0, 10),
-        daysInMonth: daysInMonthOverlap(leave, monthStart, monthEnd),
-        leaveType: leave.type || '',
-      });
-    }
+  const rows = [...dbRows];
+  for (const rosterRow of loadRosterJsonRows(monthStart, monthEnd)) {
+    const key = rowKey(rosterRow.empId, rosterRow.leaveStart, rosterRow.leaveEnd, rosterRow.leaveType);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(rosterRow);
   }
 
   rows.sort((a, b) => {
@@ -122,4 +199,6 @@ async function buildMonthlyPlannedLeavesWorkbook(yearMonth) {
 module.exports = {
   buildMonthlyPlannedLeavesWorkbook,
   parseYearMonth,
+  toYmd,
+  leaveOverlapsMonth,
 };
