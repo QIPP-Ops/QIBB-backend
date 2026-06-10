@@ -88,6 +88,14 @@ const AdminConfigSchema = new mongoose.Schema({
     ],
     default: [],
   },
+  allowedEmailDomains: {
+    type: [String],
+    default: ['acwapower.com', 'nomac.com'],
+  },
+  autoApprovedEmailDomains: {
+    type: [String],
+    default: ['acwapower.com', 'nomac.com'],
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminConfig', AdminConfigSchema);

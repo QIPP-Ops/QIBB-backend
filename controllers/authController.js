@@ -32,17 +32,12 @@ async function findUserByEmail(email) {
 const AdminConfig = require('../models/AdminConfig');
 const { logRosterEvent } = require('../services/rosterAuditService');
 
-const AUTO_APPROVED_DOMAINS = ['acwapower.com', 'nomac.com'];
-const ALLOWED_EMAIL_DOMAINS = ['acwapower.com', 'nomac.com'];
-
-function isAllowedEmailDomain(email) {
-  const domain = getEmailDomain(normalizeEmail(email));
-  return ALLOWED_EMAIL_DOMAINS.includes(domain);
-}
-
-function getEmailDomain(email) {
-  return String(email || '').split('@')[1]?.toLowerCase() || '';
-}
+const {
+  getEmailDomainPolicy,
+  isAllowedEmailDomain: checkAllowedDomain,
+  isAutoApprovedDomain: checkAutoApprovedDomain,
+  emailDomain: getEmailDomain,
+} = require('../services/emailDomainPolicy');
 
 // ─── Register options (public) ───────────────────────────────────────────────
 
@@ -80,9 +75,11 @@ exports.register = async (req, res) => {
   }
 
   const normalizedEmail = normalizeEmail(email);
-  if (!isAllowedEmailDomain(normalizedEmail)) {
+  const domainPolicy = await getEmailDomainPolicy();
+  if (!(await checkAllowedDomain(normalizedEmail))) {
+    const allowedList = domainPolicy.allowed.map((d) => `@${d}`).join(', ');
     return res.status(403).json({
-      message: 'Registration is limited to @nomac.com and @acwapower.com email addresses.',
+      message: `Registration is limited to ${allowedList} email addresses.`,
       code: 'DOMAIN_NOT_ALLOWED',
     });
   }
@@ -94,8 +91,7 @@ exports.register = async (req, res) => {
       if (existing.empId === empId) return res.status(409).json({ message: 'Employee ID already registered.' });
     }
 
-    const domain       = getEmailDomain(normalizedEmail);
-    const autoApproved = AUTO_APPROVED_DOMAINS.includes(domain);
+    const autoApproved = await checkAutoApprovedDomain(normalizedEmail);
 
     const otp          = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash      = await bcrypt.hash(otp, 10);
@@ -246,9 +242,11 @@ exports.login = async (req, res) => {
     const user = await findUserByEmail(email);
     if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
 
-    if (!isAllowedEmailDomain(user.email) && user.email !== SUPER_ADMIN_EMAIL) {
+    const domainPolicy = await getEmailDomainPolicy();
+    if (!(await checkAllowedDomain(user.email)) && user.email !== SUPER_ADMIN_EMAIL) {
+      const allowedList = domainPolicy.allowed.map((d) => `@${d}`).join(', ');
       return res.status(403).json({
-        message: 'Sign-in is limited to @nomac.com and @acwapower.com accounts.',
+        message: `Sign-in is limited to ${allowedList} accounts.`,
         code: 'DOMAIN_NOT_ALLOWED',
       });
     }

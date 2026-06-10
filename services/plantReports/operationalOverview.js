@@ -1,34 +1,20 @@
-const { buildHistoricalDashboard, getDateBounds } = require('./historicalDashboard');
-const PlantMetricPoint = require('../../models/PlantMetricPoint');
-const PlantIngestionState = require('../../models/PlantIngestionState');
-const { PlantMetric } = require('../../models/PlantMetric');
-const { expandDayColumnSeries } = require('./seriesTimeline');
+const { buildHistoricalDashboard } = require('./historicalDashboard');
+const {
+  fetchMetricSeriesFromBundle,
+  getBundleDateBounds,
+  metricsFromBundle,
+} = require('./metricSeriesFromBundle');
+const { getSyncState } = require('./syncTrendsBlobsService');
 
 const PLANT_CAPACITY_MW = 3883.2;
 
-/** Match ingested metricKey + label patterns (parser9 daily_op_* keys). */
-const KPI_MATCHERS = {
-  plf: [/plf|plant.*availability|availability.*factor|daily_op_plf/i],
-  grossGen: [
-    /daily_op_plant_gross_gen/i,
-    /plant_generation/i,
-    /gross.*gen/i,
-    /total.*generation/i,
-    /generation.*mwh/i,
-  ],
-  plantLoad: [/daily_op_total_plant_load|plant_total_load|total_plant_load/i],
-  heatRate: [/daily_op_heat_rate|plant_heat_rate|heat_rate/i],
-  efficiency: [/daily_op_net_efficiency|plant_net_efficiency|net_efficiency|net.*efficien/i],
-  fuelGas: [/daily_op_fuel_gas|plant_fuel_gas|fuel_gas/i],
-  mfeqh: [/daily_op_.*_mfeqh|mfeqh|equivalent.*operating.*hours/i],
-  nox: [/nox|no_x/i],
-  sox: [/sox|so2|sulphur/i],
-  co: [/\bco\b|carbon monoxide/i],
-  waterProd: [/ro.*prod|dm.*prod|water.*prod|desal|migd/i],
-};
+const { kpiMatchers } = require('../metricKeyRegistry');
 
-async function findMetricKeys(matchers, multi = false) {
-  const metrics = await PlantMetric.find({ enabledGlobally: { $ne: false } }).lean();
+/** Match ingested metricKey + label patterns (central registry). */
+const KPI_MATCHERS = kpiMatchers();
+
+function findMetricKeysFromBundle(matchers, multi = false) {
+  const metrics = metricsFromBundle();
   const hits = [];
   for (const m of metrics) {
     const label = `${m.label} ${m.metricKey}`;
@@ -38,28 +24,14 @@ async function findMetricKeys(matchers, multi = false) {
   return multi ? [...new Set(hits)] : hits[0];
 }
 
-function pickNumeric(row, keys) {
-  for (const k of keys) {
-    const v = row[k];
-    if (typeof v === 'number' && Number.isFinite(v)) return v;
-  }
-  return undefined;
-}
-
-async function seriesForMatchers(matchers, from, to, { sumValues = false } = {}) {
-  const keys = await findMetricKeys(matchers, true);
+function seriesForMatchersFromBundle(matchers, from, to, { sumValues = false } = {}) {
+  const keys = findMetricKeysFromBundle(matchers, true);
   if (!keys.length) return [];
-  const rows = await PlantMetricPoint.find({
-    metricKey: { $in: keys },
-    reportDate: { $gte: from, $lte: to },
-  })
-    .sort({ reportDate: 1 })
-    .lean();
-  const expanded = expandDayColumnSeries(rows, keys);
-  if (!expanded.length) return [];
+  const { series } = fetchMetricSeriesFromBundle(keys, from, to);
+  if (!series.length) return [];
 
   if (sumValues) {
-    return expanded.map((row) => ({
+    return series.map((row) => ({
       date: row.date,
       value: keys.reduce((acc, k) => {
         const v = row[k];
@@ -68,37 +40,21 @@ async function seriesForMatchers(matchers, from, to, { sumValues = false } = {})
     }));
   }
 
-  const plantKeys = keys.filter((k) => /plant_generation/i.test(k));
+  const plantKeys = keys.filter((k) => /plant_generation|daily_op_plant_gross/i.test(k));
   const preferred = plantKeys.length ? plantKeys : keys;
-  const primary = preferred[0].replace(/_day\d+$/i, '').replace(/_c\d+$/i, '');
-  return expanded.map((row) => ({
+  const primary = preferred[0];
+  return series.map((row) => ({
     date: row.date,
-    value: pickNumeric(row, preferred) ?? pickNumeric(row, keys),
+    value:
+      row[primary] ??
+      preferred.map((k) => row[k]).find((v) => typeof v === 'number' && Number.isFinite(v)),
   }));
 }
 
-async function seriesForGeneration(from, to) {
-  const plantSeries = await seriesForMatchers([/plant_generation/i], from, to);
+function seriesForGeneration(from, to) {
+  const plantSeries = seriesForMatchersFromBundle([/plant_generation|daily_op_plant_gross_gen/i], from, to);
   if (plantSeries.some((r) => r.value != null && r.value > 0)) return plantSeries;
-  return seriesForMatchers([/daily_ops_.*_total_mwh/i], from, to, { sumValues: true });
-}
-
-async function seriesForKey(metricKey, from, to) {
-  if (!metricKey) return [];
-  const rows = await PlantMetricPoint.find({
-    metricKey,
-    reportDate: { $gte: from, $lte: to },
-  })
-    .sort({ reportDate: 1 })
-    .lean();
-  const expanded = expandDayColumnSeries(rows, [metricKey]);
-  if (expanded.length > 1) {
-    return expanded.map((row) => ({
-      date: row.date,
-      value: row[metricKey] ?? Object.values(row).find((v) => typeof v === 'number'),
-    }));
-  }
-  return rows.map((r) => ({ date: r.reportDate, value: r.value }));
+  return seriesForMatchersFromBundle([/daily_ops_.*_total_mwh/i], from, to, { sumValues: true });
 }
 
 function mergeExtendedKpiRows(seriesMap) {
@@ -152,6 +108,13 @@ function buildLatestSnapshot(kpiSeries) {
     heatRate: r.heatRate,
     fuel: r.fuel,
     mfeqh: r.mfeqh,
+    gn: r.generation,
+    ld: r.load,
+    pf: r.plf,
+    ef: r.efficiency,
+    hr: r.heatRate,
+    fu: r.fuel,
+    mf: r.mfeqh,
     nox: em.nox,
     sox: em.sox,
     co: em.co,
@@ -159,7 +122,7 @@ function buildLatestSnapshot(kpiSeries) {
 }
 
 async function buildOperationalOverview(query = {}) {
-  const bounds = await getDateBounds();
+  const bounds = getBundleDateBounds();
   let from = query.from || bounds.minDate;
   let to = query.to || bounds.maxDate;
   if (!from || !to) {
@@ -174,19 +137,19 @@ async function buildOperationalOverview(query = {}) {
   const seriesMap = {};
   for (const key of Object.keys(KPI_MATCHERS)) {
     if (key === 'grossGen') {
-      seriesMap[key] = await seriesForGeneration(from, to);
+      seriesMap[key] = seriesForGeneration(from, to);
     } else {
-      seriesMap[key] = await seriesForMatchers(KPI_MATCHERS[key], from, to);
+      seriesMap[key] = seriesForMatchersFromBundle(KPI_MATCHERS[key], from, to);
     }
   }
 
   const kpiSeries = mergeExtendedKpiRows(seriesMap);
   const dashboard = await buildHistoricalDashboard({ from, to });
 
-  const ingestState = await PlantIngestionState.findOne({ key: 'global' }).lean();
+  const sync = getSyncState();
   const lastDataAt = bounds.maxDate || null;
-  const lastIngestAt = ingestState?.lastSuccessAt
-    ? new Date(ingestState.lastSuccessAt).toISOString()
+  const lastIngestAt = sync?.lastResult?.lastRunAt
+    ? new Date(sync.lastResult.lastRunAt).toISOString()
     : null;
 
   return {
@@ -206,4 +169,5 @@ module.exports = {
   buildOperationalOverview,
   PLANT_CAPACITY_MW,
   seriesForGeneration,
+  KPI_MATCHERS,
 };

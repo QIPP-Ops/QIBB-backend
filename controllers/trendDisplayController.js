@@ -28,6 +28,7 @@ function serializeConfig(doc) {
     panels: doc.panels || [],
     customTrends: doc.customTrends || [],
     metricLabels: doc.metricLabels || {},
+    homePageLayout: doc.homePageLayout || [],
   };
 }
 
@@ -111,10 +112,28 @@ exports.patchTrendDisplay = async (req, res) => {
     }
     const doc = await loadConfig();
     const before = serializeConfig(doc);
-    const { panels, customTrends, metricLabels, panel, customTrend, metricLabel } = req.body || {};
+    const {
+      panels,
+      customTrends,
+      metricLabels,
+      homePageLayout,
+      panel,
+      customTrend,
+      metricLabel,
+    } = req.body || {};
 
     if (Array.isArray(panels)) doc.panels = panels;
     if (Array.isArray(customTrends)) doc.customTrends = customTrends;
+    if (Array.isArray(homePageLayout)) {
+      doc.homePageLayout = homePageLayout
+        .filter((s) => s?.sectionId)
+        .map((s) => ({
+          sectionId: String(s.sectionId).trim(),
+          visible: s.visible !== false,
+          order: Number.isFinite(Number(s.order)) ? Number(s.order) : 0,
+          unitOverride: String(s.unitOverride || '').trim(),
+        }));
+    }
 
     if (metricLabels && typeof metricLabels === 'object') {
       doc.metricLabels = { ...(doc.metricLabels || {}), ...metricLabels };

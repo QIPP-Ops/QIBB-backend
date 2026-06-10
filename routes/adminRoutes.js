@@ -39,6 +39,8 @@ router.get('/email-presets', protect, requireSuperAdmin, emailBroadcast.listEmai
 router.put('/email-presets', protect, requireSuperAdmin, emailBroadcast.saveEmailPresets);
 router.post('/email-broadcast', protect, requireSuperAdmin, emailBroadcast.sendEmailBroadcast);
 router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
+router.get('/email-domains', protect, requireSuperAdmin, c.getEmailDomains);
+router.patch('/email-domains', protect, requireSuperAdmin, c.patchEmailDomains);
 router.get('/trend-display', protect, trendDisplay.getTrendDisplay);
 router.patch('/trend-display', protect, requireSuperAdmin, trendDisplay.patchTrendDisplay);
 router.get('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.listTrendDefinitions);

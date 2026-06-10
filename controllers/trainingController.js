@@ -16,6 +16,11 @@ const { isValidHtml } = require('../utils/validateHtml');
 const quizStorage = require('../services/quizStorage');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
+const { isEmailConfigured } = require('../services/emailService');
+const {
+  sendCourseReminderEmail,
+  upsertCourseAssignments,
+} = require('../services/courseReminderService');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
 const seedPath = path.join(__dirname, '../data/completed-courses-seed.json');
@@ -818,6 +823,94 @@ exports.getQuizPrizeImage = async (req, res) => {
     res.setHeader('Content-Type', mime);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.sendCourseReminder = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Administrator privileges required.' });
+    }
+    if (!isEmailConfigured()) {
+      return res.status(503).json({ message: 'SMTP is not configured on the server.' });
+    }
+
+    const {
+      courseId,
+      courseTitle,
+      courseDescription = '',
+      courseLink = '',
+      empIds = [],
+      dueDate = null,
+      dryRun = false,
+    } = req.body || {};
+
+    const title = String(courseTitle || '').trim();
+    if (!title) {
+      return res.status(400).json({ message: 'courseTitle is required.' });
+    }
+
+    const ids = Array.isArray(empIds) ? empIds.map(String).filter(Boolean) : [];
+    if (!ids.length) {
+      return res.status(400).json({ message: 'Select at least one employee.' });
+    }
+
+    if (dueDate) {
+      const due = new Date(dueDate);
+      if (Number.isNaN(due.getTime())) {
+        return res.status(400).json({ message: 'Invalid dueDate' });
+      }
+    }
+
+    const { users } = await upsertCourseAssignments({
+      courseId: courseId || title,
+      courseTitle: title,
+      empIds: ids,
+      dueDate,
+      assignedBy: currentUserId(req),
+    });
+
+    if (!users.length) {
+      return res.status(400).json({ message: 'No deliverable email addresses for selected employees.' });
+    }
+
+    let sent = 0;
+    const failed = [];
+
+    for (const user of users) {
+      if (dryRun) {
+        sent += 1;
+        continue;
+      }
+      try {
+        const result = await sendCourseReminderEmail(user, title, courseDescription, courseLink);
+        if (result.sent) sent += 1;
+        else failed.push({ empId: user.empId, error: result.reason || 'send_failed' });
+      } catch (err) {
+        failed.push({ empId: user.empId, error: err.message });
+      }
+    }
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.ADMIN_EMAIL_BROADCAST,
+      targetType: 'training_course',
+      targetId: courseId || title,
+      targetName: title,
+      after: { sent, failed: failed.length, empIds: ids, dueDate: dueDate || null },
+      req,
+    });
+
+    res.json({
+      sent,
+      failed,
+      assigned: users.length,
+      dueDate: dueDate || null,
+      recipients: users.map((r) => ({ empId: r.empId, name: r.name })),
+      dryRun: Boolean(dryRun),
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

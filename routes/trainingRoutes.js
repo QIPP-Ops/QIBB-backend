@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 const c = require('../controllers/trainingController');
 
@@ -31,5 +32,6 @@ router.get('/quiz/:quizId/prize-image', protect, c.getQuizPrizeImage);
 router.post('/quiz/assign', protect, c.assignQuiz);
 router.post('/quiz/complete', protect, c.completeQuiz);
 router.post('/quiz/claim-prize', protect, c.claimQuizPrize);
+router.post('/course-reminder', protect, admin, c.sendCourseReminder);
 
 module.exports = router;

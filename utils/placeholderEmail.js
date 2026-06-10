@@ -8,7 +8,6 @@ function isPlaceholderEmail(email) {
   if (PROTECTED.has(e)) return false;
   if (/@roster\.acwaops\.local$/i.test(e)) return true;
   if (/@roster\./i.test(e)) return true;
-  if (/@acwapower\.com$/i.test(e)) return true;
   if (/\.local@/i.test(e) || /@(example|test|placeholder)\./i.test(e)) return true;
   if (/^emp[\d._-]+@/i.test(e)) return true;
   return false;

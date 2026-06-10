@@ -20,26 +20,25 @@ exports.getStatus = async (req, res) => {
   }
 };
 
-const TREND_BLOB_LABELS = {
-  daily_ops: 'Daily Operations',
-  water: 'Water',
-  hrsg: 'HRSG Chemistry',
-  fg_filter: 'FG Filter DP',
-  air_intake: 'Air Intake Filter DP',
-  environment: 'Environment',
-};
+const { loadMetricKeyRegistry } = require('../services/metricKeyRegistry');
+const {
+  healthFromLastDataPoint,
+  healthLabel,
+  FRESH_HOURS,
+  STALE_HOURS,
+} = require('../utils/blobHealth');
+const {
+  getEmailDomainPolicy,
+  normalizeDomainList,
+  DEFAULT_ALLOWED_DOMAINS,
+  DEFAULT_AUTO_APPROVED_DOMAINS,
+} = require('../services/emailDomainPolicy');
 
 const TREND_BLOB_PAGES = ['home', 'historical-trends', 'trend-studio'];
 const TREND_DATA_SOURCE = 'Azure qipp-data → trends-bundle';
 
-function healthFromLastDataPoint(lastDataPoint, now = Date.now()) {
-  if (!lastDataPoint) return 'red';
-  const oneDayMs = 24 * 60 * 60 * 1000;
-  const sevenDaysMs = 7 * oneDayMs;
-  const ageMs = now - new Date(`${String(lastDataPoint).slice(0, 10)}T00:00:00.000Z`).getTime();
-  if (ageMs <= oneDayMs) return 'green';
-  if (ageMs <= sevenDaysMs) return 'yellow';
-  return 'red';
+function trendBlobLabels() {
+  return loadMetricKeyRegistry().blobs || {};
 }
 
 exports.getTrendSources = async (_req, res) => {
@@ -80,11 +79,12 @@ exports.getTrendSources = async (_req, res) => {
 
       return {
         trendId: kind,
-        name: TREND_BLOB_LABELS[kind] || kind,
+        name: trendBlobLabels()[kind] || kind,
         pages: [...TREND_BLOB_PAGES],
         dataSource: TREND_DATA_SOURCE,
         lastDataPoint,
         healthStatus,
+        healthLabel: healthLabel(healthStatus),
         metricKeys,
         matchedFilePatterns: [KIND_TO_FILE[kind]],
         bundleMeta: {
@@ -96,9 +96,60 @@ exports.getTrendSources = async (_req, res) => {
       };
     });
 
-    res.json({ success: true, data: rows });
+    const worst = rows.reduce(
+      (acc, r) => (r.healthStatus === 'red' ? 'red' : acc === 'red' ? 'red' : r.healthStatus === 'yellow' ? 'yellow' : acc),
+      'green'
+    );
+
+    res.json({
+      success: true,
+      data: rows,
+      summary: {
+        worstStatus: worst,
+        freshHours: FRESH_HOURS,
+        staleHours: STALE_HOURS,
+        hasStale: rows.some((r) => r.healthStatus !== 'green'),
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching trend sources', error: err.message });
+  }
+};
+
+exports.getEmailDomains = async (_req, res) => {
+  try {
+    const policy = await getEmailDomainPolicy();
+    res.json({
+      allowedEmailDomains: policy.allowed,
+      autoApprovedEmailDomains: policy.autoApproved,
+      defaults: {
+        allowedEmailDomains: DEFAULT_ALLOWED_DOMAINS,
+        autoApprovedEmailDomains: DEFAULT_AUTO_APPROVED_DOMAINS,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching email domains', error: err.message });
+  }
+};
+
+exports.patchEmailDomains = async (req, res) => {
+  try {
+    const allowed = normalizeDomainList(req.body?.allowedEmailDomains);
+    const autoApproved = normalizeDomainList(req.body?.autoApprovedEmailDomains);
+    if (!allowed.length) {
+      return res.status(400).json({ message: 'At least one allowed email domain is required.' });
+    }
+    let config = await AdminConfig.findOne();
+    if (!config) config = new AdminConfig();
+    config.allowedEmailDomains = allowed;
+    config.autoApprovedEmailDomains = autoApproved.length ? autoApproved : allowed;
+    await config.save();
+    res.json({
+      allowedEmailDomains: config.allowedEmailDomains,
+      autoApprovedEmailDomains: config.autoApprovedEmailDomains,
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error saving email domains', error: err.message });
   }
 };
 

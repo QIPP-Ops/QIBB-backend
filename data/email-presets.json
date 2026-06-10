@@ -22,5 +22,11 @@
     "name": "Monthly planned leaves",
     "subject": "Planned leave roster — {{month}}",
     "body": "<p>Dear {{name}},</p><p>Please find attached the <strong>planned leave timeline</strong> for <strong>{{month}}</strong> (crew roster filtered to leave segments overlapping that month).</p><p>Contact your supervisor if you need to adjust leave plans.</p>"
+  },
+  {
+    "id": "course-reminder",
+    "name": "Training course reminder",
+    "subject": "Reminder: complete {{courseTitle}}",
+    "body": "<p>Dear {{name}},</p><p>This is a reminder to complete the training course <strong>{{courseTitle}}</strong> in the QIPP Training Hub.</p><p>{{courseDescription}}</p><p><a href=\"{{courseLink}}\">Open course in Training Hub</a></p><p>Contact your supervisor if you need support.</p>"
   }
 ]

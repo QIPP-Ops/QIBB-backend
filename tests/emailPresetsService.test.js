@@ -31,6 +31,11 @@ describe('emailPresetsService', () => {
     expect(shift.subject).toBe('Custom {{date}}');
   });
 
+  test('bundled presets include course reminder', () => {
+    const bundled = loadBundledEmailPresets();
+    expect(bundled.some((p) => p.id === 'course-reminder')).toBe(true);
+  });
+
   test('mergeEmailPresets preserves bundled order with Mongo overrides', () => {
     const merged = mergeEmailPresets([]);
     expect(merged.length).toBeGreaterThanOrEqual(4);

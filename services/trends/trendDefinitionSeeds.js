@@ -132,12 +132,12 @@ const REPORTS_TRENDS = [
 ];
 
 const HOME_INSIGHT = [
-  { suffix: 'gn', title: 'Generation', patterns: ['plant_generation|gross.*gen|generation'] },
-  { suffix: 'ld', title: 'Load MW', patterns: ['plant_total_load|total_plant_load|load_mw'] },
-  { suffix: 'pf', title: 'PLF %', patterns: ['plf|plant.*availability'] },
-  { suffix: 'ef', title: 'Efficiency %', patterns: ['plant_net_efficiency|net_efficiency'] },
-  { suffix: 'hr', title: 'Heat Rate', patterns: ['plant_heat_rate|heat_rate'] },
-  { suffix: 'fu', title: 'Fuel Gas', patterns: ['plant_fuel_gas|fuel_gas'] },
+  { suffix: 'gn', title: 'Generation', patterns: ['daily_op_plant_gross_gen|plant_generation|gross.*gen|generation'] },
+  { suffix: 'ld', title: 'Load MW', patterns: ['daily_op_total_plant_load|plant_total_load|total_plant_load|load_mw'] },
+  { suffix: 'pf', title: 'PLF %', patterns: ['daily_op_plf|plf|plant.*availability'] },
+  { suffix: 'ef', title: 'Efficiency %', patterns: ['daily_op_net_efficiency|plant_net_efficiency|net_efficiency'] },
+  { suffix: 'hr', title: 'Heat Rate', patterns: ['daily_op_heat_rate|plant_heat_rate|heat_rate'] },
+  { suffix: 'fu', title: 'Fuel Gas', patterns: ['daily_op_fuel_gas|plant_fuel_gas|fuel_gas'] },
   { suffix: 'mf', title: 'MFEQH', patterns: ['mfeqh|equivalent.*operating'] },
   { suffix: 'nox', title: 'NOx', patterns: ['nox|no_x'] },
   { suffix: 'sox', title: 'SOx', patterns: ['sox|so2|sulphur'] },
@@ -156,12 +156,12 @@ const HOME_INSIGHT = [
 }));
 
 const HOME_KPI = [
-  { suffix: 'gn', patterns: ['generation|gross_generation|plant_generation'] },
-  { suffix: 'ld', patterns: ['load|plant_load|load_mw'] },
-  { suffix: 'pf', patterns: ['plf|plant_load_factor'] },
-  { suffix: 'ef', patterns: ['efficiency|net_efficiency'] },
-  { suffix: 'hr', patterns: ['heat_rate|heatrate'] },
-  { suffix: 'fu', patterns: ['fuel|fuel_gas'] },
+  { suffix: 'gn', patterns: ['daily_op_plant_gross_gen|generation|gross_generation|plant_generation'] },
+  { suffix: 'ld', patterns: ['daily_op_total_plant_load|load|plant_load|load_mw'] },
+  { suffix: 'pf', patterns: ['daily_op_plf|plf|plant_load_factor'] },
+  { suffix: 'ef', patterns: ['daily_op_net_efficiency|efficiency|net_efficiency'] },
+  { suffix: 'hr', patterns: ['daily_op_heat_rate|heat_rate|heatrate'] },
+  { suffix: 'fu', patterns: ['daily_op_fuel_gas|fuel|fuel_gas'] },
 ].map((row, i) => ({
   panelId: `home_kpi_${row.suffix}`,
   title: `Home KPI ${row.suffix.toUpperCase()}`,
@@ -175,14 +175,14 @@ const HOME_KPI = [
 }));
 
 const HOME_CHARTS = [
-  { id: 'cT', title: 'Combined trend', patterns: ['generation|load|plf|efficiency|heat_rate|fuel|mfeqh'] },
-  { id: 'cHR', title: 'Heat rate chart', patterns: ['heat_rate|heatrate'] },
-  { id: 'cEF', title: 'Efficiency chart', patterns: ['efficiency|net_efficiency'] },
-  { id: 'cPF', title: 'PLF chart', patterns: ['plf|plant_load_factor'] },
-  { id: 'cMF', title: 'MFEQH chart', patterns: ['mfeqh'] },
-  { id: 'cEM', title: 'Emissions chart', patterns: ['nox|sox|co|emissions'] },
-  { id: 'cFU', title: 'Fuel chart', patterns: ['fuel|fuel_gas'] },
-  { id: 'cUN', title: 'Water chart', patterns: ['water|makeup_water'] },
+  { id: 'cT', title: 'Combined trend', patterns: ['daily_op_plant_gross_gen|daily_op_total_plant_load|daily_op_plf|daily_op_net_efficiency|daily_op_heat_rate|daily_op_fuel_gas|generation|load|plf|efficiency|heat_rate|fuel|mfeqh'] },
+  { id: 'cHR', title: 'Heat rate chart', patterns: ['daily_op_heat_rate|heat_rate|heatrate'] },
+  { id: 'cEF', title: 'Efficiency chart', patterns: ['daily_op_net_efficiency|efficiency|net_efficiency'] },
+  { id: 'cPF', title: 'PLF chart', patterns: ['daily_op_plf|plf|plant_load_factor'] },
+  { id: 'cMF', title: 'MFEQH chart', patterns: ['daily_op_.*_mfeqh|mfeqh'] },
+  { id: 'cEM', title: 'Emissions chart', patterns: ['nox|sox|so2|co|emissions'] },
+  { id: 'cFU', title: 'Fuel chart', patterns: ['daily_op_fuel_gas|fuel|fuel_gas'] },
+  { id: 'cUN', title: 'Water chart', patterns: ['water|makeup_water|daily_op_.*_mwh'] },
 ].map((row, i) => ({
   panelId: `home_chart_${row.id}`,
   title: row.title,
