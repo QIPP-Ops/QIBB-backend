@@ -10,8 +10,50 @@ const PLANT_CAPACITY_MW = 3883.2;
 
 const { kpiMatchers } = require('../metricKeyRegistry');
 
+/** Registry kpi id → internal series-map key */
+const KPI_KEY_ALIAS = {
+  gn: 'grossGen',
+  ld: 'plantLoad',
+  pf: 'plf',
+  ef: 'efficiency',
+  hr: 'heatRate',
+  fu: 'fuelGas',
+  mf: 'mfeqh',
+};
+
 /** Match ingested metricKey + label patterns (central registry). */
 const KPI_MATCHERS = kpiMatchers();
+
+function sanitizeEmissionValue(value) {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  if (value < 0 || value > 10_000) return undefined;
+  return value;
+}
+
+function findEmissionMetricKey(metrics, emission) {
+  const patterns = {
+    nox: /nox|no_x/i,
+    sox: /sox|so2|sulphur/i,
+    co: /\bco\b|carbon monoxide/i,
+  };
+  const exclude = {
+    nox: /conduct|carbon|diox|co2/i,
+    sox: /conduct|carbon|diox/i,
+    co: /conduct|carbon diox|co2|cc_us|sc_us/i,
+  };
+  const hits = [];
+  for (const m of metrics) {
+    const text = `${m.label} ${m.metricKey}`;
+    const cat = (m.category || '').toLowerCase();
+    if (cat && cat !== 'environment' && !/emission|stack/i.test(cat)) continue;
+    if (!patterns[emission].test(text)) continue;
+    if (exclude[emission].test(text)) continue;
+    hits.push(m.metricKey);
+  }
+  if (!hits.length) return null;
+  const avg = hits.find((k) => /average/i.test(k));
+  return avg ?? hits[0];
+}
 
 function findMetricKeysFromBundle(matchers, multi = false) {
   const metrics = metricsFromBundle();
@@ -21,7 +63,8 @@ function findMetricKeysFromBundle(matchers, multi = false) {
     if (matchers.some((re) => re.test(label))) hits.push(m.metricKey);
   }
   if (!hits.length) return multi ? [] : null;
-  return multi ? [...new Set(hits)] : hits[0];
+  const preferred = hits.find((k) => /^daily_op_/i.test(k)) ?? hits.find((k) => /average/i.test(k));
+  return multi ? [...new Set(hits)] : preferred ?? hits[0];
 }
 
 function seriesForMatchersFromBundle(matchers, from, to, { sumValues = false } = {}) {
@@ -85,9 +128,9 @@ function mergeExtendedKpiRows(seriesMap) {
         fuel: maps.fuelGas?.[date],
         mfeqh: maps.mfeqh?.[date],
         emissions: {
-          nox: maps.nox?.[date],
-          sox: maps.sox?.[date],
-          co: maps.co?.[date],
+          nox: sanitizeEmissionValue(maps.nox?.[date]),
+          sox: sanitizeEmissionValue(maps.sox?.[date]),
+          co: sanitizeEmissionValue(maps.co?.[date]),
         },
         netGen: maps.plantLoad?.[date],
         water: maps.waterProd?.[date] != null ? { roProduction: maps.waterProd[date] } : undefined,
@@ -135,11 +178,25 @@ async function buildOperationalOverview(query = {}) {
   if (from > to) [from, to] = [to, from];
 
   const seriesMap = {};
-  for (const key of Object.keys(KPI_MATCHERS)) {
+  const metrics = metricsFromBundle();
+  for (const registryId of Object.keys(KPI_MATCHERS)) {
+    const key = KPI_KEY_ALIAS[registryId] ?? registryId;
+    const matchers = KPI_MATCHERS[registryId];
     if (key === 'grossGen') {
       seriesMap[key] = seriesForGeneration(from, to);
+    } else if (key === 'nox' || key === 'sox' || key === 'co') {
+      const emissionKey = findEmissionMetricKey(metrics, key);
+      if (emissionKey) {
+        const { series } = fetchMetricSeriesFromBundle([emissionKey], from, to);
+        seriesMap[key] = series.map((row) => ({
+          date: row.date,
+          value: sanitizeEmissionValue(row[emissionKey]),
+        }));
+      } else {
+        seriesMap[key] = seriesForMatchersFromBundle(matchers, from, to);
+      }
     } else {
-      seriesMap[key] = seriesForMatchersFromBundle(KPI_MATCHERS[key], from, to);
+      seriesMap[key] = seriesForMatchersFromBundle(matchers, from, to);
     }
   }
 

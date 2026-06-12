@@ -29,6 +29,8 @@ function serializeConfig(doc) {
     customTrends: doc.customTrends || [],
     metricLabels: doc.metricLabels || {},
     homePageLayout: doc.homePageLayout || [],
+    metricBar: doc.metricBar || [],
+    insightStrip: doc.insightStrip || [],
   };
 }
 
@@ -117,6 +119,8 @@ exports.patchTrendDisplay = async (req, res) => {
       customTrends,
       metricLabels,
       homePageLayout,
+      metricBar,
+      insightStrip,
       panel,
       customTrend,
       metricLabel,
@@ -132,6 +136,36 @@ exports.patchTrendDisplay = async (req, res) => {
           visible: s.visible !== false,
           order: Number.isFinite(Number(s.order)) ? Number(s.order) : 0,
           unitOverride: String(s.unitOverride || '').trim(),
+        }));
+    }
+
+    const normalizeMetricBar = (rows) =>
+      (rows || [])
+        .filter((r) => r?.id)
+        .map((r) => ({
+          id: String(r.id).trim(),
+          label: String(r.label || '').trim(),
+          unit: String(r.unit || '').trim(),
+          color: String(r.color || '').trim(),
+          big: r.big !== false,
+          field: String(r.field || '').trim(),
+          metricKeys: Array.isArray(r.metricKeys) ? r.metricKeys.map(String) : [],
+          visible: r.visible !== false,
+          order: Number.isFinite(Number(r.order)) ? Number(r.order) : 0,
+        }));
+
+    if (Array.isArray(metricBar)) doc.metricBar = normalizeMetricBar(metricBar);
+    if (Array.isArray(insightStrip)) {
+      doc.insightStrip = (insightStrip || [])
+        .filter((r) => r?.id)
+        .map((r) => ({
+          id: String(r.id).trim(),
+          label: String(r.label || '').trim(),
+          unit: String(r.unit || '').trim(),
+          kpiId: String(r.kpiId || r.id || '').trim(),
+          metricKeys: Array.isArray(r.metricKeys) ? r.metricKeys.map(String) : [],
+          visible: r.visible !== false,
+          order: Number.isFinite(Number(r.order)) ? Number(r.order) : 0,
         }));
     }
 
