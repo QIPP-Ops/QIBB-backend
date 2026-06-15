@@ -58,14 +58,12 @@ The backend appends `/QIPP` automatically when the URI has no database path.
 | `JWT_SECRET` | Yes | 48+ char random hex (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
 | `FRONTEND_URL` | Yes | `https://qipp.live` |
 | `CORS_ORIGINS` | Recommended | `https://qipp-ops.github.io` (add GitHub Pages URL if no custom domain yet) |
-| `SUPER_ADMIN_EMAIL` | Yes | e.g. `admin@acwaops.com` (or same as SMTP user) |
-| `SUPER_ADMIN_PASSWORD` | Yes | Strong password (seed only — not stored in repo) |
 | `SMTP_HOST` | Yes | e.g. `smtpout.secureserver.net` |
 | `SMTP_PORT` | Yes | `587` |
 | `SMTP_SECURE` | Yes | `false` |
-| `SMTP_USER` | Yes | Mailbox user |
-| `SMTP_PASS` | Yes | Mailbox password (secret) |
-| `SMTP_FROM` | Recommended | `QIPP Operations <admin@acwaops.com>` |
+| `SMTP_USER` | Yes | Mailbox user — **also used as super-admin login email** when seeding |
+| `SMTP_PASS` | Yes | Mailbox password (secret) — **also used as super-admin password** when seeding |
+| `SMTP_FROM` | Recommended | `QIPP Operations <admin@acwaops.com>` (fallback email if `SMTP_USER` unset) |
 | `PLANT_INGEST_ON_STARTUP` | Optional | `0` (disable Azure blob ingest until migrated) |
 | `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled stubs until blob sync) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Deferred | For `npm run sync:trends-blobs` later |
@@ -84,13 +82,16 @@ cd QIBB-backend
 # Set env vars locally (or use Render Shell → Environment)
 export MONGODB_URI='mongodb+srv://...'
 export MONGODB_DB_NAME=QIPP
-export SUPER_ADMIN_PASSWORD='your-strong-password'
-export SUPER_ADMIN_EMAIL='admin@acwaops.com'
+export SMTP_HOST=smtpout.secureserver.net
+export SMTP_USER='admin@acwaops.com'
+export SMTP_PASS='your-mailbox-password'
 # Optional: temp password for roster accounts
 export SEED_DEFAULT_USER_PASSWORD='change-after-first-login'
 
 npm run seed:mongodb
 ```
+
+Super admin login is created from **SMTP_USER + SMTP_PASS** (same mailbox used for outbound email). Optional overrides: `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`.
 
 **Idempotent** — safe to re-run. It upserts roster users, merges email presets, seeds PTW list if empty, and creates/updates super admin.
 
@@ -137,15 +138,15 @@ npx serve out
 
 ## 4. Super admin login
 
-1. Run `npm run seed:mongodb` with `SUPER_ADMIN_PASSWORD` set.
+1. Run `npm run seed:mongodb` with `MONGODB_URI` and SMTP vars set (`SMTP_USER` + `SMTP_PASS`).
 2. Open `https://qipp.live/login` (or GitHub Pages URL).
-3. Sign in with `SUPER_ADMIN_EMAIL` and the password you set.
-4. Change password after first login if using a temporary value.
+3. Sign in with **SMTP_USER** and **SMTP_PASS** (your mailbox credentials).
+4. Change password in-app if you prefer a different login than the mailbox password.
 
 Super admin only (without full roster seed):
 
 ```bash
-SUPER_ADMIN_PASSWORD='…' npm run seed:super-admin
+npm run seed:super-admin
 ```
 
 ## 5. Verification

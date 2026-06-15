@@ -1,11 +1,13 @@
 /**
  * Idempotent MongoDB Atlas seed for Render / fresh deployments.
  *
- *   MONGODB_URI='mongodb+srv://...' SUPER_ADMIN_PASSWORD='…' npm run seed:mongodb
+ *   MONGODB_URI='mongodb+srv://...' SMTP_USER=... SMTP_PASS=... npm run seed:mongodb
+ *
+ * Super admin uses SMTP mailbox by default (SMTP_USER + SMTP_PASS).
+ * Optional overrides: SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD
  *
  * Optional:
  *   SEED_DEFAULT_USER_PASSWORD  — temp password for roster accounts (omit to skip roster logins)
- *   SUPER_ADMIN_EMAIL           — defaults to SMTP_USER or admin@acwaops.com
  *   SEED_KPI_DATA=1             — insert plant KPI rows when collection is empty
  *   SEED_FORCE_RESET=1          — wipe AdminUser, AdminConfig, PlantPerformance first (destructive)
  */
@@ -23,7 +25,7 @@ const {
   buildPersonnelEmailIndex,
   resolvePersonEmail,
   buildRosterUserFields,
-  resolveSuperAdminEmailFromEnv,
+  resolveSuperAdminCredentials,
   bundledEmailPresets,
 } = require('./lib/atlasSeedHelpers');
 
@@ -137,17 +139,19 @@ async function seedRosterUsers(defaultPassword) {
 }
 
 async function seedSuperAdmin() {
-  const password = process.env.SUPER_ADMIN_PASSWORD || process.env.SEED_SUPER_ADMIN_PASSWORD;
+  const { email, password, emailSource, passwordSource } = resolveSuperAdminCredentials();
+
   if (!password) {
-    log('⏭️  Skipped super admin — set SUPER_ADMIN_PASSWORD');
+    log('⏭️  Skipped super admin — set SMTP_PASS (or SUPER_ADMIN_PASSWORD override)');
     return { action: 'skipped' };
   }
 
-  const email = resolveSuperAdminEmailFromEnv();
   if (!email) {
-    log('⏭️  Skipped super admin — no SUPER_ADMIN_EMAIL or SMTP_USER');
+    log('⏭️  Skipped super admin — set SMTP_USER or SUPER_ADMIN_EMAIL');
     return { action: 'skipped' };
   }
+
+  log(`👑 Super admin email from ${emailSource}, password from ${passwordSource}`);
 
   const passwordHash = await bcrypt.hash(password, 10);
   let user = await AdminUser.findOne({ email });
@@ -165,8 +169,8 @@ async function seedSuperAdmin() {
     user.role = user.role || 'Management';
     user.color = user.color || 'crew-lightviolet';
     await user.save();
-    log(`👑 Updated super admin: ${email}`);
-    return { action: 'updated', email };
+    log(`👑 Updated super admin: ${email} (sources: ${emailSource}/${passwordSource})`);
+    return { action: 'updated', email, emailSource, passwordSource };
   }
 
   await AdminUser.create({
@@ -184,8 +188,8 @@ async function seedSuperAdmin() {
     isEmailVerified: true,
     isActive: true,
   });
-  log(`👑 Created super admin: ${email}`);
-  return { action: 'created', email };
+  log(`👑 Created super admin: ${email} (sources: ${emailSource}/${passwordSource})`);
+  return { action: 'created', email, emailSource, passwordSource };
 }
 
 async function seedKpiIfEmpty() {

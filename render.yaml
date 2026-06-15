@@ -30,10 +30,6 @@ services:
         value: https://qipp.live
       - key: CORS_ORIGINS
         value: https://qipp-ops.github.io
-      - key: SUPER_ADMIN_EMAIL
-        sync: false
-      - key: SUPER_ADMIN_PASSWORD
-        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

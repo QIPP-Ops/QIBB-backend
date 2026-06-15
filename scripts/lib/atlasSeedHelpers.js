@@ -1,6 +1,7 @@
 const { isValidEmailFormat } = require('../../utils/placeholderEmail');
 const { loadBundledEmailPresets } = require('../../services/emailPresetsService');
 const { SUPER_ADMIN_EMAIL } = require('../../config/superAdmin');
+const { getSmtpUser, getSmtpPassword } = require('../../config/smtp');
 
 function normalizeName(value) {
   return String(value || '')
@@ -79,14 +80,63 @@ function buildRosterUserFields(person, email, passwordHash) {
   };
 }
 
+/** Extract email from `Name <user@domain.com>` or plain address. */
+function parseEmailFromSmtpFrom(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  const angle = value.match(/<([^>]+)>/);
+  if (angle && isValidEmailFormat(angle[1])) {
+    return angle[1].trim().toLowerCase();
+  }
+  if (isValidEmailFormat(value)) return value.toLowerCase();
+  return '';
+}
+
+/**
+ * Super admin login for seed — prefers explicit overrides, then SMTP mailbox creds.
+ * @returns {{ email: string, password: string, emailSource: string, passwordSource: string }}
+ */
+function resolveSuperAdminCredentials() {
+  let email = '';
+  let emailSource = '';
+
+  if (process.env.SUPER_ADMIN_EMAIL?.trim()) {
+    email = process.env.SUPER_ADMIN_EMAIL.trim().toLowerCase();
+    emailSource = 'SUPER_ADMIN_EMAIL';
+  } else if (getSmtpUser()) {
+    email = getSmtpUser().toLowerCase();
+    emailSource = 'SMTP_USER';
+  } else {
+    const fromEmail = parseEmailFromSmtpFrom(process.env.SMTP_FROM);
+    if (fromEmail) {
+      email = fromEmail;
+      emailSource = 'SMTP_FROM';
+    } else {
+      email = SUPER_ADMIN_EMAIL;
+      emailSource = 'default';
+    }
+  }
+
+  let password = '';
+  let passwordSource = '';
+
+  if (process.env.SUPER_ADMIN_PASSWORD?.trim()) {
+    password = process.env.SUPER_ADMIN_PASSWORD.trim();
+    passwordSource = 'SUPER_ADMIN_PASSWORD';
+  } else if (process.env.SEED_SUPER_ADMIN_PASSWORD?.trim()) {
+    password = process.env.SEED_SUPER_ADMIN_PASSWORD.trim();
+    passwordSource = 'SEED_SUPER_ADMIN_PASSWORD';
+  } else if (getSmtpPassword()) {
+    password = getSmtpPassword();
+    passwordSource = 'SMTP_PASS';
+  }
+
+  return { email, password, emailSource, passwordSource };
+}
+
+/** @deprecated use resolveSuperAdminCredentials */
 function resolveSuperAdminEmailFromEnv() {
-  const fromEnv = (
-    process.env.SUPER_ADMIN_EMAIL
-    || process.env.SMTP_USER
-    || process.env.EMAIL_USER
-    || SUPER_ADMIN_EMAIL
-  );
-  return String(fromEnv || '').trim().toLowerCase();
+  return resolveSuperAdminCredentials().email;
 }
 
 function bundledEmailPresets() {
@@ -100,6 +150,8 @@ module.exports = {
   rosterEmpId,
   mapRosterLeaves,
   buildRosterUserFields,
+  parseEmailFromSmtpFrom,
+  resolveSuperAdminCredentials,
   resolveSuperAdminEmailFromEnv,
   bundledEmailPresets,
 };

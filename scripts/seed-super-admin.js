@@ -1,16 +1,16 @@
 /**
- * Upsert the designated super-admin account (default admin@acwaops.com).
- * Does not delete or modify other users.
+ * Upsert the designated super-admin account.
+ * Uses SMTP_USER + SMTP_PASS by default (same mailbox as outbound email).
  *
- *   SUPER_ADMIN_PASSWORD='…' npm run seed:super-admin
+ *   npm run seed:super-admin
  *   node scripts/seed-super-admin.js
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const AdminUser = require('../models/AdminUser');
-const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 const { getMongoUri } = require('../config/database');
+const { resolveSuperAdminCredentials } = require('./lib/atlasSeedHelpers');
 
 async function main() {
   const uri = getMongoUri();
@@ -19,19 +19,20 @@ async function main() {
     process.exit(1);
   }
 
-  const password =
-    process.env.SUPER_ADMIN_PASSWORD ||
-    process.env.SEED_SUPER_ADMIN_PASSWORD;
+  const { email, password, emailSource, passwordSource } = resolveSuperAdminCredentials();
   if (!password) {
-    console.error(
-      'Set SUPER_ADMIN_PASSWORD (or SEED_SUPER_ADMIN_PASSWORD) before running seed:super-admin'
-    );
+    console.error('Set SMTP_PASS (or SUPER_ADMIN_PASSWORD override) before running seed:super-admin');
+    process.exit(1);
+  }
+  if (!email) {
+    console.error('Set SMTP_USER (or SUPER_ADMIN_EMAIL override) before running seed:super-admin');
     process.exit(1);
   }
 
+  console.log(`Super admin email from ${emailSource}, password from ${passwordSource}`);
+
   await mongoose.connect(uri, { retryWrites: false });
   const passwordHash = await bcrypt.hash(password, 10);
-  const email = SUPER_ADMIN_EMAIL;
 
   let user = await AdminUser.findOne({ email });
   if (user) {

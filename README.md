@@ -60,12 +60,12 @@ npm run seed           # legacy destructive seed (clears users/config/KPI)
 npm run seed:ptw       # PTW personnel into AdminConfig
 ```
 
-**Super administrator:** set `SUPER_ADMIN_PASSWORD` then:
+**Super administrator:** uses SMTP mailbox credentials when seeding:
 
 ```bash
 npm run seed:mongodb
 # or upsert only:
-SUPER_ADMIN_PASSWORD='your-password' npm run seed:super-admin
+npm run seed:super-admin
 ```
 
 See [docs/MIGRATION_RENDER.md](docs/MIGRATION_RENDER.md) for full Render + Atlas setup.

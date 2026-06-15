@@ -42,6 +42,18 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
       console.warn('[quiz] startup auto-seed skipped:', quizErr.message);
     }
 
+    try {
+      const AdminUser = require('./models/AdminUser');
+      const adminCount = await AdminUser.countDocuments({ accessRole: 'admin', isActive: { $ne: false } });
+      if (adminCount === 0) {
+        console.log(
+          '[seed] No admin users in database — run once: npm run seed:mongodb (super admin uses SMTP_USER + SMTP_PASS)'
+        );
+      }
+    } catch (seedHintErr) {
+      console.warn('[seed] admin check skipped:', seedHintErr.message);
+    }
+
     startShiftReportReminderScheduler();
     startDailyDigestCron();
     startLeaveAccrualCron();
