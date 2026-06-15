@@ -1,0 +1,53 @@
+# Render blueprint — QIBB-backend (MongoDB Atlas + GitHub deploy)
+# Dashboard: https://dashboard.render.com
+# Connect repo: QIPP-Ops/QIBB-backend (branch: main)
+
+services:
+  - type: web
+    name: qibb-backend
+    runtime: node
+    region: frankfurt
+    plan: free
+    repo: https://github.com/QIPP-Ops/QIBB-backend
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: MONGODB_DB_NAME
+        value: QIPP
+      # --- Set in Render dashboard (sync: false = secret) ---
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://qipp.live
+      - key: CORS_ORIGINS
+        value: https://qipp-ops.github.io
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # Deferred — trend blob sync from Azure (optional later)
+      - key: PLANT_INGEST_ON_STARTUP
+        value: "0"
+      - key: TRENDS_BLOBS_DIR
+        value: data/trends-blobs

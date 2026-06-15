@@ -52,26 +52,25 @@ npm run migrate:auth
 
 API contract with frontend: [docs/AUTH_CONTRACT.md](docs/AUTH_CONTRACT.md)
 
-## Seeding
+## Seeding (MongoDB Atlas / Render)
 
 ```bash
-npm run seed       # roster + KPI sample data + admin user
-npm run seed:ptw   # PTW personnel into AdminConfig
+npm run seed:mongodb   # idempotent — roster, admin config, super admin, PTW (recommended for Atlas)
+npm run seed           # legacy destructive seed (clears users/config/KPI)
+npm run seed:ptw       # PTW personnel into AdminConfig
 ```
 
-**Super administrator (`admin@acwaops.com`):** upsert without wiping other users:
+**Super administrator:** set `SUPER_ADMIN_PASSWORD` then:
 
 ```bash
+npm run seed:mongodb
+# or upsert only:
 SUPER_ADMIN_PASSWORD='your-password' npm run seed:super-admin
 ```
 
-Or set `SUPER_ADMIN_PASSWORD` in Azure App Settings and run the same command in Kudu. Optional override: `SUPER_ADMIN_EMAIL`. Reset password only: `npm run set-password -- admin@acwaops.com "NewPassword"`.
+See [docs/MIGRATION_RENDER.md](docs/MIGRATION_RENDER.md) for full Render + Atlas setup.
 
-**PTW authorization list:** Regenerate from Excel with `node scripts/parse-ptw-excel.js "<path-to-xlsx>"` (writes `data/ptw-authorization-2026.json`). `npm run seed:ptw` **replaces** `AdminConfig.ptwPersonnel` entirely from that file — it does not merge with existing DB names.
-
-**Production (Azure):** The API **auto-seeds** `ptwPersonnel` from `data/ptw-authorization-2026.json` on startup when the list is empty or has fewer than 63 entries. Super admins can also call `POST /api/admin/seed-ptw` with `{ "force": true }` to replace the list without SSH. Manual fallback: `npm run seed:ptw` in Kudu or against production `COSMOS_URI`.
-
-### Plant trends pipeline (single path)
+**Warning:** `npm run seed` (legacy) clears existing `AdminUser`, `AdminConfig`, and `PlantPerformance` data.
 
 ```mermaid
 flowchart LR

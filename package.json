@@ -7,6 +7,7 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
+    "seed:mongodb": "node scripts/seed-mongodb.js",
     "seed:super-admin": "node scripts/seed-super-admin.js",
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",

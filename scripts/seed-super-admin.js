@@ -10,9 +10,10 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const AdminUser = require('../models/AdminUser');
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
+const { getMongoUri } = require('../config/database');
 
 async function main() {
-  const uri = process.env.COSMOS_URI || process.env.MONGODB_URI;
+  const uri = getMongoUri();
   if (!uri) {
     console.error('Set COSMOS_URI or MONGODB_URI');
     process.exit(1);

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const PlantPerformance = require('./models/PlantPerformance');
 const AdminUser        = require('./models/AdminUser');
 const AdminConfig      = require('./models/AdminConfig');
+const { getMongoUri }  = require('./config/database');
 
 const rosterData = require('./data/roster.json');
 /** @deprecated Trends UI uses data/plant-trends-cache.json (blob ingest). This file seeds PlantPerformance KPI rows only. */
@@ -12,7 +13,7 @@ const plantData = require('./data/plant_data.json');
 
 async function seed() {
   try {
-    await mongoose.connect(process.env.COSMOS_URI, { retryWrites: false });
+    await mongoose.connect(getMongoUri(), { retryWrites: false });
     console.log('🌱 Connected to CosmosDB for seeding...');
 
     // 1. Clear existing data

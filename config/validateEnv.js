@@ -22,7 +22,7 @@ function validateEnv() {
   }
   if (!process.env.FRONTEND_URL?.trim()) {
     console.warn(
-      'Warning: FRONTEND_URL is not set — password reset links will use https://qippop.azurewebsites.net'
+      'Warning: FRONTEND_URL is not set — password reset links will use https://qipp.live'
     );
   }
 }

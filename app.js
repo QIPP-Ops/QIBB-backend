@@ -26,15 +26,9 @@ const kpiGoalsRoutes = require('./routes/kpiGoalsRoutes');
 
 const app = express();
 
-const { getAllowedFrontendOrigins } = require('./config/frontendUrl');
+const { getAllowedCorsOrigins } = require('./config/corsOrigins');
 
-const ALLOWED_ORIGINS = [
-  'https://qippop.azurewebsites.net',
-  'https://qipp.live',
-  'https://www.qipp.live',
-  'http://localhost:3000',
-  ...getAllowedFrontendOrigins(),
-];
+const ALLOWED_ORIGINS = getAllowedCorsOrigins();
 
 app.use(helmet());
 app.use(cors({

@@ -1,4 +1,4 @@
-const DEFAULT_FRONTEND_URL = 'https://qippop.azurewebsites.net';
+const DEFAULT_FRONTEND_URL = 'https://qipp.live';
 
 /** Ensure https:// and no trailing slash (e.g. qipp.live → https://qipp.live) */
 function normalizeFrontendUrl(raw) {
