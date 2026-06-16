@@ -117,11 +117,15 @@ Look for:
 
 | Field | Meaning |
 |-------|---------|
+| `databaseName` | MongoDB database Render is using (should be `QIPP`) |
 | `adminUsersTotal` | All users in MongoDB |
 | `rosterVisible` | Employees shown in UI (excludes super-admin service account) |
 
-- **`rosterVisible: 0`** — migration not run, or seed not run, or wrong database.
+- **`rosterVisible: 0`** with `adminUsersTotal: 1` — migration likely wrote to wrong DB (`test` instead of `QIPP`). Re-run migration after the URI fix, or use **Seed MongoDB Atlas**.
+- **`rosterVisible: 0`** with `adminUsersTotal: 0` — empty database; run migration or seed.
 - **`rosterVisible: 50+`** — roster should appear on acwaops.com/qipp after hard refresh.
+
+**Common pitfall:** Atlas connection strings like `...@host.net/?appName=QIPP` have no database in the path. Render appends `/QIPP` via `MONGODB_DB_NAME`; the migrate script now does the same. Older migrate runs without this fix copied data into MongoDB's default `test` database while Render reads `QIPP`.
 
 ## Option E — Seed roster from GitHub Actions (fallback)
 

@@ -15,6 +15,7 @@
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
+const { resolveMongoUri, normalizeDbName } = require('../config/database');
 
 function parseArgs(argv) {
   const flags = { dryRun: false, dropTarget: false, collections: null };
@@ -33,20 +34,32 @@ function parseArgs(argv) {
 }
 
 function getUri(kind) {
+  let raw = '';
+  let dbName = normalizeDbName(process.env.MONGODB_DB_NAME || 'QIPP');
+
   if (kind === 'source') {
-    return (
+    raw = (
       process.env.SOURCE_MONGODB_URI ||
       process.env.AZURE_MONGODB_URI ||
       process.env.AZURE_COSMOS_URI ||
       process.env.COSMOS_URI ||
       ''
     ).trim();
+    dbName = normalizeDbName(
+      process.env.SOURCE_MONGODB_DB_NAME || process.env.MONGODB_DB_NAME || 'QIPP'
+    );
+  } else {
+    raw = (
+      process.env.TARGET_MONGODB_URI ||
+      process.env.MONGODB_URI ||
+      ''
+    ).trim();
+    dbName = normalizeDbName(
+      process.env.TARGET_MONGODB_DB_NAME || process.env.MONGODB_DB_NAME || 'QIPP'
+    );
   }
-  return (
-    process.env.TARGET_MONGODB_URI ||
-    process.env.MONGODB_URI ||
-    ''
-  ).trim();
+
+  return resolveMongoUri(raw, dbName);
 }
 
 async function connect(uri, label) {
@@ -101,6 +114,29 @@ async function main() {
   const opts = parseArgs(process.argv.slice(2));
   const sourceUri = getUri('source');
   const targetUri = getUri('target');
+
+  const rawTarget = (
+    process.env.TARGET_MONGODB_URI || process.env.MONGODB_URI || ''
+  ).trim();
+  const targetDbName = normalizeDbName(
+    process.env.TARGET_MONGODB_DB_NAME || process.env.MONGODB_DB_NAME || 'QIPP'
+  );
+  if (rawTarget && targetUri !== rawTarget) {
+    console.log(`ℹ️  Target URI normalized to database "${targetDbName}" (Render uses the same via MONGODB_DB_NAME)`);
+  }
+
+  const rawSource = (
+    process.env.SOURCE_MONGODB_URI ||
+    process.env.AZURE_MONGODB_URI ||
+    process.env.COSMOS_URI ||
+    ''
+  ).trim();
+  const sourceDbName = normalizeDbName(
+    process.env.SOURCE_MONGODB_DB_NAME || process.env.MONGODB_DB_NAME || 'QIPP'
+  );
+  if (rawSource && sourceUri !== rawSource) {
+    console.log(`ℹ️  Source URI normalized to database "${sourceDbName}"`);
+  }
 
   if (!sourceUri) {
     console.error('Set SOURCE_MONGODB_URI (or AZURE_MONGODB_URI / COSMOS_URI) to the old Azure Cosmos connection string.');

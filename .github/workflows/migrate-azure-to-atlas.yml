@@ -74,6 +74,7 @@ jobs:
           AZURE_MONGODB_URI: ${{ secrets.AZURE_MONGODB_URI }}
           TARGET_MONGODB_URI: ${{ secrets.TARGET_MONGODB_URI }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
         run: node scripts/migrate-azure-mongo-to-atlas.js --dry-run
 
       - name: Migrate Azure Cosmos → Atlas
@@ -83,6 +84,7 @@ jobs:
           AZURE_MONGODB_URI: ${{ secrets.AZURE_MONGODB_URI }}
           TARGET_MONGODB_URI: ${{ secrets.TARGET_MONGODB_URI }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
         run: |
           ARGS=""
           if [ "${{ inputs.drop_target }}" = "true" ]; then

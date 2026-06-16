@@ -105,6 +105,7 @@ app.get('/ready', async (_req, res) => {
   const payload = {
     status: 'ready',
     db: 'connected',
+    databaseName: mongoose.connection.db?.databaseName || null,
     timestamp: new Date().toISOString(),
   };
 

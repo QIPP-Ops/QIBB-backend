@@ -70,3 +70,28 @@ describe('getMongoUri', () => {
     );
   });
 });
+
+describe('resolveMongoUri', () => {
+  test('normalizes Atlas URI without db path (migration bug fix)', () => {
+    const { resolveMongoUri } = require('../config/database');
+    const raw = 'mongodb+srv://user:pass@qipp.6ukofbn.mongodb.net/?appName=QIPP';
+    expect(resolveMongoUri(raw, 'QIPP')).toBe(
+      'mongodb+srv://user:pass@qipp.6ukofbn.mongodb.net/QIPP?appName=QIPP'
+    );
+  });
+
+  test('getDatabaseNameFromUri returns path segment when present', () => {
+    const { getDatabaseNameFromUri } = require('../config/database');
+    expect(
+      getDatabaseNameFromUri('mongodb+srv://u:p@host.net/QIPP?appName=QIPP')
+    ).toBe('QIPP');
+  });
+
+  test('getDatabaseNameFromUri falls back to MONGODB_DB_NAME', () => {
+    process.env.MONGODB_DB_NAME = 'QIPP';
+    const { getDatabaseNameFromUri } = require('../config/database');
+    expect(
+      getDatabaseNameFromUri('mongodb+srv://u:p@host.net/?appName=QIPP')
+    ).toBe('QIPP');
+  });
+});

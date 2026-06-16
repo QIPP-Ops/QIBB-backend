@@ -20,9 +20,18 @@ function existingDbSegment(baseWithoutQuery) {
 
 function getMongoUri() {
   const raw = (process.env.COSMOS_URI || process.env.MONGODB_URI || '').trim();
+  return resolveMongoUri(raw, process.env.MONGODB_DB_NAME || 'QIPP');
+}
+
+/**
+ * Normalize any Mongo URI to include the database path when missing (e.g. host/?query → host/QIPP?query).
+ * Used by migrate scripts and getMongoUri().
+ */
+function resolveMongoUri(rawUri, dbNameOverride) {
+  const raw = String(rawUri || '').trim();
   if (!raw) return '';
 
-  const dbName = normalizeDbName(process.env.MONGODB_DB_NAME || 'QIPP');
+  const dbName = normalizeDbName(dbNameOverride || process.env.MONGODB_DB_NAME || 'QIPP');
   if (!dbName) return raw;
 
   const encodedDb = encodeURIComponent(dbName);
@@ -40,4 +49,20 @@ function getMongoUri() {
   return `${base}/${encodedDb}${query}`;
 }
 
-module.exports = { getMongoUri, normalizeDbName, existingDbSegment };
+function getDatabaseNameFromUri(rawUri) {
+  const raw = String(rawUri || '').trim();
+  if (!raw) return '';
+  const qIdx = raw.indexOf('?');
+  const base = qIdx >= 0 ? raw.slice(0, qIdx) : raw;
+  const segment = existingDbSegment(base);
+  if (segment) return segment.split('/')[0];
+  return normalizeDbName(process.env.MONGODB_DB_NAME || 'QIPP');
+}
+
+module.exports = {
+  getMongoUri,
+  resolveMongoUri,
+  normalizeDbName,
+  existingDbSegment,
+  getDatabaseNameFromUri,
+};
