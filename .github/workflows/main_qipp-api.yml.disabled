@@ -1,3 +1,8 @@
+# DISABLED — Azure subscription decommissioned (ReadOnlyDisabledSubscription).
+# Production backend: Render (https://qibb-backend.onrender.com).
+# Active workflows: migrate-azure-to-atlas.yml, seed-mongodb-atlas.yml.
+# To restore: rename to .yml and re-enable Azure subscription + secrets.
+#
 # Deploy QIBB-backend to Azure App Service (qipp-api).
 #
 # If qipp-api is Stopped in Azure Portal: click Start there OR re-run this workflow.

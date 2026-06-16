@@ -1,3 +1,6 @@
+# DISABLED — Backend API runs on Render, not GitHub Pages.
+# Frontend Pages deploy: QIBB-frontend/.github/workflows/github-pages.yml
+#
 # QIBB-backend is a Node API deployed to Azure (main_qipp-api.yml).
 # This workflow replaces the default Jekyll Pages build (which fails on node_modules / API creds).
 
