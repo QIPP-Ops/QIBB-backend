@@ -35,11 +35,15 @@ Keep until trend blob migration is done:
 Connection string (set in Render dashboard only — **never commit**):
 
 ```env
-MONGODB_URI=mongodb+srv://<user>:<password>@qipp.6ukofbn.mongodb.net/
+# Preferred — database in URI (no trailing slash before ?)
+MONGODB_URI=mongodb+srv://<user>:<password>@qipp.6ukofbn.mongodb.net/QIPP?retryWrites=true&w=majority
+
+# Also OK — host + separate db name (backend appends /QIPP)
+MONGODB_URI=mongodb+srv://<user>:<password>@qipp.6ukofbn.mongodb.net
 MONGODB_DB_NAME=QIPP
 ```
 
-The backend appends `/QIPP` automatically when the URI has no database path.
+**Avoid** Atlas strings that end with `/?appName=...` only — the backend now fixes these automatically, but the cleanest form is `/QIPP?` not `/?`.
 
 ## 2. Render backend
 
