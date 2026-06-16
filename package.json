@@ -8,6 +8,7 @@
     "start": "node index.js",
     "seed": "node seed.js",
     "seed:mongodb": "node scripts/seed-mongodb.js",
+    "migrate:azure-to-atlas": "node scripts/migrate-azure-mongo-to-atlas.js",
     "seed:super-admin": "node scripts/seed-super-admin.js",
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",

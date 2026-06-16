@@ -107,6 +107,12 @@ Destructive reset (wipes users/config/KPI first):
 SEED_FORCE_RESET=1 npm run seed:mongodb
 ```
 
+### Restore from Azure Cosmos (full production data)
+
+If the old Azure MongoDB/Cosmos database still exists, copy all collections to Atlas:
+
+See **[docs/MIGRATE_AZURE_MONGO_TO_ATLAS.md](./MIGRATE_AZURE_MONGO_TO_ATLAS.md)** — `npm run migrate:azure-to-atlas` with `SOURCE_MONGODB_URI` (Azure) and `TARGET_MONGODB_URI` (Atlas).
+
 Optional KPI sample data:
 
 ```bash
