@@ -22,7 +22,7 @@ function validateEnv() {
   }
   if (!process.env.FRONTEND_URL?.trim()) {
     console.warn(
-      'Warning: FRONTEND_URL is not set — password reset links will use https://qipp.live'
+      'Warning: FRONTEND_URL is not set — password reset links will use https://acwaops.com/qipp'
     );
   }
 }

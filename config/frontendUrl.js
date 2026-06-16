@@ -1,4 +1,4 @@
-const DEFAULT_FRONTEND_URL = 'https://qipp.live';
+const DEFAULT_FRONTEND_URL = 'https://acwaops.com/qipp';
 
 /** Ensure https:// and no trailing slash (e.g. qipp.live → https://qipp.live) */
 function normalizeFrontendUrl(raw) {

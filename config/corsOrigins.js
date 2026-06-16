@@ -2,6 +2,8 @@ const { getAllowedFrontendOrigins } = require('./frontendUrl');
 
 /** Static origins always allowed (legacy Azure + production custom domain). */
 const BASE_CORS_ORIGINS = [
+  'https://acwaops.com',
+  'https://www.acwaops.com',
   'https://qipp.live',
   'https://www.qipp.live',
   'https://qippop.azurewebsites.net',

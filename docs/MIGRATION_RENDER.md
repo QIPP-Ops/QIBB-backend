@@ -4,7 +4,7 @@ This guide replaces **Azure App Service** (`qipp-api`, `qippop`) with:
 
 | Component | New host | URL |
 |-----------|----------|-----|
-| **Frontend** | GitHub Pages | `https://qipp.live` |
+| **Frontend** | GitHub Pages | `https://acwaops.com/qipp` |
 | **Backend API** | Render (Frankfurt) | `https://qibb-backend.onrender.com` |
 | **Database** | MongoDB Atlas | Database `QIPP` |
 | **SMTP** | GoDaddy / existing mailbox | Configured on Render |
@@ -60,8 +60,8 @@ MONGODB_DB_NAME=QIPP
 | `MONGODB_URI` | Yes | Atlas connection string (secret) |
 | `MONGODB_DB_NAME` | Yes | `QIPP` |
 | `JWT_SECRET` | Yes | 48+ char random hex (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
-| `FRONTEND_URL` | Yes | `https://qipp.live` |
-| `CORS_ORIGINS` | Recommended | `https://qipp-ops.github.io` (add GitHub Pages URL if no custom domain yet) |
+| `FRONTEND_URL` | Yes | `https://acwaops.com/qipp` (password-reset links; CORS origin is `https://acwaops.com`) |
+| `CORS_ORIGINS` | Recommended | `https://qipp-ops.github.io` (preview); `acwaops.com` is in default allowlist |
 | `SMTP_HOST` | Yes | e.g. `smtpout.secureserver.net` |
 | `SMTP_PORT` | Yes | `587` |
 | `SMTP_SECURE` | Yes | `false` |
@@ -143,7 +143,7 @@ npx serve out
 ## 4. Super admin login
 
 1. Run `npm run seed:mongodb` with `MONGODB_URI` and SMTP vars set (`SMTP_USER` + `SMTP_PASS`).
-2. Open `https://qipp.live/login` (or GitHub Pages URL).
+2. Open `https://acwaops.com/qipp/login` (or GitHub Pages URL).
 3. Sign in with **SMTP_USER** and **SMTP_PASS** (your mailbox credentials).
 4. Change password in-app if you prefer a different login than the mailbox password.
 
