@@ -1,0 +1,91 @@
+# Manual one-off migration: Azure Cosmos DB (Mongo API) → MongoDB Atlas.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SOURCE_MONGODB_URI  — old Azure Cosmos connection string
+#   TARGET_MONGODB_URI  — Atlas connection string
+#
+# Accepted aliases (set instead if you prefer):
+#   AZURE_MONGODB_URI   — source (Azure)
+#   MONGODB_URI         — target (Atlas)
+#
+# Do not commit connection strings. This workflow never prints secret values.
+
+name: Migrate Azure to Atlas
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run only (list collection counts, no writes)"
+        type: boolean
+        default: true
+      drop_target:
+        description: "Drop each Atlas collection before copy (use on full restore)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate-azure-to-atlas
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate secrets are configured
+        env:
+          SOURCE_MONGODB_URI: ${{ secrets.SOURCE_MONGODB_URI }}
+          AZURE_MONGODB_URI: ${{ secrets.AZURE_MONGODB_URI }}
+          TARGET_MONGODB_URI: ${{ secrets.TARGET_MONGODB_URI }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          SOURCE="${SOURCE_MONGODB_URI:-$AZURE_MONGODB_URI}"
+          TARGET="${TARGET_MONGODB_URI:-$MONGODB_URI}"
+          if [ -z "$SOURCE" ]; then
+            echo "::error::Missing secret SOURCE_MONGODB_URI or AZURE_MONGODB_URI"
+            exit 1
+          fi
+          if [ -z "$TARGET" ]; then
+            echo "::error::Missing secret TARGET_MONGODB_URI or MONGODB_URI"
+            exit 1
+          fi
+          echo "Secrets present (values not logged)."
+
+      - name: Dry run — collection counts on Azure
+        if: inputs.dry_run
+        env:
+          SOURCE_MONGODB_URI: ${{ secrets.SOURCE_MONGODB_URI }}
+          AZURE_MONGODB_URI: ${{ secrets.AZURE_MONGODB_URI }}
+          TARGET_MONGODB_URI: ${{ secrets.TARGET_MONGODB_URI }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: node scripts/migrate-azure-mongo-to-atlas.js --dry-run
+
+      - name: Migrate Azure Cosmos → Atlas
+        if: ${{ !inputs.dry_run }}
+        env:
+          SOURCE_MONGODB_URI: ${{ secrets.SOURCE_MONGODB_URI }}
+          AZURE_MONGODB_URI: ${{ secrets.AZURE_MONGODB_URI }}
+          TARGET_MONGODB_URI: ${{ secrets.TARGET_MONGODB_URI }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.drop_target }}" = "true" ]; then
+            ARGS="--drop-target"
+          fi
+          node scripts/migrate-azure-mongo-to-atlas.js $ARGS

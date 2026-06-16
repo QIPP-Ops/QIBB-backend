@@ -63,8 +63,47 @@ mongorestore --uri="$TARGET_MONGODB_URI" --drop ./azure-dump/QIPP
 
 1. **Do not delete** Cosmos or `qipp-api` until Atlas is verified.
 2. Export connection string from Azure.
-3. Run Option A or B.
+3. Run Option A, B, or D.
 4. Verify `GET /api/roster` (with auth) returns employees on Render.
+
+## Option D — GitHub Actions (no Render Shell)
+
+Use this when you have connection strings but no shell access on Render.
+
+### 1. Add repository secrets
+
+In **GitHub** → **QIPP-Ops/QIBB-backend** → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+
+| Secret name | Value |
+|-------------|--------|
+| `SOURCE_MONGODB_URI` | Old Azure Cosmos / `qipp-api` `MONGODB_URI` or `COSMOS_URI` |
+| `TARGET_MONGODB_URI` | MongoDB Atlas URI (same as Render `MONGODB_URI`) |
+
+Aliases also accepted by the workflow: `AZURE_MONGODB_URI` (source), `MONGODB_URI` (target).
+
+**Never** commit these strings or paste them in workflow logs.
+
+### 2. Run the workflow (dry run first)
+
+1. **Actions** → **Migrate Azure to Atlas** → **Run workflow**
+2. Branch: `main`
+3. **dry_run:** `true` (default) — lists each collection and document count on Azure; **no writes**
+4. Review the job log for expected collections (`adminusers`, `adminconfigs`, `ptws`, `quizzes`, …)
+
+### 3. Run the full migration
+
+1. **Actions** → **Migrate Azure to Atlas** → **Run workflow** again
+2. **dry_run:** `false`
+3. **drop_target:** `true` (recommended for a clean Atlas restore; drops each target collection before copy)
+4. Wait for the job to finish (may take several minutes for large databases)
+
+### 4. After the workflow succeeds
+
+1. Restart the Render backend (Dashboard → **Manual Deploy** → **Clear build cache & deploy**, or change env and save).
+2. Hard-refresh `https://acwaops.com/qipp` and sign in.
+3. Verify personnel, leave, PTW, and training pages show data.
+
+Workflow file: `.github/workflows/migrate-azure-to-atlas.yml` (manual `workflow_dispatch` only — never runs on push).
 
 ## If Azure is already deleted
 
