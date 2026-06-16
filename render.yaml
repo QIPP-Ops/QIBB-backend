@@ -27,7 +27,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://qipp.live
+        value: https://acwaops.com/qipp
       - key: CORS_ORIGINS
         value: https://qipp-ops.github.io
       - key: SMTP_HOST

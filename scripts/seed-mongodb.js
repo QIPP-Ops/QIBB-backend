@@ -7,7 +7,7 @@
  * Optional overrides: SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD
  *
  * Optional:
- *   SEED_DEFAULT_USER_PASSWORD  — temp password for roster accounts (omit to skip roster logins)
+ *   SEED_DEFAULT_USER_PASSWORD  — shared temp password for roster logins (omit = roster rows still created, logins disabled)
  *   SEED_KPI_DATA=1             — insert plant KPI rows when collection is empty
  *   SEED_FORCE_RESET=1          — wipe AdminUser, AdminConfig, PlantPerformance first (destructive)
  */
@@ -95,12 +95,19 @@ async function ensureAdminConfig() {
 }
 
 async function seedRosterUsers(defaultPassword) {
+  const passwordSource = defaultPassword ? 'SEED_DEFAULT_USER_PASSWORD' : 'random (login disabled until reset)';
+  const passwordHash = defaultPassword
+    ? await bcrypt.hash(defaultPassword, 10)
+    : await bcrypt.hash(require('crypto').randomBytes(32).toString('hex'), 10);
+
   if (!defaultPassword) {
-    log('⏭️  Skipping roster user passwords — set SEED_DEFAULT_USER_PASSWORD to create logins');
-    return { created: 0, updated: 0, skipped: rosterData.length };
+    log(
+      'ℹ️  Roster accounts created without SEED_DEFAULT_USER_PASSWORD — use Admin → reset password or set env and re-seed'
+    );
+  } else {
+    log(`👥 Roster login password from ${passwordSource}`);
   }
 
-  const passwordHash = await bcrypt.hash(defaultPassword, 10);
   const emailIndex = buildPersonnelEmailIndex(personnelEmails);
   let created = 0;
   let updated = 0;

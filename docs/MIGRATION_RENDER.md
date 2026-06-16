@@ -89,7 +89,7 @@ export MONGODB_DB_NAME=QIPP
 export SMTP_HOST=smtpout.secureserver.net
 export SMTP_USER='admin@acwaops.com'
 export SMTP_PASS='your-mailbox-password'
-# Optional: temp password for roster accounts
+# Optional: shared temp password so roster accounts can sign in
 export SEED_DEFAULT_USER_PASSWORD='change-after-first-login'
 
 npm run seed:mongodb
@@ -97,7 +97,9 @@ npm run seed:mongodb
 
 Super admin login is created from **SMTP_USER + SMTP_PASS** (same mailbox used for outbound email). Optional overrides: `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`.
 
-**Idempotent** — safe to re-run. It upserts roster users, merges email presets, seeds PTW list if empty, and creates/updates super admin.
+**Roster data:** `npm run seed:mongodb` always upserts ~52 personnel rows from `data/roster.json` into MongoDB. Without `SEED_DEFAULT_USER_PASSWORD`, those accounts exist for org chart / leave but cannot sign in until an admin resets their password. Set the env var above if you want roster logins immediately.
+
+**Do not** put `npm run seed:mongodb` in the Render **start command** unless you accept a seed on every cold start — prefer **Render Shell** once, or a one-off job.
 
 Destructive reset (wipes users/config/KPI first):
 
