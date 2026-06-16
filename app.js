@@ -115,6 +115,10 @@ app.get('/ready', async (_req, res) => {
     const users = await AdminUser.find().select('email').lean();
     payload.adminUsersTotal = users.length;
     payload.rosterVisible = filterProtectedAccounts(users).length;
+    if (payload.rosterVisible === 0) {
+      payload.rosterHint =
+        'QIPP.adminusers has no roster employees (only super admin). Run GitHub Action "Seed MongoDB Atlas" with MONGODB_URI + SMTP_USER + SMTP_PASS. Azure migration only works when dry-run shows source adminusers >= 50.';
+    }
   } catch {
     payload.adminUsersTotal = null;
     payload.rosterVisible = null;

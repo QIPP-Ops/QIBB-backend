@@ -121,34 +121,40 @@ Look for:
 | `adminUsersTotal` | All users in MongoDB |
 | `rosterVisible` | Employees shown in UI (excludes super-admin service account) |
 
-- **`rosterVisible: 0`** with `adminUsersTotal: 1` — migration likely wrote to wrong DB (`test` instead of `QIPP`). Re-run migration after the URI fix, or use **Seed MongoDB Atlas**.
+- **`rosterVisible: 0`** with `adminUsersTotal: 1` — only super admin in `QIPP.adminusers`. **Fix now:** run **Seed MongoDB Atlas** (see Option E below). Azure migration cannot help if source `adminusers` is empty.
 - **`rosterVisible: 0`** with `adminUsersTotal: 0` — empty database; run migration or seed.
 - **`rosterVisible: 50+`** — roster should appear on acwaops.com/qipp after hard refresh.
 
-**Common pitfall:** Atlas connection strings like `...@host.net/?appName=QIPP` have no database in the path. Render appends `/QIPP` via `MONGODB_DB_NAME`; the migrate script now does the same. Older migrate runs without this fix copied data into MongoDB's default `test` database while Render reads `QIPP`.
+If `rosterHint` is present in `/ready`, follow that message.
 
-## Option E — Seed roster from GitHub Actions (fallback)
+**Common pitfall:** Atlas connection strings like `...@host.net/?appName=QIPP` have no database in the path. Render appends `/QIPP` via `MONGODB_DB_NAME`; the migrate script does the same. Older migrate runs without this fix copied data into MongoDB's default `test` database while Render reads `QIPP`.
 
-Use when Azure is gone or migration is not possible. Loads ~52 employees from `data/roster.json` into Atlas.
+### Azure subscription disabled
 
-### Secrets (Actions)
+If Azure shows `ReadOnlyDisabledSubscription`, App Service deploys fail — that is expected. Cosmos may still be **readable** for migration, but if `SOURCE_MONGODB_URI` points at the wrong account/database, dry-run will show `Source adminusers: 0` or `1` and the workflow **fails** (need ≥ 10). When source is empty or unreachable, use **Seed MongoDB Atlas** — it loads ~52 employees from `data/roster.json` and does not need Azure.
 
-| Secret | Required |
-|--------|----------|
-| `MONGODB_URI` | Yes — same Atlas URI as Render |
-| `SMTP_USER` | Yes — super admin email |
-| `SMTP_PASS` | Yes — super admin password |
-| `SEED_DEFAULT_USER_PASSWORD` | Optional — temp password for roster logins |
-| `MONGODB_DB_NAME` | Optional — `QIPP` if not in URI |
+## Option E — Seed roster from GitHub Actions (fallback — use when employees missing)
 
-### Run
+Use when Azure is gone, subscription disabled, or migration dry-run shows `Source adminusers < 10`. Loads ~52 employees from `data/roster.json` into Atlas **immediately** — no Azure required.
+
+### Secrets (Actions → QIBB-backend → Settings → Secrets)
+
+| Secret | Required | Notes |
+|--------|----------|-------|
+| `MONGODB_URI` | **Yes** | Same Atlas URI as Render (`MONGODB_URI` env var) |
+| `SMTP_USER` | **Yes** | Super admin email (e.g. `admin@acwaops.com`) |
+| `SMTP_PASS` | **Yes** | Super admin mailbox password |
+| `SEED_DEFAULT_USER_PASSWORD` | Optional | Temp password for all roster logins |
+| `MONGODB_DB_NAME` | Optional | Set `QIPP` if URI has no `/QIPP` path |
+
+### Run now
 
 1. **Actions** → **Seed MongoDB Atlas** → **Run workflow**
-2. Branch `main`
-3. Optional: enable **seed_leave_data** for SAP leave balances
-4. Leave **force_reset** off unless you intend to wipe users first
-5. After success, check `/ready` → `rosterVisible` should be ~50+
-6. Hard-refresh https://acwaops.com/qipp
+2. Branch: `main`
+3. Leave **force_reset** off (upserts roster; does not wipe existing super admin)
+4. Wait for job log: `rosterVisible (excludes super admin): 50+`
+5. Check `https://qibb-backend.onrender.com/ready` → `rosterVisible` ≥ 50
+6. Hard-refresh `https://acwaops.com/qipp` → Personnel page
 
 Workflow: `.github/workflows/seed-mongodb-atlas.yml`
 

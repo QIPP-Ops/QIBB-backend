@@ -71,6 +71,45 @@ async function connect(uri, label) {
   return conn;
 }
 
+const KEY_COLLECTIONS = ['adminusers', 'adminconfigs', 'ptws', 'quizzes', 'quizassignments'];
+const MIN_SOURCE_ADMINUSERS = 10;
+const MIN_TARGET_ADMINUSERS = 10;
+
+async function countAdminUsers(db) {
+  try {
+    return await db.collection('adminusers').countDocuments();
+  } catch {
+    return 0;
+  }
+}
+
+function failRosterCheck(label, count, min) {
+  const msg =
+    `${label} adminusers=${count} (need >= ${min}). ` +
+    'Wrong URI/database, Azure Cosmos empty or subscription disabled, or migration copied nothing. ' +
+    'Run GitHub Action "Seed MongoDB Atlas" instead (see docs/MIGRATE_AZURE_MONGO_TO_ATLAS.md Option E).';
+  console.error(`::error::${msg}`);
+  process.exit(1);
+}
+
+async function validateSourceRoster(sourceDb) {
+  const adminCount = await countAdminUsers(sourceDb);
+  console.log(`\nSource adminusers: ${adminCount}`);
+  if (adminCount < MIN_SOURCE_ADMINUSERS) {
+    failRosterCheck('Source', adminCount, MIN_SOURCE_ADMINUSERS);
+  }
+  return adminCount;
+}
+
+async function validateTargetRoster(targetDb, label = 'Target') {
+  const adminCount = await countAdminUsers(targetDb);
+  console.log(`${label} adminusers: ${adminCount}`);
+  if (adminCount < MIN_TARGET_ADMINUSERS) {
+    failRosterCheck(label, adminCount, MIN_TARGET_ADMINUSERS);
+  }
+  return adminCount;
+}
+
 async function copyCollection(sourceDb, targetDb, name, opts) {
   const src = sourceDb.collection(name);
   const count = await src.countDocuments();
@@ -155,8 +194,6 @@ async function main() {
   const sourceConn = await connect(sourceUri, 'source');
   const targetConn = await connect(targetUri, 'target');
 
-  const KEY_COLLECTIONS = ['adminusers', 'adminconfigs', 'ptws', 'quizzes', 'quizassignments'];
-
   try {
     const sourceDb = sourceConn.db;
     const targetDb = targetConn.db;
@@ -168,6 +205,8 @@ async function main() {
     console.log(`Source DB: ${sourceDb.databaseName}`);
     console.log(`Target DB: ${targetDb.databaseName}`);
     console.log(`Collections on source: ${collections.length}`);
+
+    await validateSourceRoster(sourceDb);
 
     if (opts.dryRun) {
       console.log('\n--- Source collection counts ---');
@@ -204,6 +243,7 @@ async function main() {
 
     const copied = results.reduce((n, r) => n + (r.copied || 0), 0);
     console.log(`\n✅ Migration complete — ${copied} documents copied`);
+    await validateTargetRoster(targetDb, 'Target after migration');
   } finally {
     await sourceConn.close();
     await targetConn.close();

@@ -98,10 +98,23 @@ jobs:
           require('dotenv').config();
           const mongoose = require('mongoose');
           const { getMongoUri } = require('./config/database');
+          const { filterProtectedAccounts } = require('./utils/protectedAccounts');
+          const AdminUser = require('./models/AdminUser');
           (async () => {
-            await mongoose.connect(getMongoUri(), { retryWrites: false });
-            const n = await mongoose.connection.db.collection('adminusers').countDocuments();
-            console.log('adminusers count after seed:', n);
+            const uri = getMongoUri();
+            await mongoose.connect(uri, { retryWrites: false });
+            const dbName = mongoose.connection.db.databaseName;
+            const users = await AdminUser.find().select('email').lean();
+            const total = users.length;
+            const rosterVisible = filterProtectedAccounts(users).length;
+            console.log('database:', dbName);
+            console.log('adminusers total:', total);
+            console.log('rosterVisible (excludes super admin):', rosterVisible);
             await mongoose.disconnect();
+            if (rosterVisible < 10) {
+              console.error('::error::Seed finished but rosterVisible=' + rosterVisible + ' — check MONGODB_URI matches Render and MONGODB_DB_NAME=QIPP');
+              process.exit(1);
+            }
+            console.log('✅ Roster seed OK — hard-refresh https://acwaops.com/qipp after Render picks up data');
           })().catch((e) => { console.error(e.message); process.exit(1); });
           "
