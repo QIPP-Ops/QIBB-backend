@@ -95,12 +95,31 @@ app.get('/health/email', async (req, res) => {
   res.json(payload);
 });
 
-app.get('/ready', (_req, res) => {
-  const dbReady = require('mongoose').connection.readyState === 1;
+app.get('/ready', async (_req, res) => {
+  const mongoose = require('mongoose');
+  const dbReady = mongoose.connection.readyState === 1;
   if (!dbReady) {
     return res.status(503).json({ status: 'not_ready', db: 'disconnected' });
   }
-  res.json({ status: 'ready', db: 'connected', timestamp: new Date().toISOString() });
+
+  const payload = {
+    status: 'ready',
+    db: 'connected',
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const AdminUser = require('./models/AdminUser');
+    const { filterProtectedAccounts } = require('./utils/protectedAccounts');
+    const users = await AdminUser.find().select('email').lean();
+    payload.adminUsersTotal = users.length;
+    payload.rosterVisible = filterProtectedAccounts(users).length;
+  } catch {
+    payload.adminUsersTotal = null;
+    payload.rosterVisible = null;
+  }
+
+  res.json(payload);
 });
 
 app.use('/api/auth', authLimiter, authRoutes);

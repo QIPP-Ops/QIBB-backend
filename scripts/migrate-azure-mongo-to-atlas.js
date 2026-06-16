@@ -117,30 +117,60 @@ async function main() {
 
   console.log(opts.dryRun ? '🔍 Dry run — no writes' : '📦 Copying Azure Mongo → Atlas');
   const sourceConn = await connect(sourceUri, 'source');
-  const targetConn = opts.dryRun ? null : await connect(targetUri, 'target');
+  const targetConn = await connect(targetUri, 'target');
+
+  const KEY_COLLECTIONS = ['adminusers', 'adminconfigs', 'ptws', 'quizzes', 'quizassignments'];
 
   try {
     const sourceDb = sourceConn.db;
+    const targetDb = targetConn.db;
     const collections = (
       opts.collections ||
       (await sourceDb.listCollections().toArray()).map((c) => c.name)
     ).filter((n) => !n.startsWith('system.'));
 
-    console.log(`Database: ${sourceDb.databaseName} → ${targetConn?.db?.databaseName || '(target)'}`);
-    console.log(`Collections: ${collections.length}`);
+    console.log(`Source DB: ${sourceDb.databaseName}`);
+    console.log(`Target DB: ${targetDb.databaseName}`);
+    console.log(`Collections on source: ${collections.length}`);
+
+    if (opts.dryRun) {
+      console.log('\n--- Source collection counts ---');
+      for (const name of collections) {
+        await copyCollection(sourceDb, targetDb, name, opts);
+      }
+      console.log('\n--- Target key collection counts ---');
+      for (const name of KEY_COLLECTIONS) {
+        try {
+          const n = await targetDb.collection(name).countDocuments();
+          console.log(`  ${name}: ${n}`);
+        } catch {
+          console.log(`  ${name}: (missing)`);
+        }
+      }
+      console.log('\n✅ Dry run complete');
+      return;
+    }
 
     const results = [];
     for (const name of collections) {
-      results.push(
-        await copyCollection(sourceDb, targetConn?.db || sourceDb, name, opts)
-      );
+      results.push(await copyCollection(sourceDb, targetDb, name, opts));
+    }
+
+    console.log('\n--- Target after migration ---');
+    for (const name of KEY_COLLECTIONS) {
+      try {
+        const n = await targetDb.collection(name).countDocuments();
+        console.log(`  ${name}: ${n}`);
+      } catch {
+        console.log(`  ${name}: (missing)`);
+      }
     }
 
     const copied = results.reduce((n, r) => n + (r.copied || 0), 0);
-    console.log(opts.dryRun ? '✅ Dry run complete' : `✅ Migration complete — ${copied} documents copied`);
+    console.log(`\n✅ Migration complete — ${copied} documents copied`);
   } finally {
     await sourceConn.close();
-    if (targetConn) await targetConn.close();
+    await targetConn.close();
   }
 }
 

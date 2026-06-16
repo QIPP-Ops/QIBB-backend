@@ -105,6 +105,49 @@ Aliases also accepted by the workflow: `AZURE_MONGODB_URI` (source), `MONGODB_UR
 
 Workflow file: `.github/workflows/migrate-azure-to-atlas.yml` (manual `workflow_dispatch` only — never runs on push).
 
+### 5. Check whether data exists (no shell)
+
+After deploy, open:
+
+```text
+https://qibb-backend.onrender.com/ready
+```
+
+Look for:
+
+| Field | Meaning |
+|-------|---------|
+| `adminUsersTotal` | All users in MongoDB |
+| `rosterVisible` | Employees shown in UI (excludes super-admin service account) |
+
+- **`rosterVisible: 0`** — migration not run, or seed not run, or wrong database.
+- **`rosterVisible: 50+`** — roster should appear on acwaops.com/qipp after hard refresh.
+
+## Option E — Seed roster from GitHub Actions (fallback)
+
+Use when Azure is gone or migration is not possible. Loads ~52 employees from `data/roster.json` into Atlas.
+
+### Secrets (Actions)
+
+| Secret | Required |
+|--------|----------|
+| `MONGODB_URI` | Yes — same Atlas URI as Render |
+| `SMTP_USER` | Yes — super admin email |
+| `SMTP_PASS` | Yes — super admin password |
+| `SEED_DEFAULT_USER_PASSWORD` | Optional — temp password for roster logins |
+| `MONGODB_DB_NAME` | Optional — `QIPP` if not in URI |
+
+### Run
+
+1. **Actions** → **Seed MongoDB Atlas** → **Run workflow**
+2. Branch `main`
+3. Optional: enable **seed_leave_data** for SAP leave balances
+4. Leave **force_reset** off unless you intend to wipe users first
+5. After success, check `/ready` → `rosterVisible` should be ~50+
+6. Hard-refresh https://acwaops.com/qipp
+
+Workflow: `.github/workflows/seed-mongodb-atlas.yml`
+
 ## If Azure is already deleted
 
 You cannot recover production Mongo data. Use bundled seeds:

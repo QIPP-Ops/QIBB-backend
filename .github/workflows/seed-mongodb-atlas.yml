@@ -1,0 +1,107 @@
+# Manual seed for MongoDB Atlas (roster, super admin, PTW auth list) — no Render Shell required.
+#
+# Required repository secrets:
+#   MONGODB_URI          — Atlas connection string (same as Render)
+#   SMTP_USER            — mailbox user (super admin email)
+#   SMTP_PASS            — mailbox password (super admin password)
+#
+# Optional secrets:
+#   SEED_DEFAULT_USER_PASSWORD — shared temp password for ~52 roster logins
+#   MONGODB_DB_NAME            — default QIPP (if not in URI path)
+#
+# Do not commit secrets. Logs never print passwords.
+
+name: Seed MongoDB Atlas
+
+on:
+  workflow_dispatch:
+    inputs:
+      seed_leave_data:
+        description: "Also run seed:qipp-leave-data (balances + SAP planned leave)"
+        type: boolean
+        default: false
+      seed_kpi:
+        description: "Insert plant KPI rows from plant_data.json when empty"
+        type: boolean
+        default: false
+      force_reset:
+        description: "DESTRUCTIVE — wipe AdminUser, AdminConfig, PlantPerformance first"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: seed-mongodb-atlas
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate secrets
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          if [ -z "$MONGODB_URI" ]; then
+            echo "::error::Missing secret MONGODB_URI"
+            exit 1
+          fi
+          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
+            echo "::error::Missing secrets SMTP_USER and SMTP_PASS (super admin credentials)"
+            exit 1
+          fi
+          echo "Secrets present (values not logged)."
+
+      - name: Seed roster and super admin
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SEED_DEFAULT_USER_PASSWORD: ${{ secrets.SEED_DEFAULT_USER_PASSWORD }}
+        run: |
+          if [ "${{ inputs.seed_kpi }}" = "true" ]; then export SEED_KPI_DATA=1; fi
+          if [ "${{ inputs.force_reset }}" = "true" ]; then export SEED_FORCE_RESET=1; fi
+          npm run seed:mongodb
+
+      - name: Seed leave balances and SAP leave (optional)
+        if: inputs.seed_leave_data
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+          SEED_EMPLOYEE_PASSWORD: ${{ secrets.SEED_DEFAULT_USER_PASSWORD }}
+        run: npm run seed:qipp-leave-data
+
+      - name: Print roster count summary
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+        run: |
+          node -e "
+          require('dotenv').config();
+          const mongoose = require('mongoose');
+          const { getMongoUri } = require('./config/database');
+          (async () => {
+            await mongoose.connect(getMongoUri(), { retryWrites: false });
+            const n = await mongoose.connection.db.collection('adminusers').countDocuments();
+            console.log('adminusers count after seed:', n);
+            await mongoose.disconnect();
+          })().catch((e) => { console.error(e.message); process.exit(1); });
+          "
