@@ -55,10 +55,15 @@ const authLimiter = rateLimit({
 
 const { isEmailConfigured, getSmtpUser, getSmtpPassword } = require('./config/smtp');
 const {
+  verifyEmailConnection,
   verifySmtpConnection,
+  verifyResendConnection,
   smtpFailureHint,
   isLikelyRenderSmtpBlock,
   getSmtpTransportOptions,
+  getEmailProvider,
+  getFromAddress,
+  isResendConfigured,
 } = require('./services/emailService');
 const { getFrontendBaseUrl } = require('./config/frontendUrl');
 const { getMongoUri } = require('./config/database');
@@ -68,9 +73,13 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/health/email', async (req, res) => {
-  const transport = isEmailConfigured() ? getSmtpTransportOptions() : null;
+  const transport = isResendConfigured() ? null : (isEmailConfigured() ? getSmtpTransportOptions() : null);
   const payload = {
-    smtpConfigured: isEmailConfigured(),
+    emailConfigured: isEmailConfigured(),
+    emailProvider: getEmailProvider(),
+    fromAddress: getFromAddress() || null,
+    resendConfigured: isResendConfigured(),
+    smtpConfigured: Boolean(transport),
     smtpHost: transport?.host || process.env.SMTP_HOST || null,
     smtpPort: transport?.port || parseInt(process.env.SMTP_PORT, 10) || 587,
     smtpSecure: transport?.secure ?? (process.env.SMTP_SECURE === 'true'),
@@ -82,24 +91,27 @@ app.get('/health/email', async (req, res) => {
     onRender: process.env.RENDER === 'true',
   };
 
-  if (process.env.RENDER === 'true') {
+  if (process.env.RENDER === 'true' && !isResendConfigured()) {
     payload.renderSmtpNote =
-      'Render free tier blocks outbound SMTP ports 25/465/587. Upgrade to a paid instance or use SendGrid/Resend/Mailgun API.';
+      'Render free tier blocks outbound SMTP ports 25/465/587. Set RESEND_API_KEY or upgrade to a paid instance.';
   }
 
   if (req.query.verify === '1' && isEmailConfigured()) {
     try {
-      await verifySmtpConnection();
-      payload.smtpVerify = 'ok';
+      const result = await verifyEmailConnection();
+      payload.emailVerify = 'ok';
+      payload.emailProvider = result.provider || getEmailProvider();
     } catch (err) {
+      payload.emailVerify = 'failed';
+      payload.emailVerifyError = err.message;
       payload.smtpVerify = 'failed';
       payload.smtpVerifyError = err.message;
-      payload.smtpHint = smtpFailureHint(err);
-      payload.likelyRenderSmtpBlock = isLikelyRenderSmtpBlock(err);
+      payload.smtpHint = isResendConfigured() ? err.message : smtpFailureHint(err);
+      payload.likelyRenderSmtpBlock = !isResendConfigured() && isLikelyRenderSmtpBlock(err);
     }
   }
 
-  const status = payload.smtpVerify === 'failed' ? 503 : 200;
+  const status = payload.emailVerify === 'failed' ? 503 : 200;
   res.status(status).json(payload);
 });
 

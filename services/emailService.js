@@ -1,8 +1,14 @@
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { getSmtpUser, getSmtpPassword, isEmailConfigured } = require('../config/smtp');
+const {
+  getResendApiKey,
+  isResendConfigured,
+  getEmailProvider,
+  getFromAddress,
+} = require('../config/emailProvider');
 const { ACWA_EMAIL_LOGO_SVG, BRAND_MOTTO_HTML } = require('./emailBrandAssets');
-
 const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10) || 60000;
 const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS, 10) || 60000;
 const SMTP_GREETING_TIMEOUT_MS = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS, 10) || 60000;
@@ -84,33 +90,71 @@ function smtpFailureHint(err) {
   return msg;
 }
 
-function getFromAddress() {
-  const name = process.env.SMTP_FROM_NAME || 'ACWA Ops System';
-  return `"${name}" <${getSmtpUser()}>`;
-}
-
-function getDefaultMailExtras() {
-  const replyTo = (process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || '').trim();
-  const cc = (process.env.SMTP_DEFAULT_CC || process.env.EMAIL_DEFAULT_CC || '').trim();
-  return {
-    ...(replyTo ? { replyTo } : {}),
-    ...(cc ? { cc } : {}),
-  };
-}
-
-async function verifySmtpConnection() {
-  if (!isEmailConfigured()) {
-    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS required).');
+function normalizeAddressList(value) {
+  if (!value) return undefined;
+  if (Array.isArray(value)) {
+    const list = value.map((v) => String(v).trim()).filter(Boolean);
+    return list.length ? list : undefined;
   }
-
-  const transporter = createTransporter();
-  await transporter.verify();
-  return { ok: true };
+  const list = String(value)
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return list.length ? list : undefined;
 }
 
-async function sendMail(options) {
-  if (!isEmailConfigured()) {
-    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS or EMAIL_PASS required).');
+function toResendAttachments(attachments) {
+  if (!attachments?.length) return undefined;
+  return attachments.map((file) => ({
+    filename: file.filename,
+    content: Buffer.isBuffer(file.content)
+      ? file.content
+      : Buffer.from(file.content || ''),
+    contentType: file.contentType,
+  }));
+}
+
+async function verifyResendConnection() {
+  if (!isResendConfigured()) {
+    throw new Error('Resend is not configured (RESEND_API_KEY required).');
+  }
+  const resend = new Resend(getResendApiKey());
+  const { error } = await resend.domains.list();
+  if (error) throw new Error(error.message || 'Resend API verification failed');
+  return { ok: true, provider: 'resend' };
+}
+
+async function sendViaResend(options) {
+  const resend = new Resend(getResendApiKey());
+  const defaults = getDefaultMailExtras();
+  const to = normalizeAddressList(options.to);
+  if (!to?.length) throw new Error('Resend send requires at least one recipient.');
+
+  const payload = {
+    from: getFromAddress(),
+    to,
+    subject: options.subject,
+    html: options.html,
+    ...(options.text ? { text: options.text } : {}),
+    ...(normalizeAddressList(options.cc) ? { cc: normalizeAddressList(options.cc) } : {}),
+    ...(normalizeAddressList(options.bcc) ? { bcc: normalizeAddressList(options.bcc) } : {}),
+    ...(options.replyTo || defaults.replyTo
+      ? { reply_to: options.replyTo || defaults.replyTo }
+      : {}),
+    ...(toResendAttachments(options.attachments)
+      ? { attachments: toResendAttachments(options.attachments) }
+      : {}),
+  };
+
+  const { error } = await resend.emails.send(payload);
+  if (error) {
+    throw new Error(error.message || 'Resend send failed');
+  }
+}
+
+async function sendViaSmtp(options) {
+  if (!process.env.SMTP_HOST?.trim() || !getSmtpUser() || !getSmtpPassword()) {
+    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS required).');
   }
 
   const defaults = getDefaultMailExtras();
@@ -136,6 +180,48 @@ async function sendMail(options) {
   }
 
   throw new Error(smtpFailureHint(lastErr));
+}
+
+function getDefaultMailExtras() {
+  const replyTo = (process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || '').trim();
+  const cc = (process.env.SMTP_DEFAULT_CC || process.env.EMAIL_DEFAULT_CC || '').trim();
+  return {
+    ...(replyTo ? { replyTo } : {}),
+    ...(cc ? { cc } : {}),
+  };
+}
+
+async function verifySmtpConnection() {
+  if (!process.env.SMTP_HOST?.trim() || !getSmtpUser() || !getSmtpPassword()) {
+    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS required).');
+  }
+
+  const transporter = createTransporter();
+  await transporter.verify();
+  return { ok: true, provider: 'smtp' };
+}
+
+async function verifyEmailConnection() {
+  if (!isEmailConfigured()) {
+    throw new Error('Email is not configured (set RESEND_API_KEY or SMTP_* variables).');
+  }
+  if (isResendConfigured()) return verifyResendConnection();
+  return verifySmtpConnection();
+}
+
+async function sendMail(options) {
+  if (!isEmailConfigured()) {
+    throw new Error(
+      'Email is not configured. Set RESEND_API_KEY on Render free tier, or SMTP_HOST + SMTP_USER + SMTP_PASS on paid SMTP.'
+    );
+  }
+
+  if (isResendConfigured()) {
+    await sendViaResend(options);
+    return;
+  }
+
+  await sendViaSmtp(options);
 }
 
 function emailTemplate(title, bodyHtml) {
@@ -229,9 +315,14 @@ exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
 
 exports.isEmailConfigured = isEmailConfigured;
 exports.getFrontendBaseUrl = getFrontendBaseUrl;
+exports.getEmailProvider = getEmailProvider;
+exports.getFromAddress = getFromAddress;
 exports.sendMail = sendMail;
 exports.emailTemplate = emailTemplate;
 exports.verifySmtpConnection = verifySmtpConnection;
+exports.verifyResendConnection = verifyResendConnection;
+exports.verifyEmailConnection = verifyEmailConnection;
 exports.smtpFailureHint = smtpFailureHint;
 exports.isLikelyRenderSmtpBlock = isLikelyRenderSmtpBlock;
 exports.getSmtpTransportOptions = getSmtpTransportOptions;
+exports.isResendConfigured = isResendConfigured;

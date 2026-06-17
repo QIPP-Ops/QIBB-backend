@@ -6,7 +6,7 @@ function getSmtpPassword() {
   return (process.env.SMTP_PASS || process.env.EMAIL_PASS || '').trim();
 }
 
-function isEmailConfigured() {
+function isSmtpConfigured() {
   return Boolean(
     process.env.SMTP_HOST?.trim()
     && getSmtpUser()
@@ -14,8 +14,18 @@ function isEmailConfigured() {
   );
 }
 
+function isResendConfigured() {
+  return Boolean((process.env.RESEND_API_KEY || '').trim());
+}
+
+function isEmailConfigured() {
+  return isResendConfigured() || isSmtpConfigured();
+}
+
 module.exports = {
   getSmtpUser,
   getSmtpPassword,
+  isSmtpConfigured,
+  isResendConfigured,
   isEmailConfigured,
 };

@@ -62,26 +62,40 @@ MONGODB_DB_NAME=QIPP
 | `JWT_SECRET` | Yes | 48+ char random hex (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
 | `FRONTEND_URL` | Yes | `https://acwaops.com/qipp` (password-reset links; CORS origin is `https://acwaops.com`) |
 | `CORS_ORIGINS` | Recommended | `https://qipp-ops.github.io` (preview); `acwaops.com` is in default allowlist |
-| `SMTP_HOST` | Yes | GoDaddy: `smtpout.secureserver.net` |
-| `SMTP_PORT` | Yes | `465` (recommended) or `587` |
-| `SMTP_SECURE` | Yes | `true` for port 465; `false` for port 587 STARTTLS |
-| `SMTP_USER` | Yes | Mailbox user — **also used as super-admin login email** when seeding |
-| `SMTP_PASS` | Yes | Mailbox password (secret) — **also used as super-admin password** when seeding |
-| `SMTP_FROM` | Recommended | `QIPP Operations <admin@acwaops.com>` (fallback email if `SMTP_USER` unset) |
+| `RESEND_API_KEY` | Yes (free tier) | Resend API key — HTTPS email on Render free |
+| `RESEND_FROM` | Yes (free tier) | `QIPP Operations <onboarding@resend.dev>` for testing; `QIPP Operations <admin@acwaops.com>` after domain verify |
+| `SMTP_USER` | Yes (seed) | Mailbox user — **also used as super-admin login email** when seeding |
+| `SMTP_PASS` | Yes (seed) | Mailbox password (secret) — **also used as super-admin password** when seeding |
+| `SMTP_HOST` | Paid Render only | GoDaddy: `smtpout.secureserver.net` (blocked on free tier) |
+| `SMTP_PORT` | Paid Render only | `465` (recommended) or `587` |
+| `SMTP_SECURE` | Paid Render only | `true` for port 465; `false` for port 587 STARTTLS |
+| `SMTP_FROM` | Optional | `QIPP Operations <admin@acwaops.com>` (fallback if `RESEND_FROM` unset) |
 | `PLANT_INGEST_ON_STARTUP` | Optional | `0` (disable Azure blob ingest until migrated) |
 | `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled stubs until blob sync) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Deferred | For `npm run sync:trends-blobs` later |
 
-### SMTP on Render (GoDaddy + free tier limitation)
+### Email on Render (Resend recommended on free tier)
 
 **Connection timeout on email broadcast?** Render **free** web services block outbound SMTP to ports **25, 465, and 587** (policy since Sept 2025). Symptom: `Connection timeout` / 502 from `/api/admin/email-broadcast` even when recipients resolve correctly.
 
-**Fix options (pick one):**
+**Recommended fix — Resend (works on free tier):**
 
-1. **Upgrade Render** — Dashboard → `qibb-backend` → Settings → Instance Type → **Starter** ($7/mo) or higher. Paid instances can use SMTP on 465/587.
-2. **Switch to HTTP email API** — SendGrid, Resend, Mailgun, or Postmark (uses HTTPS port 443, works on free tier). Requires code change to use provider SDK instead of Nodemailer SMTP.
+1. Create an account at [resend.com](https://resend.com) and generate an API key.
+2. On Render → `qibb-backend` → Environment, add:
 
-**GoDaddy Workspace (`admin@acwaops.com`) — use after upgrading to paid Render:**
+```env
+RESEND_API_KEY=re_xxxxxxxx
+RESEND_FROM=QIPP Operations <onboarding@resend.dev>
+```
+
+3. Redeploy. Test: `GET https://qibb-backend.onrender.com/health/email?verify=1` — expect `emailProvider: "resend"`, `emailVerify: "ok"`.
+4. For production `@acwaops.com` sender: verify `acwaops.com` in Resend → Domains, add DNS records in GoDaddy, then set `RESEND_FROM=QIPP Operations <admin@acwaops.com>`.
+
+Keep `SMTP_USER` + `SMTP_PASS` for super-admin seeding (`SEED_IF_EMPTY`); outbound mail uses Resend when `RESEND_API_KEY` is set.
+
+**Alternative — upgrade Render** — Dashboard → `qibb-backend` → Settings → Instance Type → **Starter** ($7/mo) or higher. Paid instances can use SMTP on 465/587.
+
+**GoDaddy Workspace SMTP — use only after upgrading to paid Render:**
 
 ```env
 SMTP_HOST=smtpout.secureserver.net
@@ -99,15 +113,15 @@ SMTP_PORT=587
 SMTP_SECURE=false
 ```
 
-**Verify SMTP from browser or curl:**
+**Verify email from browser or curl:**
 
 ```text
 GET https://qibb-backend.onrender.com/health/email?verify=1
 ```
 
-- `smtpVerify: ok` — SMTP reachable from Render
-- `smtpVerify: failed` + `likelyRenderSmtpBlock: true` — upgrade Render or use email API
-- `smtpHint` — actionable message from backend
+- `emailVerify: ok` + `emailProvider: resend` — Resend API reachable
+- `emailVerify: failed` — check `RESEND_API_KEY` and `RESEND_FROM`
+- On SMTP (paid Render): `smtpVerify: failed` + `likelyRenderSmtpBlock: true` — upgrade Render or use Resend
 
 Optional tuning env vars: `SMTP_CONNECTION_TIMEOUT_MS=60000`, `SMTP_SEND_RETRIES=2`
 
