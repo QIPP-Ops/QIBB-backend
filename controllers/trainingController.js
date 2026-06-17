@@ -30,6 +30,7 @@ const {
   listCourseAssignments,
   unassignCourse,
 } = require('../services/courseAssignmentService');
+const { memberQuizStatus } = require('../utils/memberQuizStatus');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
 const seedPath = path.join(__dirname, '../data/completed-courses-seed.json');
@@ -63,7 +64,7 @@ function currentUserId(req) {
   return req.user?.userId || req.user?.id;
 }
 
-const { memberQuizStatus } = require('../utils/memberQuizStatus');
+function quizMetaFields(q) {
   return {
     id: q._id,
     title: q.title,
