@@ -122,7 +122,7 @@ describe('ptwExpiryReminderJob', () => {
     isPlaceholderEmail.mockImplementation((email) => email.includes('roster'));
 
     await deliverExpiryEmails({
-      member: { name: 'Ali', email: 'ali@roster.acwaops.local' },
+      member: { name: 'ZZZ NoMatch Person', email: 'ali@roster.acwaops.local' },
       crewAdmins: [{ name: 'Admin', email: 'real.admin@acwaops.com' }],
       memberName: 'Ali Ops',
       roleName: 'Permit Issuer',

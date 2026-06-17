@@ -8,6 +8,8 @@ services:
     runtime: node
     region: frankfurt
     plan: free
+    # SMTP ports 25/465/587 blocked on free tier — upgrade instance for GoDaddy SMTP
+    # or use SendGrid/Resend API. See docs/MIGRATION_RENDER.md § SMTP on Render.
     repo: https://github.com/QIPP-Ops/QIBB-backend
     branch: main
     buildCommand: npm ci

@@ -54,6 +54,12 @@ const authLimiter = rateLimit({
 });
 
 const { isEmailConfigured, getSmtpUser, getSmtpPassword } = require('./config/smtp');
+const {
+  verifySmtpConnection,
+  smtpFailureHint,
+  isLikelyRenderSmtpBlock,
+  getSmtpTransportOptions,
+} = require('./services/emailService');
 const { getFrontendBaseUrl } = require('./config/frontendUrl');
 const { getMongoUri } = require('./config/database');
 
@@ -62,37 +68,39 @@ app.get('/health', (_req, res) => {
 });
 
 app.get('/health/email', async (req, res) => {
+  const transport = isEmailConfigured() ? getSmtpTransportOptions() : null;
   const payload = {
     smtpConfigured: isEmailConfigured(),
-    smtpHost: process.env.SMTP_HOST || null,
-    smtpPort: parseInt(process.env.SMTP_PORT, 10) || 587,
+    smtpHost: transport?.host || process.env.SMTP_HOST || null,
+    smtpPort: transport?.port || parseInt(process.env.SMTP_PORT, 10) || 587,
+    smtpSecure: transport?.secure ?? (process.env.SMTP_SECURE === 'true'),
     smtpUser: getSmtpUser() || null,
     hasPassword: Boolean(getSmtpPassword()),
+    connectionTimeoutMs: transport?.connectionTimeout || null,
     mongoUriSet: Boolean(getMongoUri()),
     frontendUrl: getFrontendBaseUrl(),
+    onRender: process.env.RENDER === 'true',
   };
+
+  if (process.env.RENDER === 'true') {
+    payload.renderSmtpNote =
+      'Render free tier blocks outbound SMTP ports 25/465/587. Upgrade to a paid instance or use SendGrid/Resend/Mailgun API.';
+  }
+
   if (req.query.verify === '1' && isEmailConfigured()) {
     try {
-      const nodemailer = require('nodemailer');
-      const port = parseInt(process.env.SMTP_PORT, 10) || 587;
-      const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port,
-        secure,
-        requireTLS: !secure && port === 587,
-        auth: { user: getSmtpUser(), pass: getSmtpPassword() },
-        connectionTimeout: 15000,
-        tls: { minVersion: 'TLSv1.2' },
-      });
-      await transporter.verify();
+      await verifySmtpConnection();
       payload.smtpVerify = 'ok';
     } catch (err) {
       payload.smtpVerify = 'failed';
       payload.smtpVerifyError = err.message;
+      payload.smtpHint = smtpFailureHint(err);
+      payload.likelyRenderSmtpBlock = isLikelyRenderSmtpBlock(err);
     }
   }
-  res.json(payload);
+
+  const status = payload.smtpVerify === 'failed' ? 503 : 200;
+  res.status(status).json(payload);
 });
 
 app.get('/ready', async (_req, res) => {

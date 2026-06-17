@@ -3,10 +3,20 @@ const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { getSmtpUser, getSmtpPassword, isEmailConfigured } = require('../config/smtp');
 const { ACWA_EMAIL_LOGO_SVG, BRAND_MOTTO_HTML } = require('./emailBrandAssets');
 
-function createTransporter() {
+const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10) || 60000;
+const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS, 10) || 60000;
+const SMTP_GREETING_TIMEOUT_MS = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS, 10) || 60000;
+const SMTP_SEND_RETRIES = Math.max(1, parseInt(process.env.SMTP_SEND_RETRIES, 10) || 2);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getSmtpTransportOptions() {
   const port = parseInt(process.env.SMTP_PORT, 10) || 587;
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-  return nodemailer.createTransport({
+
+  return {
     host: process.env.SMTP_HOST,
     port,
     secure,
@@ -15,43 +25,119 @@ function createTransporter() {
       user: getSmtpUser(),
       pass: getSmtpPassword(),
     },
-    connectionTimeout: 20000,
-    greetingTimeout: 20000,
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
     tls: {
       rejectUnauthorized: process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true',
       minVersion: 'TLSv1.2',
     },
-  });
+  };
+}
+
+function createTransporter() {
+  return nodemailer.createTransport(getSmtpTransportOptions());
+}
+
+function isRetryableSmtpError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  const code = String(err?.code || '').toUpperCase();
+  return (
+    msg.includes('timeout') ||
+    msg.includes('timed out') ||
+    code === 'ETIMEDOUT' ||
+    code === 'ESOCKET' ||
+    code === 'ECONNECTION'
+  );
+}
+
+function isLikelyRenderSmtpBlock(err) {
+  if (process.env.RENDER !== 'true') return false;
+  const msg = String(err?.message || err || '').toLowerCase();
+  const code = String(err?.code || '').toUpperCase();
+  return (
+    msg.includes('timeout') ||
+    msg.includes('timed out') ||
+    code === 'ETIMEDOUT' ||
+    code === 'ECONNREFUSED' ||
+    code === 'ECONNECTION'
+  );
+}
+
+function smtpFailureHint(err) {
+  if (isLikelyRenderSmtpBlock(err)) {
+    return (
+      'SMTP connection blocked or timed out on Render. Free Render web services block outbound ports 25/465/587 — ' +
+      'upgrade to a paid instance or use an HTTP email API (SendGrid, Resend, Mailgun). ' +
+      'Verify: GET /health/email?verify=1'
+    );
+  }
+
+  const msg = String(err?.message || err || 'SMTP send failed');
+  if (msg.toLowerCase().includes('timeout')) {
+    return (
+      `${msg}. For GoDaddy Workspace email try SMTP_HOST=smtpout.secureserver.net ` +
+      'SMTP_PORT=465 SMTP_SECURE=true (or port 587 with SMTP_SECURE=false).'
+    );
+  }
+
+  return msg;
 }
 
 function getFromAddress() {
-  const name = process.env.SMTP_FROM_NAME || "ACWA Ops System";
+  const name = process.env.SMTP_FROM_NAME || 'ACWA Ops System';
   return `"${name}" <${getSmtpUser()}>`;
 }
 
 function getDefaultMailExtras() {
-  const replyTo = (process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || "").trim();
-  const cc = (process.env.SMTP_DEFAULT_CC || process.env.EMAIL_DEFAULT_CC || "").trim();
+  const replyTo = (process.env.SMTP_REPLY_TO || process.env.EMAIL_REPLY_TO || '').trim();
+  const cc = (process.env.SMTP_DEFAULT_CC || process.env.EMAIL_DEFAULT_CC || '').trim();
   return {
     ...(replyTo ? { replyTo } : {}),
     ...(cc ? { cc } : {}),
   };
 }
 
+async function verifySmtpConnection() {
+  if (!isEmailConfigured()) {
+    throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS required).');
+  }
+
+  const transporter = createTransporter();
+  await transporter.verify();
+  return { ok: true };
+}
+
 async function sendMail(options) {
   if (!isEmailConfigured()) {
     throw new Error('SMTP is not configured (SMTP_HOST, SMTP_USER, and SMTP_PASS or EMAIL_PASS required).');
   }
-  const transporter = createTransporter();
+
   const defaults = getDefaultMailExtras();
-  await transporter.sendMail({
-    from: getFromAddress(),
-    ...defaults,
-    ...options,
-  });
+  let lastErr;
+
+  for (let attempt = 1; attempt <= SMTP_SEND_RETRIES; attempt += 1) {
+    try {
+      const transporter = createTransporter();
+      await transporter.sendMail({
+        from: getFromAddress(),
+        ...defaults,
+        ...options,
+      });
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < SMTP_SEND_RETRIES && isRetryableSmtpError(err)) {
+        await sleep(2000 * attempt);
+        continue;
+      }
+      break;
+    }
+  }
+
+  throw new Error(smtpFailureHint(lastErr));
 }
 
-// ─── Shared HTML wrapper ─────────────────────────────────────────────────────
 function emailTemplate(title, bodyHtml) {
   return `
   <!DOCTYPE html>
@@ -94,7 +180,6 @@ function emailTemplate(title, bodyHtml) {
   </html>`;
 }
 
-// ─── OTP Email ───────────────────────────────────────────────────────────────
 exports.sendOtpEmail = async (email, name, otp) => {
   const html = emailTemplate('Verify Your Email', `
     <p>Hello <strong>${name}</strong>,</p>
@@ -104,13 +189,12 @@ exports.sendOtpEmail = async (email, name, otp) => {
   `);
 
   await sendMail({
-    to:      email,
+    to: email,
     subject: 'Your ACWA Ops Verification Code',
     html,
   });
 };
 
-// ─── Password Reset Email ────────────────────────────────────────────────────
 exports.sendResetEmail = async (email, name, resetUrl) => {
   const html = emailTemplate('Reset Your Password', `
     <p>Hello <strong>${name}</strong>,</p>
@@ -122,13 +206,12 @@ exports.sendResetEmail = async (email, name, resetUrl) => {
   `);
 
   await sendMail({
-    to:      email,
+    to: email,
     subject: 'ACWA Ops — Password Reset Request',
     html,
   });
 };
 
-// ─── Admin Temp Password Email ───────────────────────────────────────────────
 exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
   const html = emailTemplate('Your Password Has Been Reset', `
     <p>Hello <strong>${name}</strong>,</p>
@@ -138,7 +221,7 @@ exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
   `);
 
   await sendMail({
-    to:      email,
+    to: email,
     subject: 'ACWA Ops — Your Temporary Password',
     html,
   });
@@ -148,3 +231,7 @@ exports.isEmailConfigured = isEmailConfigured;
 exports.getFrontendBaseUrl = getFrontendBaseUrl;
 exports.sendMail = sendMail;
 exports.emailTemplate = emailTemplate;
+exports.verifySmtpConnection = verifySmtpConnection;
+exports.smtpFailureHint = smtpFailureHint;
+exports.isLikelyRenderSmtpBlock = isLikelyRenderSmtpBlock;
+exports.getSmtpTransportOptions = getSmtpTransportOptions;

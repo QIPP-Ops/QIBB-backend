@@ -62,15 +62,54 @@ MONGODB_DB_NAME=QIPP
 | `JWT_SECRET` | Yes | 48+ char random hex (`node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
 | `FRONTEND_URL` | Yes | `https://acwaops.com/qipp` (password-reset links; CORS origin is `https://acwaops.com`) |
 | `CORS_ORIGINS` | Recommended | `https://qipp-ops.github.io` (preview); `acwaops.com` is in default allowlist |
-| `SMTP_HOST` | Yes | e.g. `smtpout.secureserver.net` |
-| `SMTP_PORT` | Yes | `587` |
-| `SMTP_SECURE` | Yes | `false` |
+| `SMTP_HOST` | Yes | GoDaddy: `smtpout.secureserver.net` |
+| `SMTP_PORT` | Yes | `465` (recommended) or `587` |
+| `SMTP_SECURE` | Yes | `true` for port 465; `false` for port 587 STARTTLS |
 | `SMTP_USER` | Yes | Mailbox user — **also used as super-admin login email** when seeding |
 | `SMTP_PASS` | Yes | Mailbox password (secret) — **also used as super-admin password** when seeding |
 | `SMTP_FROM` | Recommended | `QIPP Operations <admin@acwaops.com>` (fallback email if `SMTP_USER` unset) |
 | `PLANT_INGEST_ON_STARTUP` | Optional | `0` (disable Azure blob ingest until migrated) |
 | `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled stubs until blob sync) |
 | `AZURE_STORAGE_CONNECTION_STRING` | Deferred | For `npm run sync:trends-blobs` later |
+
+### SMTP on Render (GoDaddy + free tier limitation)
+
+**Connection timeout on email broadcast?** Render **free** web services block outbound SMTP to ports **25, 465, and 587** (policy since Sept 2025). Symptom: `Connection timeout` / 502 from `/api/admin/email-broadcast` even when recipients resolve correctly.
+
+**Fix options (pick one):**
+
+1. **Upgrade Render** — Dashboard → `qibb-backend` → Settings → Instance Type → **Starter** ($7/mo) or higher. Paid instances can use SMTP on 465/587.
+2. **Switch to HTTP email API** — SendGrid, Resend, Mailgun, or Postmark (uses HTTPS port 443, works on free tier). Requires code change to use provider SDK instead of Nodemailer SMTP.
+
+**GoDaddy Workspace (`admin@acwaops.com`) — use after upgrading to paid Render:**
+
+```env
+SMTP_HOST=smtpout.secureserver.net
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=admin@acwaops.com
+SMTP_PASS=<mailbox-password>
+SMTP_FROM=QIPP Operations <admin@acwaops.com>
+```
+
+Alternative (STARTTLS):
+
+```env
+SMTP_PORT=587
+SMTP_SECURE=false
+```
+
+**Verify SMTP from browser or curl:**
+
+```text
+GET https://qibb-backend.onrender.com/health/email?verify=1
+```
+
+- `smtpVerify: ok` — SMTP reachable from Render
+- `smtpVerify: failed` + `likelyRenderSmtpBlock: true` — upgrade Render or use email API
+- `smtpHint` — actionable message from backend
+
+Optional tuning env vars: `SMTP_CONNECTION_TIMEOUT_MS=60000`, `SMTP_SEND_RETRIES=2`
 
 **Build command:** `npm ci`  
 **Start command:** `npm start`  
@@ -178,8 +217,8 @@ curl https://qibb-backend.onrender.com/health
 # DB readiness (200 when Mongo connected)
 curl https://qibb-backend.onrender.com/ready
 
-# SMTP config (no send)
-curl "https://qibb-backend.onrender.com/health/email"
+# SMTP config + live connection test (503 if verify fails)
+curl "https://qibb-backend.onrender.com/health/email?verify=1"
 
 # Login
 curl -X POST https://qibb-backend.onrender.com/api/auth/login \
