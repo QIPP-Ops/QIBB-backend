@@ -45,5 +45,7 @@ services:
       # Deferred — trend blob sync from Azure (optional later)
       - key: PLANT_INGEST_ON_STARTUP
         value: "0"
+      - key: SEED_IF_EMPTY
+        value: "1"
       - key: TRENDS_BLOBS_DIR
         value: data/trends-blobs

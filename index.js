@@ -50,8 +50,20 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
           '[seed] No admin users in database — run once: npm run seed:mongodb (super admin uses SMTP_USER + SMTP_PASS)'
         );
       }
+
+      if (process.env.SEED_IF_EMPTY === '1') {
+        const { filterProtectedAccounts } = require('./utils/protectedAccounts');
+        const users = await AdminUser.find().select('email').lean();
+        const rosterVisible = filterProtectedAccounts(users).length;
+        if (rosterVisible < 10) {
+          console.log(`[seed] SEED_IF_EMPTY — rosterVisible=${rosterVisible}, running atlas seed...`);
+          const { runAtlasSeed } = require('./scripts/seed-mongodb');
+          const result = await runAtlasSeed({ skipDisconnect: true });
+          console.log(`[seed] SEED_IF_EMPTY complete — rosterVisible=${result.rosterCheck?.rosterVisible}`);
+        }
+      }
     } catch (seedHintErr) {
-      console.warn('[seed] admin check skipped:', seedHintErr.message);
+      console.warn('[seed] startup seed check skipped:', seedHintErr.message);
     }
 
     startShiftReportReminderScheduler();

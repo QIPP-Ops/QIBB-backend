@@ -15,7 +15,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const { getMongoUri } = require('../config/database');
+const { getMongoUri, getDatabaseNameFromUri } = require('../config/database');
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 const PlantPerformance = require('../models/PlantPerformance');
@@ -111,13 +111,12 @@ async function seedRosterUsers(defaultPassword) {
   const emailIndex = buildPersonnelEmailIndex(personnelEmails);
   let created = 0;
   let updated = 0;
-  let skipped = 0;
+  let placeholderEmails = 0;
 
   for (const person of rosterData) {
     const email = resolvePersonEmail(person, emailIndex);
-    if (!email) {
-      skipped += 1;
-      continue;
+    if (/@roster\.acwaops\.local$/i.test(email)) {
+      placeholderEmails += 1;
     }
 
     const fields = buildRosterUserFields(person, email, passwordHash);
@@ -142,7 +141,7 @@ async function seedRosterUsers(defaultPassword) {
     }
   }
 
-  return { created, updated, skipped };
+  return { created, updated, placeholderEmails, total: rosterData.length };
 }
 
 async function seedSuperAdmin() {
@@ -217,14 +216,29 @@ async function seedKpiIfEmpty() {
   return { inserted: rows.length };
 }
 
+async function assertRosterSeeded() {
+  const { filterProtectedAccounts } = require('../utils/protectedAccounts');
+  const users = await AdminUser.find().select('email').lean();
+  const rosterVisible = filterProtectedAccounts(users).length;
+  const dbName = mongoose.connection.db?.databaseName || getDatabaseNameFromUri(getMongoUri());
+  if (rosterVisible < 10) {
+    throw new Error(
+      `Roster seed produced rosterVisible=${rosterVisible} in database "${dbName}". ` +
+      'Check MONGODB_URI and MONGODB_DB_NAME match Render (should be QIPP).'
+    );
+  }
+  return { rosterVisible, dbName, adminUsersTotal: users.length };
+}
+
 async function runAtlasSeed(options = {}) {
   const uri = getMongoUri();
   if (!uri) {
     throw new Error('Set MONGODB_URI or COSMOS_URI');
   }
 
+  const dbName = getDatabaseNameFromUri(uri);
   await mongoose.connect(uri, { retryWrites: false });
-  log('🌱 Connected to MongoDB');
+  log(`🌱 Connected to MongoDB database "${mongoose.connection.db?.databaseName || dbName}"`);
 
   if (process.env.SEED_FORCE_RESET === '1' || options.forceReset) {
     log('⚠️  SEED_FORCE_RESET — clearing AdminUser, AdminConfig, PlantPerformance');
@@ -241,7 +255,10 @@ async function runAtlasSeed(options = {}) {
   const roster = await seedRosterUsers(
     process.env.SEED_DEFAULT_USER_PASSWORD || options.defaultUserPassword || ''
   );
-  log(`👥 Roster: ${roster.created} created, ${roster.updated} updated, ${roster.skipped} skipped (no email)`);
+  log(
+    `👥 Roster: ${roster.created} created, ${roster.updated} updated, ` +
+    `${roster.placeholderEmails} placeholder emails, ${roster.total} total in roster.json`
+  );
 
   const superAdmin = await seedSuperAdmin();
   const ptw = await ensurePtwPersonnelSeeded();
@@ -253,8 +270,13 @@ async function runAtlasSeed(options = {}) {
 
   const kpi = await seedKpiIfEmpty();
 
-  await mongoose.disconnect();
-  return { roster, superAdmin, ptw, kpi };
+  const rosterCheck = await assertRosterSeeded();
+  log(`✅ rosterVisible=${rosterCheck.rosterVisible} in "${rosterCheck.dbName}"`);
+
+  if (!options.skipDisconnect) {
+    await mongoose.disconnect();
+  }
+  return { roster, superAdmin, ptw, kpi, rosterCheck };
 }
 
 async function main() {

@@ -7,6 +7,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { getMongoUri } = require('../config/database');
 const AdminUser = require('../models/AdminUser');
 const seedPayload = require('./qipp-seed-data.json');
 
@@ -49,7 +50,7 @@ async function nextEmpId(email, taken) {
 }
 
 async function main() {
-  const uri = process.env.COSMOS_URI || process.env.MONGODB_URI;
+  const uri = getMongoUri();
   if (!uri) {
     console.error('Set COSMOS_URI or MONGODB_URI');
     process.exit(1);
@@ -67,6 +68,7 @@ async function main() {
   };
 
   await mongoose.connect(uri, { retryWrites: false, serverSelectionTimeoutMS: 20000 });
+  console.log(`Connected to database "${mongoose.connection.db?.databaseName || 'unknown'}"`);
 
   const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 10);
   const allUsers = await AdminUser.find({}).select('empId email name leaves annualLeaveBalance bankLeaveBalance');

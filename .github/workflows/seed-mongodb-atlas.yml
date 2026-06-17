@@ -1,7 +1,7 @@
 # Manual seed for MongoDB Atlas (roster, super admin, PTW auth list) — no Render Shell required.
 #
 # Required repository secrets:
-#   MONGODB_URI          — Atlas connection string (same as Render)
+#   MONGODB_URI          — Atlas connection string (MUST match Render MONGODB_URI exactly)
 #   SMTP_USER            — mailbox user (super admin email)
 #   SMTP_PASS            — mailbox password (super admin password)
 #
@@ -19,7 +19,7 @@ on:
       seed_leave_data:
         description: "Also run seed:qipp-leave-data (balances + SAP planned leave)"
         type: boolean
-        default: false
+        default: true
       seed_kpi:
         description: "Insert plant KPI rows from plant_data.json when empty"
         type: boolean
@@ -40,6 +40,8 @@ jobs:
   seed:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      MONGODB_DB_NAME: QIPP
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,7 +62,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
         run: |
           if [ -z "$MONGODB_URI" ]; then
-            echo "::error::Missing secret MONGODB_URI"
+            echo "::error::Missing secret MONGODB_URI — must match Render dashboard MONGODB_URI"
             exit 1
           fi
           if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then
@@ -68,6 +70,22 @@ jobs:
             exit 1
           fi
           echo "Secrets present (values not logged)."
+
+      - name: Show target database (no credentials)
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+        run: |
+          if [ -n "$MONGODB_DB_NAME" ]; then export MONGODB_DB_NAME; else export MONGODB_DB_NAME=QIPP; fi
+          node -e "
+          const { getMongoUri, getDatabaseNameFromUri } = require('./config/database');
+          const raw = process.env.MONGODB_URI || '';
+          const resolved = getMongoUri();
+          const host = raw.replace(/mongodb(\+srv)?:\/\/([^@]+@)?/i, '').split('/')[0].split('?')[0];
+          console.log('Atlas host:', host);
+          console.log('Target database:', getDatabaseNameFromUri(raw) || process.env.MONGODB_DB_NAME || 'QIPP');
+          console.log('Resolved path includes DB:', /\/QIPP(\?|$)/i.test(resolved) ? 'yes' : 'check MONGODB_DB_NAME');
+          "
 
       - name: Seed roster and super admin
         env:
@@ -77,23 +95,27 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           SEED_DEFAULT_USER_PASSWORD: ${{ secrets.SEED_DEFAULT_USER_PASSWORD }}
         run: |
+          if [ -z "$MONGODB_DB_NAME" ]; then export MONGODB_DB_NAME=QIPP; fi
           if [ "${{ inputs.seed_kpi }}" = "true" ]; then export SEED_KPI_DATA=1; fi
           if [ "${{ inputs.force_reset }}" = "true" ]; then export SEED_FORCE_RESET=1; fi
           npm run seed:mongodb
 
-      - name: Seed leave balances and SAP leave (optional)
+      - name: Seed leave balances and SAP leave
         if: inputs.seed_leave_data
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
           SEED_EMPLOYEE_PASSWORD: ${{ secrets.SEED_DEFAULT_USER_PASSWORD }}
-        run: npm run seed:qipp-leave-data
+        run: |
+          if [ -z "$MONGODB_DB_NAME" ]; then export MONGODB_DB_NAME=QIPP; fi
+          npm run seed:qipp-leave-data
 
       - name: Print roster count summary
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
         run: |
+          if [ -z "$MONGODB_DB_NAME" ]; then export MONGODB_DB_NAME=QIPP; fi
           node -e "
           require('dotenv').config();
           const mongoose = require('mongoose');
@@ -112,9 +134,9 @@ jobs:
             console.log('rosterVisible (excludes super admin):', rosterVisible);
             await mongoose.disconnect();
             if (rosterVisible < 10) {
-              console.error('::error::Seed finished but rosterVisible=' + rosterVisible + ' — check MONGODB_URI matches Render and MONGODB_DB_NAME=QIPP');
+              console.error('::error::Seed finished but rosterVisible=' + rosterVisible + ' — GitHub MONGODB_URI secret must match Render MONGODB_URI exactly');
               process.exit(1);
             }
-            console.log('✅ Roster seed OK — hard-refresh https://acwaops.com/qipp after Render picks up data');
+            console.log('✅ Roster seed OK — hard-refresh https://acwaops.com/qipp');
           })().catch((e) => { console.error(e.message); process.exit(1); });
           "

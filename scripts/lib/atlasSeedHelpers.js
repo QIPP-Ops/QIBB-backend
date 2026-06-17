@@ -11,24 +11,36 @@ function normalizeName(value) {
     .trim();
 }
 
+function tokenOverlapScore(a, b) {
+  const ta = normalizeName(a).split(' ').filter(Boolean);
+  const tb = normalizeName(b).split(' ').filter(Boolean);
+  if (!ta.length || !tb.length) return 0;
+  const shared = ta.filter((t) => tb.includes(t));
+  const minLen = Math.min(ta.length, tb.length);
+  return shared.length >= Math.max(2, minLen - 1) ? shared.length : 0;
+}
+
 function buildPersonnelEmailIndex(personnelEmails) {
   const byEmpId = new Map();
   const byName = new Map();
+  const rows = [];
 
   for (const row of personnelEmails || []) {
     const email = String(row.email || '').trim().toLowerCase();
     if (!email || !isValidEmailFormat(email)) continue;
+    rows.push(row);
     const empId = String(row.empId || '').trim();
     if (empId) byEmpId.set(empId, email);
     const nameKey = normalizeName(row.name);
     if (nameKey) byName.set(nameKey, email);
   }
 
-  return { byEmpId, byName };
+  return { byEmpId, byName, rows };
 }
 
 /**
  * Resolve deliverable email for a roster row using inline email, empId, or name lookup.
+ * Falls back to fuzzy personnel name match, then a roster placeholder address.
  */
 function resolvePersonEmail(person, emailIndex) {
   const inline = String(person.email || '').trim().toLowerCase();
@@ -39,12 +51,37 @@ function resolvePersonEmail(person, emailIndex) {
     return emailIndex.byEmpId.get(empId);
   }
 
-  const nameKey = normalizeName(person.name || person.fullName);
-  if (nameKey && emailIndex.byName.has(nameKey)) {
-    return emailIndex.byName.get(nameKey);
+  for (const key of [person.name, person.fullName]) {
+    const nameKey = normalizeName(key);
+    if (nameKey && emailIndex.byName.has(nameKey)) {
+      return emailIndex.byName.get(nameKey);
+    }
   }
 
-  return '';
+  let bestEmail = '';
+  let bestScore = 0;
+  for (const row of emailIndex.rows || []) {
+    const score = Math.max(
+      tokenOverlapScore(person.name, row.name),
+      tokenOverlapScore(person.fullName, row.name)
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      bestEmail = row.email;
+    }
+  }
+  if (bestEmail) return bestEmail;
+
+  return placeholderRosterEmail(person);
+}
+
+function placeholderRosterEmail(person) {
+  const empId = rosterEmpId(person);
+  const slug = String(empId || person.id || normalizeName(person.name))
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'unknown';
+  return `${slug}@roster.acwaops.local`;
 }
 
 function rosterEmpId(person) {
@@ -147,6 +184,7 @@ module.exports = {
   normalizeName,
   buildPersonnelEmailIndex,
   resolvePersonEmail,
+  placeholderRosterEmail,
   rosterEmpId,
   mapRosterLeaves,
   buildRosterUserFields,

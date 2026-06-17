@@ -44,6 +44,23 @@ describe('atlasSeedHelpers', () => {
     expect(email).toBe('inline@nomac.com');
   });
 
+  test('resolvePersonEmail fuzzy-matches personnel name', () => {
+    const index = buildPersonnelEmailIndex([
+      { name: 'Sami Hamdan Al Harbi', email: 'sami.alharbi@nomac.com', empId: '' },
+    ]);
+    const email = resolvePersonEmail(
+      { name: 'Sami Hamdan', empId: '2364' },
+      index
+    );
+    expect(email).toBe('sami.alharbi@nomac.com');
+  });
+
+  test('resolvePersonEmail uses placeholder when no match', () => {
+    const index = buildPersonnelEmailIndex([]);
+    const email = resolvePersonEmail({ name: 'Nobody Here', empId: '9999' }, index);
+    expect(email).toBe('9999@roster.acwaops.local');
+  });
+
   test('rosterEmpId falls back to ROSTER-id', () => {
     expect(rosterEmpId({ id: 42, name: 'A' })).toBe('ROSTER-42');
     expect(rosterEmpId({ empId: '500', name: 'A' })).toBe('500');
