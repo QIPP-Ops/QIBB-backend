@@ -21,6 +21,7 @@ const {
   sendCourseReminderEmail,
   upsertCourseAssignments,
 } = require('../services/courseReminderService');
+const { resolveAssignTargets } = require('../services/quizAssignmentService');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
 const seedPath = path.join(__dirname, '../data/completed-courses-seed.json');
@@ -643,13 +644,9 @@ exports.assignQuiz = async (req, res) => {
     const quiz = await Quiz.findById(quizId);
     if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
 
-    let targets = [];
-    if (Array.isArray(userIds) && userIds.length) {
-      targets = await AdminUser.find({ _id: { $in: userIds }, approved: true }).select('_id').lean();
-    } else if (crew) {
-      targets = await AdminUser.find({ crew: String(crew), isApproved: true, isActive: { $ne: false } }).select('_id').lean();
-    } else {
-      return res.status(400).json({ message: 'Provide userIds or crew' });
+    const targets = await resolveAssignTargets({ userIds, crew });
+    if (!targets.length) {
+      return res.status(400).json({ message: 'Provide userIds or crew with at least one approved member' });
     }
 
     const due = dueDate ? new Date(dueDate) : null;
@@ -683,6 +680,151 @@ exports.assignQuiz = async (req, res) => {
     res.status(201).json({
       success: true,
       notified: assigned,
+      quizId: quiz._id,
+      quizTitle: quiz.title,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/** Admin: list all assignments for a quiz (pending and completed). */
+exports.listQuizAssignments = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
+    }
+    const { quizId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(quizId)) {
+      return res.status(400).json({ message: 'Invalid quiz id' });
+    }
+    const quiz = await Quiz.findById(quizId).lean();
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    const rows = await QuizAssignment.find({ quizId })
+      .sort({ assignedAt: -1 })
+      .populate('userId', 'name empId crew email')
+      .lean();
+
+    res.json({
+      success: true,
+      quiz: { id: quiz._id, title: quiz.title },
+      assignments: rows.map((r) => ({
+        id: r._id,
+        userId: r.userId?._id,
+        name: r.userId?.name,
+        empId: r.userId?.empId,
+        crew: r.userId?.crew,
+        email: r.userId?.email,
+        assignedAt: r.assignedAt,
+        dueDate: r.dueDate,
+        completedAt: r.completedAt,
+        score: r.score,
+        status: r.completedAt ? 'Completed' : 'Pending',
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/** Admin: update assignment due date. */
+exports.updateQuizAssignment = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
+    }
+    const { assignmentId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+      return res.status(400).json({ message: 'Invalid assignment id' });
+    }
+    const { dueDate } = req.body || {};
+    const assignment = await QuizAssignment.findById(assignmentId).populate('quizId', 'title');
+    if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+    const due = dueDate ? new Date(dueDate) : null;
+    if (dueDate && Number.isNaN(due?.getTime())) {
+      return res.status(400).json({ message: 'Invalid dueDate' });
+    }
+    assignment.dueDate = due;
+    await assignment.save();
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.QUIZ_ASSIGNMENT_UPDATED,
+      targetType: 'quiz_assignment',
+      targetId: assignment._id?.toString(),
+      targetName: assignment.quizId?.title || 'Quiz assignment',
+      after: { dueDate: due },
+      req,
+    });
+
+    res.json({
+      success: true,
+      assignment: {
+        id: assignment._id,
+        dueDate: assignment.dueDate,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/** Admin: remove quiz assignment(s) from members or a crew. */
+exports.unassignQuiz = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
+    }
+    const { quizId, userIds = [], assignmentIds = [], crew } = req.body || {};
+    if (!quizId) {
+      return res.status(400).json({ message: 'quizId is required' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(quizId)) {
+      return res.status(400).json({ message: 'Invalid quiz id' });
+    }
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) return res.status(404).json({ message: 'Quiz not found' });
+
+    const filter = { quizId: quiz._id };
+    if (Array.isArray(assignmentIds) && assignmentIds.length) {
+      const validIds = assignmentIds.filter((id) => mongoose.Types.ObjectId.isValid(String(id)));
+      if (!validIds.length) {
+        return res.status(400).json({ message: 'Provide valid assignmentIds' });
+      }
+      filter._id = { $in: validIds };
+    } else if (Array.isArray(userIds) && userIds.length) {
+      const validUserIds = userIds.filter((id) => mongoose.Types.ObjectId.isValid(String(id)));
+      if (!validUserIds.length) {
+        return res.status(400).json({ message: 'Provide valid userIds' });
+      }
+      filter.userId = { $in: validUserIds };
+    } else if (crew) {
+      const crewUsers = await resolveAssignTargets({ crew });
+      const crewUserIds = crewUsers.map((u) => u._id);
+      if (!crewUserIds.length) {
+        return res.status(400).json({ message: 'No approved members found for crew' });
+      }
+      filter.userId = { $in: crewUserIds };
+    } else {
+      return res.status(400).json({ message: 'Provide assignmentIds, userIds, or crew' });
+    }
+
+    const result = await QuizAssignment.deleteMany(filter);
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.QUIZ_UNASSIGNED,
+      targetType: 'quiz',
+      targetId: quiz._id?.toString(),
+      targetName: quiz.title,
+      after: { removedCount: result.deletedCount, crew: crew || null },
+      req,
+    });
+
+    res.json({
+      success: true,
+      removed: result.deletedCount,
       quizId: quiz._id,
       quizTitle: quiz.title,
     });
