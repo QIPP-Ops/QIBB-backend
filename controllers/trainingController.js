@@ -63,7 +63,7 @@ function currentUserId(req) {
   return req.user?.userId || req.user?.id;
 }
 
-function quizMetaFields(q) {
+const { memberQuizStatus } = require('../utils/memberQuizStatus');
   return {
     id: q._id,
     title: q.title,
@@ -304,11 +304,29 @@ exports.listQuizzes = async (req, res) => {
       .populate('quizId')
       .lean();
 
+    const latestAttempts = await QuizAttempt.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(String(userId)) } },
+      { $sort: { completedAt: -1 } },
+      { $group: { _id: '$quizId', latest: { $first: '$$ROOT' } } },
+    ]);
+    const attemptByQuiz = new Map(
+      latestAttempts.map((row) => [String(row._id), row.latest])
+    );
+
     const assignedQuizIds = new Set();
     const data = assignments
       .filter((a) => a.quizId)
       .map((a) => {
         assignedQuizIds.add(String(a.quizId._id));
+        const latestAttempt = attemptByQuiz.get(String(a.quizId._id)) || null;
+        const passPercent = a.quizId.passPercent ?? 80;
+        const status = memberQuizStatus({
+          completedAt: a.completedAt,
+          score: a.score,
+          passPercent,
+          latestAttempt,
+        });
+        const passed = status === 'Completed';
         return {
           assignmentId: a._id,
           quizId: a.quizId._id,
@@ -317,7 +335,7 @@ exports.listQuizzes = async (req, res) => {
           prizeImageUrl: a.quizId.prizeImageUrl,
           staticHtmlUrl: a.quizId.staticHtmlUrl || '',
           hubAccessible: Boolean(a.quizId.hubAccessible),
-          passPercent: a.quizId.passPercent ?? 80,
+          passPercent,
           rewardQrEnabled: Boolean(a.quizId.rewardQrEnabled),
           rewardQrUrl: a.quizId.rewardQrUrl || '',
           rewardQrImageUrl: a.quizId.rewardQrImageUrl || '',
@@ -325,9 +343,10 @@ exports.listQuizzes = async (req, res) => {
           rewardMessage: a.quizId.rewardMessage || '',
           assignedAt: a.assignedAt,
           dueDate: a.dueDate,
-          completedAt: a.completedAt,
-          score: a.score,
-          status: a.completedAt ? 'Completed' : 'Pending',
+          completedAt: passed ? a.completedAt : null,
+          score: latestAttempt?.percent ?? a.score,
+          status,
+          latestAttemptPassed: latestAttempt?.passed ?? (passed ? true : null),
         };
       });
 
@@ -337,6 +356,13 @@ exports.listQuizzes = async (req, res) => {
       const latest = await QuizAttempt.findOne({ quizId: q._id, userId })
         .sort({ completedAt: -1 })
         .lean();
+      const passPercent = q.passPercent ?? 80;
+      const hubStatus = memberQuizStatus({
+        completedAt: latest?.passed ? latest.completedAt : null,
+        score: latest?.percent,
+        passPercent,
+        latestAttempt: latest,
+      });
       data.push({
         assignmentId: null,
         quizId: q._id,
@@ -345,7 +371,7 @@ exports.listQuizzes = async (req, res) => {
         prizeImageUrl: q.prizeImageUrl,
         staticHtmlUrl: q.staticHtmlUrl || '',
         hubAccessible: true,
-        passPercent: q.passPercent ?? 80,
+        passPercent,
         rewardQrEnabled: Boolean(q.rewardQrEnabled),
         rewardQrUrl: q.rewardQrUrl || '',
         rewardQrImageUrl: q.rewardQrImageUrl || '',
@@ -353,9 +379,9 @@ exports.listQuizzes = async (req, res) => {
         rewardMessage: q.rewardMessage || '',
         assignedAt: null,
         dueDate: null,
-        completedAt: latest?.completedAt ?? null,
+        completedAt: latest?.passed ? latest.completedAt : null,
         score: latest?.percent ?? null,
-        status: latest ? 'Completed' : 'Pending',
+        status: hubStatus,
         latestAttemptPassed: latest?.passed ?? null,
       });
     }
@@ -571,8 +597,17 @@ exports.recordQuizAttempt = async (req, res) => {
 
     const assignment = await QuizAssignment.findOne({ quizId, userId });
     if (assignment) {
-      if (!assignment.completedAt || computedPercent > (assignment.score ?? -1)) {
-        assignment.completedAt = new Date();
+      if (passedVal) {
+        if (!assignment.completedAt || computedPercent > (assignment.score ?? -1)) {
+          assignment.completedAt = new Date();
+          assignment.score = computedPercent;
+          await assignment.save();
+        }
+      } else {
+        // Failed attempt: keep assignment open for retry; self-heal legacy completedAt on sub-threshold scores.
+        if (assignment.completedAt && computedPercent < passThreshold) {
+          assignment.completedAt = null;
+        }
         assignment.score = computedPercent;
         await assignment.save();
       }
@@ -755,7 +790,12 @@ exports.listQuizAssignments = async (req, res) => {
         dueDate: r.dueDate,
         completedAt: r.completedAt,
         score: r.score,
-        status: r.completedAt ? 'Completed' : 'Pending',
+        status: memberQuizStatus({
+          completedAt: r.completedAt,
+          score: r.score,
+          passPercent: quiz.passPercent ?? 80,
+          latestAttempt: null,
+        }),
       })),
     });
   } catch (err) {

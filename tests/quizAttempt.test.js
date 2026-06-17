@@ -1,4 +1,18 @@
 const QuizAttempt = require('../models/QuizAttempt');
+const { memberQuizStatus } = require('../utils/memberQuizStatus');
+
+describe('memberQuizStatus integration', () => {
+  test('failed score without completedAt is retryable', () => {
+    expect(
+      memberQuizStatus({
+        completedAt: null,
+        score: 72,
+        passPercent: 90,
+        latestAttempt: null,
+      })
+    ).toBe('Failed');
+  });
+});
 
 describe('QuizAttempt model', () => {
   test('schema exports with required fields', () => {
