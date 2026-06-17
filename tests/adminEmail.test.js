@@ -32,13 +32,36 @@ describe('dailyDigestCron', () => {
 });
 
 describe('systemSettingsService defaults', () => {
-  test('shift report reminders default true when unset', async () => {
+  test('shift report reminders default off when unset', async () => {
     jest.resetModules();
     jest.mock('../models/SystemSettings', () => ({
       findOne: jest.fn().mockReturnValue({ lean: () => Promise.resolve(null) }),
       findOneAndUpdate: jest.fn(),
     }));
-    const { isShiftReportEmailRemindersEnabled } = require('../services/systemSettingsService');
-    await expect(isShiftReportEmailRemindersEnabled()).resolves.toBe(true);
+    const {
+      isShiftReportEmailRemindersEnabled,
+      isShiftReportEmailRemindersEnabledForCrew,
+    } = require('../services/systemSettingsService');
+    await expect(isShiftReportEmailRemindersEnabled()).resolves.toBe(false);
+    await expect(isShiftReportEmailRemindersEnabledForCrew('A')).resolves.toBe(false);
+  });
+
+  test('per-crew reminders enabled only when explicitly set', async () => {
+    jest.resetModules();
+    jest.mock('../models/SystemSettings', () => ({
+      findOne: jest.fn().mockImplementation(({ key }) => ({
+        lean: () =>
+          Promise.resolve(
+            key === 'shiftReportEmailRemindersByCrew'
+              ? { value: { A: true, B: false } }
+              : null
+          ),
+      })),
+      findOneAndUpdate: jest.fn(),
+    }));
+    const { isShiftReportEmailRemindersEnabledForCrew } = require('../services/systemSettingsService');
+    await expect(isShiftReportEmailRemindersEnabledForCrew('A')).resolves.toBe(true);
+    await expect(isShiftReportEmailRemindersEnabledForCrew('B')).resolves.toBe(false);
+    await expect(isShiftReportEmailRemindersEnabledForCrew('C')).resolves.toBe(false);
   });
 });

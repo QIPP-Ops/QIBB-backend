@@ -1,6 +1,8 @@
+const AdminConfig = require('../models/AdminConfig');
+const { isSuperAdmin } = require('../middleware/superAdmin');
 const {
-  isShiftReportEmailRemindersEnabled,
-  setShiftReportEmailRemindersEnabled,
+  getShiftReportRemindersByCrewMap,
+  setShiftReportReminderForCrew,
 } = require('../services/systemSettingsService');
 const {
   listPortalAdminsForToggle,
@@ -9,29 +11,65 @@ const {
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
+function crewsVisibleToActor(req, availableCrews) {
+  if (isSuperAdmin(req)) return availableCrews;
+  const userCrew = req.user?.crew;
+  if (userCrew && availableCrews.includes(userCrew)) return [userCrew];
+  return [];
+}
+
+function canManageCrewReminders(req, crew) {
+  if (isSuperAdmin(req)) return true;
+  return Boolean(req.user?.crew && req.user.crew === crew);
+}
+
 exports.getShiftReportEmailReminders = async (req, res) => {
   try {
-    const enabled = await isShiftReportEmailRemindersEnabled();
-    res.json({ key: 'shiftReportEmailReminders', value: enabled });
+    const config = await AdminConfig.findOne().lean();
+    const availableCrews = config?.availableCrews || ['A', 'B', 'C', 'D', 'General', 'S'];
+    const map = await getShiftReportRemindersByCrewMap();
+    const visible = crewsVisibleToActor(req, availableCrews);
+
+    res.json({
+      crews: visible.map((crew) => ({
+        crew,
+        enabled: map[crew] === true,
+        editable: canManageCrewReminders(req, crew),
+      })),
+    });
   } catch (err) {
     res.status(500).json({ message: 'Error reading setting', error: err.message });
   }
 };
 
-exports.patchShiftReportEmailReminders = async (req, res) => {
+exports.patchShiftReportReminderForCrew = async (req, res) => {
   try {
-    const enabled = req.body?.value !== undefined ? Boolean(req.body.value) : Boolean(req.body.enabled);
-    await setShiftReportEmailRemindersEnabled(enabled);
+    const crew = String(req.params.crew || '').trim();
+    if (!crew) {
+      return res.status(400).json({ message: 'Crew is required.' });
+    }
+
+    if (!canManageCrewReminders(req, crew)) {
+      return res.status(403).json({
+        message: 'You may only change shift report reminders for your own crew.',
+      });
+    }
+
+    const enabled =
+      req.body?.value !== undefined ? Boolean(req.body.value) : Boolean(req.body.enabled);
+
+    await setShiftReportReminderForCrew(crew, enabled);
     await logAction({
       actor: req.user,
       action: AUDIT_ACTIONS.NOTIFICATION_SETTINGS_CHANGED,
       targetType: 'settings',
-      targetId: 'shiftReportEmailReminders',
-      targetName: 'Shift report reminders',
-      after: { enabled },
+      targetId: `shiftReportEmailReminders:${crew}`,
+      targetName: `Shift report reminders (${crew})`,
+      after: { crew, enabled },
       req,
     });
-    res.json({ key: 'shiftReportEmailReminders', value: enabled });
+
+    res.json({ crew, enabled });
   } catch (err) {
     res.status(500).json({ message: 'Error updating setting', error: err.message });
   }

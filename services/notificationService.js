@@ -7,7 +7,7 @@ const {
   emailCallout,
   emailCtaButton,
 } = require('./emailHtmlHelpers');
-const { isShiftReportEmailRemindersEnabled } = require('./systemSettingsService');
+const { isShiftReportEmailRemindersEnabledForCrew } = require('./systemSettingsService');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
 
@@ -127,11 +127,19 @@ async function createNotification({
   return doc;
 }
 
-async function notifyShiftMissing({ member, shiftDate, shiftLabel, supervisors, adminDigest = false }) {
+async function notifyShiftMissing({
+  member,
+  shiftDate,
+  shiftLabel,
+  supervisors,
+  adminDigest = false,
+  crew = null,
+}) {
   const type = 'shift_missing';
   const matrix = RECIPIENT_MATRIX[type];
   const base = getFrontendBaseUrlSafe();
-  const shiftEmailsEnabled = await isShiftReportEmailRemindersEnabled();
+  const reminderCrew = crew || member?.crew || null;
+  const shiftEmailsEnabled = await isShiftReportEmailRemindersEnabledForCrew(reminderCrew);
 
   if (matrix.member && member?._id) {
     await createNotification({

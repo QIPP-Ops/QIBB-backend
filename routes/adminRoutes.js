@@ -31,8 +31,8 @@ router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrua
 router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);
 router.patch('/leave-accrual/:empId', protect, requireSuperAdmin, leaveAccrual.patchAccrualRates);
 
-router.get('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.getShiftReportEmailReminders);
-router.patch('/settings/shift-report-reminders', protect, requireSuperAdmin, settings.patchShiftReportEmailReminders);
+router.get('/settings/shift-report-reminders', protect, admin, settings.getShiftReportEmailReminders);
+router.patch('/settings/shift-report-reminders/:crew', protect, admin, settings.patchShiftReportReminderForCrew);
 router.get('/settings/email-notifications', protect, requireSuperAdmin, settings.listAdminEmailNotifications);
 router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin, settings.patchAdminEmailNotifications);
 router.get('/email-presets', protect, requireSuperAdmin, emailBroadcast.listEmailPresets);
