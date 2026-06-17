@@ -18,7 +18,11 @@ const quizUpload = upload.fields([
 
 router.get('/catalog', protect, c.getCatalog);
 router.get('/completed-courses', protect, c.getCompletedCourses);
+router.get('/recent-achievements', protect, c.getRecentAchievements);
+router.get('/my-certificates', protect, c.getMyCertificates);
 router.post('/catalog/add-to-curriculum', protect, c.addCatalogToCurriculum);
+router.get('/course/:courseId/assignments', protect, c.listCourseAssignments);
+router.post('/course/unassign', protect, c.unassignCourse);
 
 router.post('/quiz/upload', protect, requireSuperAdmin, quizUpload, c.uploadQuiz);
 router.get('/quiz/list', protect, c.listQuizzes);

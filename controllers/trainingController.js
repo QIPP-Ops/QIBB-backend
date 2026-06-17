@@ -22,6 +22,14 @@ const {
   upsertCourseAssignments,
 } = require('../services/courseReminderService');
 const { resolveAssignTargets } = require('../services/quizAssignmentService');
+const {
+  getRecentAchievements,
+  getUserCertificates,
+} = require('../services/trainingAchievementsService');
+const {
+  listCourseAssignments,
+  unassignCourse,
+} = require('../services/courseAssignmentService');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
 const seedPath = path.join(__dirname, '../data/completed-courses-seed.json');
@@ -117,10 +125,37 @@ exports.getCatalog = async (_req, res) => {
   }
 };
 
-exports.getCompletedCourses = async (_req, res) => {
+exports.getCompletedCourses = async (req, res) => {
   try {
-    const config = await ensureCompletedCourses(await getOrCreateConfig());
-    res.json({ success: true, data: config.completedCourses || [], provider: 'local' });
+    const userId = currentUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const data = await getUserCertificates(userId);
+    res.json({ success: true, data, provider: 'dynamic' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getRecentAchievements = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(String(req.query.limit || '20'), 10) || 20, 1), 50);
+    const data = await getRecentAchievements({ limit });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getMyCertificates = async (req, res) => {
+  try {
+    const userId = currentUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    const data = await getUserCertificates(userId);
+    res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -965,6 +1000,59 @@ exports.getQuizPrizeImage = async (req, res) => {
     res.setHeader('Content-Type', mime);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/** Admin: list course assignments for a course. */
+exports.listCourseAssignments = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
+    }
+    const { courseId } = req.params;
+    if (!courseId) {
+      return res.status(400).json({ message: 'courseId is required' });
+    }
+    const assignments = await listCourseAssignments(courseId);
+    res.json({ success: true, courseId, assignments });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/** Admin: remove course assignment(s) from members or a crew. */
+exports.unassignCourse = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Access denied. Administrator privileges required.' });
+    }
+    const { courseId, assignmentIds = [], userIds = [], crew } = req.body || {};
+    if (!courseId) {
+      return res.status(400).json({ message: 'courseId is required' });
+    }
+
+    const result = await unassignCourse({ courseId, assignmentIds, userIds, crew });
+    if (result.error) {
+      return res.status(400).json({ message: result.error });
+    }
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.COURSE_UNASSIGNED,
+      targetType: 'training_course',
+      targetId: String(courseId),
+      targetName: String(courseId),
+      after: { removedCount: result.removed, crew: crew || null },
+      req,
+    });
+
+    res.json({
+      success: true,
+      removed: result.removed,
+      courseId,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
