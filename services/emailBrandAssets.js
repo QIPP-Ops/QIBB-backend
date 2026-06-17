@@ -13,16 +13,16 @@ const ACWA_LOGO_PATHS = [
   'M56.9318 6.12801C56.5973 5.83629 56.3205 5.83629 55.9745 6.12801L51.0847 10.3288C50.5196 10.8072 50.2082 11.1689 49.943 11.6707H49.8738V7.08485C49.8738 6.44307 50.139 5.84795 50.6349 5.42788L54.3946 2.20728C55.8823 0.923707 57.0356 0.912038 58.5463 2.20728L62.306 5.42788C62.7903 5.84795 63.0671 6.4314 63.0671 7.08485V11.6707H62.9979C62.7327 11.1689 62.4213 10.8072 61.8562 10.3288L56.9664 6.13968L56.9318 6.12801Z',
 ];
 
-function buildAcwaLogoSvg(fill = '#ffffff') {
+function buildAcwaLogoSvg(fill = '#9273DA') {
   const paths = ACWA_LOGO_PATHS.map((d) => `<path fill="${fill}" d="${d}"/>`).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 65 90" width="48" height="66" role="img" aria-label="ACWA Operations" style="display:block;">${paths}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 65 90" width="40" height="55" role="img" aria-label="Acwa Operations" style="display:block;">${paths}</svg>`;
 }
 
 /** Path-only mark (no SVG &lt;text&gt;) — safe for Gmail/Outlook. */
-const ACWA_EMAIL_LOGO_SVG = buildAcwaLogoSvg('#ffffff');
+const ACWA_EMAIL_LOGO_SVG = buildAcwaLogoSvg('#9273DA');
 
-/** Logo mark + HTML wordmark — matches portal sidebar / quiz brand bar. */
-const EMAIL_LOGO_HTML = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td style="vertical-align:middle;padding-right:12px;line-height:0;">${ACWA_EMAIL_LOGO_SVG}</td><td style="vertical-align:middle;font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;color:#ffffff;text-transform:uppercase;line-height:1.2;">operations</td></tr></table>`;
+/** Logo mark + title — matches browser tab / site header: Acwa Operations | QIPP */
+const EMAIL_LOGO_HTML = `<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;"><tr><td style="vertical-align:middle;padding-right:14px;line-height:0;">${ACWA_EMAIL_LOGO_SVG}</td><td style="vertical-align:middle;font-family:'Montserrat','Segoe UI',Arial,sans-serif;font-size:18px;font-weight:700;line-height:1.25;white-space:nowrap;"><span style="color:#ffffff;">Acwa Operations</span><span style="color:rgba(255,255,255,0.55);font-weight:600;">&nbsp;|&nbsp;</span><span style="color:#9273DA;">QIPP</span></td></tr></table>`;
 
 const BRAND_MOTTO_HTML = `<div class="brand-motto"><span class="motto-white">Driving progress</span> <span class="motto-muted">for people and the planet.</span></div>`;
 

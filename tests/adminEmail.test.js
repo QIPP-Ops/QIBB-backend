@@ -12,7 +12,9 @@ describe('admin email template', () => {
     expect(html).toContain('linear-gradient(rgba(0,0,0,0.75)');
     expect(html).toContain('<svg');
     expect(html).not.toContain('<text');
-    expect(html).toContain('operations</td>');
+    expect(html).toContain('Acwa Operations');
+    expect(html).toContain('QIPP');
+    expect(html).toContain('#9273DA');
     expect(html).toContain('M12.0233 49.9211');
     expect(html).toContain('automated message');
   });
