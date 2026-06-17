@@ -8,7 +8,7 @@ const {
   getEmailProvider,
   getFromAddress,
 } = require('../config/emailProvider');
-const { ACWA_EMAIL_LOGO_SVG, BRAND_MOTTO_HTML } = require('./emailBrandAssets');
+const { EMAIL_LOGO_HTML, BRAND_MOTTO_HTML, getEmailHeroImageUrl } = require('./emailBrandAssets');
 const { emailCallout, emailCtaButton, emailHighlightBox, emailInfoList, emailMuted } = require('./emailHtmlHelpers');
 const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10) || 60000;
 const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS, 10) || 60000;
@@ -226,6 +226,7 @@ async function sendMail(options) {
 }
 
 function emailTemplate(title, bodyHtml) {
+  const heroUrl = getEmailHeroImageUrl();
   return `
   <!DOCTYPE html>
   <html lang="en">
@@ -236,8 +237,9 @@ function emailTemplate(title, bodyHtml) {
     <title>${title}</title>
     <style>
       body { margin:0; padding:0; background:#f4f4f8; font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-text-size-adjust:100%; }
+      .email-outer { background-color:#f4f4f8; background-image:linear-gradient(rgba(244,244,248,0.90), rgba(244,244,248,0.90)), url('${heroUrl}'); background-size:cover; background-position:center; background-repeat:no-repeat; }
       .wrapper { max-width:560px; margin:32px auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(46,32,68,0.10); }
-      .header { background:#F9F7FC; padding:28px 40px; text-align:center; border-bottom:1px solid #E3DCF5; }
+      .header { background-color:#2E2044; background-image:linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url('${heroUrl}'); background-size:cover; background-position:center; background-repeat:no-repeat; padding:28px 40px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.08); }
       .header .logo { display:inline-block; line-height:0; }
       .body { padding:36px 40px 40px; color:#2E2044; }
       .body h2 { font-size:22px; font-weight:800; margin:0 0 20px; color:#2E2044; line-height:1.3; }
@@ -276,9 +278,12 @@ function emailTemplate(title, bodyHtml) {
     </style>
   </head>
   <body>
+    <table role="presentation" class="email-outer" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f8;">
+      <tr>
+        <td align="center" style="padding:0;">
     <div class="wrapper">
       <div class="header">
-        <div class="logo">${ACWA_EMAIL_LOGO_SVG}</div>
+        <div class="logo">${EMAIL_LOGO_HTML}</div>
       </div>
       <div class="body">
         <h2>${title}</h2>
@@ -289,6 +294,9 @@ function emailTemplate(title, bodyHtml) {
         This is an automated message — do not reply.
       </div>
     </div>
+        </td>
+      </tr>
+    </table>
   </body>
   </html>`;
 }

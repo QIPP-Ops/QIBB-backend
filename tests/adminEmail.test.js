@@ -6,10 +6,14 @@ jest.mock('../services/dailyDigestService', () => ({
 }));
 
 describe('admin email template', () => {
-  test('emailTemplate header uses inline ACWA logo on light background', () => {
+  test('emailTemplate header uses path-based ACWA logo and dimmed hero background', () => {
     const html = emailTemplate('Test', '<p>body</p>');
-    expect(html).toContain('background:#F9F7FC');
+    expect(html).toContain('hero-image.jpeg');
+    expect(html).toContain('linear-gradient(rgba(0,0,0,0.75)');
     expect(html).toContain('<svg');
+    expect(html).not.toContain('<text');
+    expect(html).toContain('operations</td>');
+    expect(html).toContain('M12.0233 49.9211');
     expect(html).toContain('automated message');
   });
 });
