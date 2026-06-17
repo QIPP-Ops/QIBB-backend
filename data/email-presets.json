@@ -3,30 +3,30 @@
     "id": "leave-deadline-full",
     "name": "Use leave balance before deadline",
     "subject": "Reminder: use your annual leave balance before {{deadline}}",
-    "body": "<p>Dear {{name}},</p><p>Please plan and use your remaining annual leave balance before <strong>{{deadline}}</strong>.</p><p>Contact your supervisor or HR if you need support scheduling leave.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>Please plan and use your remaining <strong>annual leave balance</strong> before the deadline below.</p></div><p>Your leave should be scheduled and submitted before <strong>{{deadline}}</strong>.</p><ul class=\"info-list\"><li>Review your balance in the timesheet portal</li><li>Coordinate coverage with your supervisor</li><li>Contact HR if you need help scheduling leave</li></ul><p class=\"muted\">Thank you for keeping your leave records up to date.</p>"
   },
   {
     "id": "leave-deadline-half",
     "name": "Use 50% of balance before deadline",
     "subject": "Reminder: use at least 50% of your leave balance before {{deadline}}",
-    "body": "<p>Dear {{name}},</p><p>Policy requires using at least <strong>50%</strong> of your annual leave balance before <strong>{{deadline}}</strong>.</p><p>Please submit leave in the timesheet portal.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>Company policy requires using at least <strong>50%</strong> of your annual leave balance before <strong>{{deadline}}</strong>.</p></div><p>Please submit your planned leave in the timesheet portal as soon as possible.</p><ul class=\"info-list\"><li>Check how much leave you have already taken this year</li><li>Plan the remaining balance before the deadline</li><li>Speak with your supervisor if dates need adjustment</li></ul><p class=\"muted\">Early planning helps maintain crew coverage across shifts.</p>"
   },
   {
     "id": "shift-report",
     "name": "Shift report reminder",
     "subject": "Shift report pending — {{date}}",
-    "body": "<p>Dear {{name}},</p><p>Your shift report for <strong>{{date}}</strong> has not been submitted yet. Please complete it in QIPP.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout callout-warning\"><p>Your shift report for <strong>{{date}}</strong> has not been submitted yet.</p></div><p>Please complete your report in QIPP so operations records stay accurate and up to date.</p><ul class=\"info-list\"><li>Log in to QIPP and open the Personnel section</li><li>Submit notes, handover details, and any incidents from your shift</li><li>Contact your shift in charge if you need access or support</li></ul><p class=\"muted\">Timely reports support safe, well-coordinated plant operations.</p>"
   },
   {
     "id": "monthly-planned-leaves",
     "name": "Monthly planned leaves",
     "subject": "Planned leave roster — {{month}}",
-    "body": "<p>Dear {{name}},</p><p>Please find attached the <strong>planned leave timeline</strong> for <strong>{{month}}</strong> (crew roster filtered to leave segments overlapping that month).</p><p>Contact your supervisor if you need to adjust leave plans.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>Attached is the <strong>planned leave timeline</strong> for <strong>{{month}}</strong>, filtered to leave segments overlapping that month.</p></div><p>Please review the roster and confirm your team's coverage plans.</p><ul class=\"info-list\"><li>Open the attached Excel file for the full crew breakdown</li><li>Flag any conflicts or coverage gaps to your supervisor</li><li>Update the leave planner if plans have changed</li></ul><p class=\"muted\">Contact your supervisor if you need to adjust leave plans.</p>"
   },
   {
     "id": "course-reminder",
     "name": "Training course reminder",
     "subject": "Reminder: complete {{courseTitle}}",
-    "body": "<p>Dear {{name}},</p><p>This is a reminder to complete the training course <strong>{{courseTitle}}</strong> in the QIPP Training Hub.</p><p>{{courseDescription}}</p><p><a href=\"{{courseLink}}\">Open course in Training Hub</a></p><p>Contact your supervisor if you need support.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>This is a reminder to complete the training course <strong>{{courseTitle}}</strong> in the QIPP Training Hub.</p></div>{{courseDescription}}<div class=\"btn-block\"><a href=\"{{courseLink}}\" class=\"btn\">Open course in Training Hub</a></div><ul class=\"info-list\"><li>Complete all modules and any required assessments</li><li>Your progress is tracked automatically in QIPP</li><li>Contact your supervisor if you need scheduling support</li></ul><p class=\"muted\">Keeping training current supports safe and compliant operations.</p>"
   }
 ]

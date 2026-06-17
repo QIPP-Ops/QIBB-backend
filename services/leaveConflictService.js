@@ -1,6 +1,11 @@
 const { leaveOnDate, fmtDate, parseDateOnly } = require('./shiftScheduleService');
 const { sendAdminBulkEmail } = require('./adminEmailService');
 const { notifyLeaveConflict } = require('./notificationService');
+const {
+  emailCallout,
+  emailDetailTable,
+  emailInfoList,
+} = require('./emailHtmlHelpers');
 
 const STAFFING_RULES = [
   { label: 'Shift in Charge', min: 1, match: (role) => /shift in charge/i.test(role || '') },
@@ -94,11 +99,13 @@ function findStaffingShortfalls(employees, subjectEmployee, newLeave) {
 async function emailLeaveConflict(crew, role, subjectEmployee, overlaps) {
   const names = [...new Set(overlaps.map((o) => o.otherName))].join(', ');
   const body = `
-    <p>A new leave request may conflict with existing leave for the same crew and role.</p>
-    <p><strong>Crew:</strong> ${crew}<br/>
-    <strong>Role:</strong> ${role}<br/>
-    <strong>Employee:</strong> ${subjectEmployee.name} (${subjectEmployee.empId})</p>
-    <p><strong>Overlapping leave:</strong> ${names}</p>
+    ${emailCallout('<p>A new leave request may conflict with existing leave for the same crew and role.</p>', 'warning')}
+    ${emailDetailTable([
+      { label: 'Crew', value: crew },
+      { label: 'Role', value: role },
+      { label: 'Employee', value: `${subjectEmployee.name} (${subjectEmployee.empId})` },
+      { label: 'Overlapping leave', value: names },
+    ])}
     <p>Review the leave planner to approve, adjust, or reassign coverage.</p>
   `;
   await sendAdminBulkEmail({
@@ -108,13 +115,14 @@ async function emailLeaveConflict(crew, role, subjectEmployee, overlaps) {
 }
 
 async function emailStaffingBelowMinimum(crew, date, below) {
-  const lines = below
-    .map((b) => `<li>${b.label}: ${b.available} available (minimum ${b.min})</li>`)
-    .join('');
+  const lines = below.map((b) => `${b.label}: ${b.available} available (minimum ${b.min})`);
   const body = `
-    <p>Minimum staffing is not met after this leave request.</p>
-    <p><strong>Crew:</strong> ${crew}<br/><strong>Date:</strong> ${date}</p>
-    <ul>${lines}</ul>
+    ${emailCallout('<p>Minimum staffing is not met after this leave request.</p>', 'warning')}
+    ${emailDetailTable([
+      { label: 'Crew', value: crew },
+      { label: 'Date', value: date },
+    ])}
+    ${emailInfoList(lines)}
     <p>Review roster coverage and consider backup assignments.</p>
   `;
   await sendAdminBulkEmail({

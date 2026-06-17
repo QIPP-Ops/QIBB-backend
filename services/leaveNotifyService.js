@@ -1,5 +1,10 @@
 const { sendMail, emailTemplate, isEmailConfigured } = require('./emailService');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
+const {
+  emailCallout,
+  emailCtaButton,
+  emailDetailTable,
+} = require('./emailHtmlHelpers');
 
 const DEFAULT_NOTIFY =
   process.env.LEAVE_PLANNER_NOTIFY_EMAIL || 'm.algarni@nomac.com';
@@ -24,12 +29,16 @@ async function notifyLeavePlannerEdit({ action, actor, target, summary, metadata
   try {
     const base = getFrontendBaseUrl();
     const body = `
-      <p>A change was made in the <strong>Leave Planner</strong>.</p>
-      <p><strong>Action:</strong> ${action}</p>
-      <p><strong>Summary:</strong> ${summary || '—'}</p>
-      <p><strong>By:</strong> ${actor?.name || actor?.email || 'Unknown'}</p>
-      ${target?.name ? `<p><strong>Employee:</strong> ${target.name} (${target.empId || ''})</p>` : ''}
-      <p style="font-size:13px;color:#888;">Open the leave planner: <a href="${base}/leave">${base}/leave</a></p>
+      ${emailCallout('<p>A change was made in the <strong>Leave Planner</strong>.</p>')}
+      ${emailDetailTable([
+        { label: 'Action', value: action.replace(/_/g, ' ') },
+        { label: 'Summary', value: summary || '—' },
+        { label: 'By', value: actor?.name || actor?.email || 'Unknown' },
+        ...(target?.name
+          ? [{ label: 'Employee', value: `${target.name}${target.empId ? ` (${target.empId})` : ''}` }]
+          : []),
+      ])}
+      ${emailCtaButton(`${base}/leave`, 'Open leave planner')}
     `;
     await sendMail({
       to,

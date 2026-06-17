@@ -2,6 +2,12 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminUser = require('../models/AdminUser');
 const { createNotification } = require('../services/notificationService');
 const { sendMail, emailTemplate, isEmailConfigured } = require('../services/emailService');
+const {
+  emailCallout,
+  emailHighlightBox,
+  emailInfoList,
+  emailSignoff,
+} = require('../services/emailHtmlHelpers');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const { formatPtwAuthRoleName } = require('../utils/ptwAuthRoles');
 const {
@@ -86,19 +92,26 @@ async function deliverInAppReminders({
 function buildMemberExpiryBody(name, roleName, expiryFormatted, daysLeft) {
   return `
     <p>Dear <strong>${name}</strong>,</p>
-    <p>Your PTW authorization for <strong>${roleName}</strong> expires in <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong>.</p>
-    <div class="otp-box"><span style="font-size:22px;letter-spacing:0.05em;">${expiryFormatted}</span></div>
-    <p>Please contact your supervisor to arrange renewal before this date.</p>
-    <p style="font-size:13px;color:#6B5E8A;">— Acwa Operations, QIPP</p>
+    ${emailCallout(`<p>Your PTW authorization for <strong>${roleName}</strong> expires in <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong>.</p>`, 'warning')}
+    ${emailHighlightBox(expiryFormatted, 'sm')}
+    ${emailInfoList([
+      'Contact your supervisor to arrange renewal before this date',
+      'Ensure your authorization records stay current for site access',
+    ])}
+    ${emailSignoff()}
   `;
 }
 
 function buildCrewAdminExpiryBody(memberName, roleName, expiryFormatted, daysLeft) {
   return `
     <p><strong>${memberName}</strong>'s PTW authorization for <strong>${roleName}</strong> expires in <strong>${daysLeft} day${daysLeft === 1 ? '' : 's'}</strong>.</p>
-    <div class="otp-box"><span style="font-size:22px;letter-spacing:0.05em;">${expiryFormatted}</span></div>
-    <p>Please follow up on renewal.</p>
-    <p style="font-size:13px;color:#6B5E8A;">— Acwa Operations, QIPP</p>
+    ${emailCallout('<p>Please follow up on renewal and update PTW records in QIPP.</p>', 'warning')}
+    ${emailHighlightBox(expiryFormatted, 'sm')}
+    ${emailInfoList([
+      'Confirm renewal paperwork is in progress',
+      'Coordinate with the team member before the expiry date',
+    ])}
+    ${emailSignoff()}
   `;
 }
 

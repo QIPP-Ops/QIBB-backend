@@ -3,6 +3,7 @@ const ShiftReport = require('../models/ShiftReport');
 const PlantIngestionState = require('../models/PlantIngestionState');
 const { sendAdminBulkEmail } = require('./adminEmailService');
 const { seriesForGeneration } = require('./plantReports/operationalOverview');
+const { emailCallout, emailSectionTitle } = require('./emailHtmlHelpers');
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -125,16 +126,16 @@ async function buildDailyDigestHtml(ref = new Date()) {
     ymd,
     subjectDate: digestSubjectDate(ref),
     html: `
-      <p>Summary for <strong>${ymd}</strong> (operations day ending yesterday, AST).</p>
-      <h3 style="margin-top:24px;font-size:16px;color:#9273DA;">Shift reports</h3>
+      ${emailCallout(`<p>Operations summary for <strong>${ymd}</strong> (day ending yesterday, AST).</p>`)}
+      ${emailSectionTitle('Shift reports')}
       ${await shiftReportsSection(ymd)}
-      <h3 style="margin-top:24px;font-size:16px;color:#9273DA;">Chemistry alarms</h3>
+      ${emailSectionTitle('Chemistry alarms')}
       ${await chemistryAlarmsSection(ymd)}
-      <h3 style="margin-top:24px;font-size:16px;color:#9273DA;">Leave conflicts &amp; staffing</h3>
+      ${emailSectionTitle('Leave conflicts &amp; staffing')}
       ${await leaveIssuesSection(ymd)}
-      <h3 style="margin-top:24px;font-size:16px;color:#9273DA;">Last ingest</h3>
+      ${emailSectionTitle('Last ingest')}
       ${await ingestStatsSection()}
-      <h3 style="margin-top:24px;font-size:16px;color:#9273DA;">Generation</h3>
+      ${emailSectionTitle('Generation')}
       ${await generationSection(ymd)}
     `,
   };

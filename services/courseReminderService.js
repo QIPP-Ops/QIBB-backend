@@ -39,7 +39,7 @@ async function sendCourseReminderEmail(user, courseTitle, courseDescription = ''
   );
   const bodyInner = substituteTemplate(
     preset?.body ||
-      `<p>Dear {{name}},</p><p>Please complete <strong>{{courseTitle}}</strong> in the Training Hub.</p><p><a href="{{courseLink}}">Open Training Hub</a></p>`,
+      `<p>Dear <strong>{{name}}</strong>,</p><div class="callout"><p>Please complete <strong>{{courseTitle}}</strong> in the Training Hub.</p></div><div class="btn-block"><a href="{{courseLink}}" class="btn">Open Training Hub</a></div><ul class="info-list"><li>Complete all required modules and assessments</li><li>Contact your supervisor if you need support</li></ul>`,
     vars
   );
   await sendMail({ to: email, subject, html: emailTemplate(subject, bodyInner) });

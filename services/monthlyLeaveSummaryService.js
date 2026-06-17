@@ -1,5 +1,6 @@
 const AdminUser = require('../models/AdminUser');
 const { sendMail, emailTemplate, isEmailConfigured } = require('./emailService');
+const { emailCallout, emailDetailTable, emailSectionTitle } = require('./emailHtmlHelpers');
 
 const CREW_ORDER = ['General', 'Crew A', 'Crew B', 'Crew C', 'Crew D'];
 const MONTH_NAMES_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -152,17 +153,17 @@ function buildMonthlyLeaveSummaryHtml(records, ref = new Date()) {
   const sectionHtml = CREW_ORDER.map((crew) => {
     const rows = grouped.get(crew) || [];
     return `
-      <h3 style="margin-top:20px;font-size:16px;color:#9273DA;">${crew}</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
+      ${emailSectionTitle(crew)}
+      <table class="detail-table" style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px;">
         <thead>
-          <tr style="background:#f7f3ff;color:#2E2044;">
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">Employee Name</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">Role</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">Leave Type</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">From</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">To</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:right;">Days</th>
-            <th style="padding:10px;border:1px solid #eee;text-align:left;">Applied on SAP</th>
+          <tr style="background:#F9F7FC;color:#2E2044;">
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">Employee Name</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">Role</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">Leave Type</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">From</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">To</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:right;font-weight:700;">Days</th>
+            <th style="padding:10px;border-bottom:2px solid #E3DCF5;text-align:left;font-weight:700;">Applied on SAP</th>
           </tr>
         </thead>
         <tbody>
@@ -173,9 +174,11 @@ function buildMonthlyLeaveSummaryHtml(records, ref = new Date()) {
   }).join('');
 
   return `
-    <p>Leave summary for <strong>${escapeHtml(monthLabel)}</strong>.</p>
-    <p><strong>Total employees on leave:</strong> ${uniqueEmployees.size}<br/>
-    <strong>Total leave-days:</strong> ${totalLeaveDays.toFixed(1)}</p>
+    ${emailCallout(`<p>Leave summary for <strong>${escapeHtml(monthLabel)}</strong>.</p>`)}
+    ${emailDetailTable([
+      { label: 'Total employees on leave', value: String(uniqueEmployees.size) },
+      { label: 'Total leave-days', value: totalLeaveDays.toFixed(1) },
+    ])}
     ${sectionHtml}
   `;
 }

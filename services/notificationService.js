@@ -3,6 +3,10 @@ const AdminUser = require('../models/AdminUser');
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 const { sendMail, emailTemplate, isEmailConfigured } = require('./emailService');
 const { sendAdminBulkEmail } = require('./adminEmailService');
+const {
+  emailCallout,
+  emailCtaButton,
+} = require('./emailHtmlHelpers');
 const { isShiftReportEmailRemindersEnabled } = require('./systemSettingsService');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
@@ -108,7 +112,11 @@ async function createNotification({
   if (sendEmail) {
     const user = await AdminUser.findById(recipientUserId).lean();
     if (user) {
-      const sent = await deliverEmail(user, title, `<p>${body}</p>${link ? `<p><a href="${link}">Open in QIPP</a></p>` : ''}`);
+      const sent = await deliverEmail(
+        user,
+        title,
+        `<p>${body}</p>${link ? emailCtaButton(link, 'Open in QIPP') : ''}`
+      );
       if (sent) {
         doc.emailSentAt = new Date();
         await doc.save();
@@ -210,7 +218,11 @@ async function notifyChemistryAlarm({ chemists, supervisors, admins, metricLabel
 
   await sendAdminBulkEmail({
     subject: `Chemistry Alarm — ${metricLabel} out of range`,
-    bodyHtml: `<p>${body}</p><p><a href="${base}/chemistry">Open chemistry dashboard</a></p>`,
+    bodyHtml: `
+      ${emailCallout(`<p><strong>${metricLabel}</strong> is out of range: <strong>${value}</strong> (${limitLabel}) on ${reportDate}.</p>`, 'warning')}
+      <p>Review the chemistry dashboard and confirm corrective actions if required.</p>
+      ${emailCtaButton(`${base}/chemistry`, 'Open chemistry dashboard')}
+    `,
   });
 }
 
@@ -237,7 +249,13 @@ async function notifyRosterLockChange(locked, actorName = 'Administrator') {
   const stateLabel = locked ? 'Locked' : 'Unlocked';
   await sendAdminBulkEmail({
     subject: `Roster ${stateLabel} by ${actorName}`,
-    bodyHtml: `<p>The system roster was <strong>${stateLabel.toLowerCase()}</strong> by ${actorName}.</p>`,
+    bodyHtml: `
+      ${emailCallout(`<p>The system roster was <strong>${stateLabel.toLowerCase()}</strong> by ${actorName}.</p>`)}
+      <p>${locked
+        ? 'Leave planner edits are currently disabled for personnel until the roster is unlocked again.'
+        : 'Leave planner edits are enabled again for approved personnel.'}</p>
+      ${emailCtaButton(`${base}/leave`, 'Open leave planner')}
+    `,
     superAdminOnly: true,
   });
 }
@@ -301,7 +319,11 @@ async function notifyQuizPrizeClaimed(_adminId, userName, quizTitle) {
 
   await sendAdminBulkEmail({
     subject: `Prize Claim — ${userName} completed ${quizTitle}`,
-    bodyHtml: `<p><strong>${userName}</strong> claimed their prize after completing <strong>${quizTitle}</strong>.</p>`,
+    bodyHtml: `
+      ${emailCallout(`<p><strong>${userName}</strong> claimed their prize after completing <strong>${quizTitle}</strong>.</p>`)}
+      <p>Review the training record in QIPP if follow-up is required.</p>
+      ${emailCtaButton(`${getFrontendBaseUrlSafe()}/trainings`, 'Open Training Hub')}
+    `,
     superAdminOnly: true,
   });
 }
@@ -312,7 +334,11 @@ async function notifyKpiSubmitted({ employee }) {
   const kpiCount = Array.isArray(employee?.kpis) ? employee.kpis.length : 0;
   await sendAdminBulkEmail({
     subject: `KPI submitted for review — ${name}`,
-    bodyHtml: `<p><strong>${name}</strong> (${employee?.empId || '—'}) submitted ${kpiCount} KPI goal${kpiCount === 1 ? '' : 's'} for review.</p><p><a href="${base}/settings">Open admin KPI review</a></p>`,
+    bodyHtml: `
+      ${emailCallout(`<p><strong>${name}</strong> (${employee?.empId || '—'}) submitted ${kpiCount} KPI goal${kpiCount === 1 ? '' : 's'} for review.</p>`)}
+      <p>Please review the submission and finalize goals when ready.</p>
+      ${emailCtaButton(`${base}/settings`, 'Open admin KPI review')}
+    `,
     superAdminOnly: true,
   });
 }
@@ -323,10 +349,10 @@ async function notifyKpiFinalized({ employee, reviewNotes = '' }) {
   if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return { sent: false };
 
   const kpiLines = (employee?.kpis || [])
-    .map((k) => `<li>${k.title} — weight ${k.weight ?? 0}% · progress ${k.progress ?? 0}%</li>`)
+    .map((k) => `<li><strong>${k.title}</strong> — weight ${k.weight ?? 0}% · progress ${k.progress ?? 0}%</li>`)
     .join('');
   const notesBlock = reviewNotes
-    ? `<p><strong>Review notes:</strong> ${String(reviewNotes).replace(/</g, '&lt;')}</p>`
+    ? emailCallout(`<p><strong>Review notes:</strong> ${String(reviewNotes).replace(/</g, '&lt;')}</p>`)
     : '';
 
   try {
@@ -335,7 +361,11 @@ async function notifyKpiFinalized({ employee, reviewNotes = '' }) {
       subject: 'Your KPI goals have been finalized',
       html: emailTemplate(
         'KPI goals finalized',
-        `<p>Hi ${employee.name || ''},</p><p>Your KPI goals have been reviewed and finalized by the administrator.</p>${notesBlock}<ul>${kpiLines}</ul><p><a href="${base}/settings/kpi">View your KPI goals</a></p>`
+        `<p>Hi <strong>${employee.name || ''}</strong>,</p>
+        ${emailCallout('<p>Your KPI goals have been reviewed and finalized by the administrator.</p>')}
+        ${notesBlock}
+        ${kpiLines ? `<ul class="info-list">${kpiLines}</ul>` : ''}
+        ${emailCtaButton(`${base}/settings/kpi`, 'View your KPI goals')}`
       ),
     });
     return { sent: true };

@@ -9,6 +9,7 @@ const {
   getFromAddress,
 } = require('../config/emailProvider');
 const { ACWA_EMAIL_LOGO_SVG, BRAND_MOTTO_HTML } = require('./emailBrandAssets');
+const { emailCallout, emailCtaButton, emailHighlightBox, emailInfoList, emailMuted } = require('./emailHtmlHelpers');
 const SMTP_CONNECTION_TIMEOUT_MS = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS, 10) || 60000;
 const SMTP_SOCKET_TIMEOUT_MS = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS, 10) || 60000;
 const SMTP_GREETING_TIMEOUT_MS = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS, 10) || 60000;
@@ -227,25 +228,51 @@ async function sendMail(options) {
 function emailTemplate(title, bodyHtml) {
   return `
   <!DOCTYPE html>
-  <html>
+  <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>${title}</title>
     <style>
-      body { margin:0; padding:0; background:#f4f4f8; font-family:'Segoe UI',Arial,sans-serif; }
-      .wrapper { max-width:520px; margin:40px auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.08); }
+      body { margin:0; padding:0; background:#f4f4f8; font-family:'Montserrat','Segoe UI',Arial,sans-serif; -webkit-text-size-adjust:100%; }
+      .wrapper { max-width:560px; margin:32px auto; background:#fff; border-radius:16px; overflow:hidden; box-shadow:0 4px 24px rgba(46,32,68,0.10); }
       .header { background:#F9F7FC; padding:28px 40px; text-align:center; border-bottom:1px solid #E3DCF5; }
       .header .logo { display:inline-block; line-height:0; }
-      .body { padding:40px; color:#2E2044; }
-      .body h2 { font-size:22px; font-weight:800; margin:0 0 8px; }
-      .body p { font-size:15px; line-height:1.6; color:#555; margin:0 0 16px; }
-      .otp-box { background:#f4f4f8; border-radius:12px; padding:20px; text-align:center; margin:24px 0; }
-      .otp-box span { font-size:40px; font-weight:900; letter-spacing:0.3em; color:#9273DA; }
-      .btn { display:inline-block; background:#9273DA; color:#fff !important; text-decoration:none; font-weight:700; font-size:15px; padding:14px 32px; border-radius:10px; margin:16px 0; }
-      .footer { background:#9273DA; padding:24px 40px; text-align:center; font-size:12px; color:#fff; border-top:1px solid rgba(255,255,255,0.15); }
-      .brand-motto { font-size:18px; line-height:1.35; font-weight:600; margin-bottom:10px; }
+      .body { padding:36px 40px 40px; color:#2E2044; }
+      .body h2 { font-size:22px; font-weight:800; margin:0 0 20px; color:#2E2044; line-height:1.3; }
+      .body h3.section-title { font-size:16px; font-weight:700; margin:28px 0 12px; color:#9273DA; line-height:1.35; }
+      .body p { font-size:15px; line-height:1.65; color:#555; margin:0 0 16px; }
+      .body p.muted, .muted { font-size:13px; color:#6B6280; margin-top:8px; }
+      .body p.signoff { font-size:13px; color:#6B5E8A; margin-top:24px; margin-bottom:0; }
+      .body ul, .body ol { font-size:15px; line-height:1.65; color:#555; margin:0 0 16px; padding-left:22px; }
+      .body li { margin-bottom:6px; }
+      ul.info-list { list-style:none; padding:0; margin:16px 0 20px; }
+      ul.info-list li { position:relative; padding:8px 0 8px 22px; border-bottom:1px solid #F0ECF8; font-size:14px; color:#444; }
+      ul.info-list li:last-child { border-bottom:none; }
+      ul.info-list li::before { content:""; position:absolute; left:0; top:14px; width:8px; height:8px; border-radius:50%; background:#9273DA; }
+      .callout { background:#F9F7FC; border-left:4px solid #9273DA; border-radius:0 12px 12px 0; padding:16px 18px; margin:20px 0; }
+      .callout p { margin:0; color:#2E2044; font-size:14px; line-height:1.6; }
+      .callout-warning { background:#FFF9F0; border-left-color:#E8A838; }
+      .callout-warning p { color:#5C4A20; }
+      .highlight-box, .otp-box { background:#F4F0FC; border:1px solid #E3DCF5; border-radius:12px; padding:22px 20px; text-align:center; margin:24px 0; }
+      .highlight-box span, .otp-box span { font-size:40px; font-weight:900; letter-spacing:0.3em; color:#9273DA; }
+      .btn-block { text-align:center; margin:24px 0; }
+      .btn { display:inline-block; background:#9273DA; color:#fff !important; text-decoration:none; font-weight:700; font-size:15px; padding:14px 32px; border-radius:10px; }
+      .detail-table { width:100%; border-collapse:collapse; margin:16px 0 20px; font-size:14px; }
+      .detail-table td { padding:10px 12px; border-bottom:1px solid #F0ECF8; vertical-align:top; }
+      .detail-table .detail-label { color:#6B6280; font-weight:600; width:38%; }
+      .detail-table .detail-value { color:#2E2044; font-weight:500; }
+      .footer { background:#9273DA; padding:24px 40px; text-align:center; font-size:12px; color:rgba(255,255,255,0.92); border-top:1px solid rgba(255,255,255,0.15); line-height:1.5; }
+      .brand-motto { font-size:17px; line-height:1.35; font-weight:600; margin-bottom:10px; }
       .motto-white { color:#ffffff; }
       .motto-muted { color:#2E2044; }
+      @media only screen and (max-width:600px) {
+        .wrapper { margin:0; border-radius:0; }
+        .header, .body, .footer { padding-left:24px; padding-right:24px; }
+        .body h2 { font-size:20px; }
+        .highlight-box span, .otp-box span { font-size:28px; letter-spacing:0.15em; }
+      }
     </style>
   </head>
   <body>
@@ -269,9 +296,14 @@ function emailTemplate(title, bodyHtml) {
 exports.sendOtpEmail = async (email, name, otp) => {
   const html = emailTemplate('Verify Your Email', `
     <p>Hello <strong>${name}</strong>,</p>
-    <p>Use the OTP below to verify your email address. It expires in <strong>10 minutes</strong>.</p>
-    <div class="otp-box"><span>${otp}</span></div>
-    <p>If you did not register, ignore this email.</p>
+    ${emailCallout('<p>Enter this one-time code to verify your email address and activate your QIPP account.</p>')}
+    <p>Your verification code expires in <strong>10 minutes</strong>.</p>
+    ${emailHighlightBox(otp)}
+    ${emailInfoList([
+      'Do not share this code with anyone',
+      'If the code expires, request a new one from the sign-in page',
+    ])}
+    ${emailMuted('If you did not register for QIPP, you can safely ignore this email.')}
   `);
 
   await sendMail({
@@ -284,11 +316,14 @@ exports.sendOtpEmail = async (email, name, otp) => {
 exports.sendResetEmail = async (email, name, resetUrl) => {
   const html = emailTemplate('Reset Your Password', `
     <p>Hello <strong>${name}</strong>,</p>
-    <p>Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
-    <div style="text-align:center;">
-      <a href="${resetUrl}" class="btn">Reset Password</a>
-    </div>
-    <p>If you did not request a reset, ignore this email. Your password will not change.</p>
+    ${emailCallout('<p>We received a request to reset your QIPP password. Use the button below to choose a new password.</p>')}
+    <p>This secure link expires in <strong>1 hour</strong>.</p>
+    ${emailCtaButton(resetUrl, 'Reset Password')}
+    ${emailInfoList([
+      'The link works only once — request another reset if it expires',
+      'Your current password stays active until you complete the reset',
+    ])}
+    ${emailMuted('If you did not request a password reset, ignore this email. Your password will not change.')}
   `);
 
   await sendMail({
@@ -301,9 +336,14 @@ exports.sendResetEmail = async (email, name, resetUrl) => {
 exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
   const html = emailTemplate('Your Password Has Been Reset', `
     <p>Hello <strong>${name}</strong>,</p>
-    <p>An administrator has reset your password. Use the temporary password below to log in, then change it immediately.</p>
-    <div class="otp-box"><span style="font-size:24px;letter-spacing:0.15em;">${tempPassword}</span></div>
-    <p>For security, please update your password after logging in.</p>
+    ${emailCallout('<p>An administrator has reset your QIPP account password. Sign in with the temporary password below, then set a new password immediately.</p>', 'warning')}
+    ${emailHighlightBox(tempPassword, 'sm')}
+    ${emailInfoList([
+      'Log in at your usual QIPP URL with this temporary password',
+      'Update your password from account settings right after signing in',
+      'Do not share this password with anyone',
+    ])}
+    ${emailMuted('If you did not expect this change, contact your portal administrator.')}
   `);
 
   await sendMail({
