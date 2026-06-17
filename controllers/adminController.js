@@ -5,6 +5,7 @@ const { logRosterEvent } = require('../services/rosterAuditService');
 const { logPtwEvent } = require('../services/ptwAuditService');
 const PtwAuditLog = require('../models/PtwAuditLog');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
+const { syncPlaceholderEmailForUser } = require('../services/personnelEmailLookup');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
@@ -525,17 +526,29 @@ exports.clearPlaceholderEmails = async (req, res) => {
       return res.status(403).json({ message: 'Only admin@acwaops.com may clear placeholder emails.' });
     }
     const users = await AdminUser.find({ email: { $exists: true, $ne: '' } });
-    let cleared = 0;
+    let updated = 0;
+    let unchanged = 0;
     for (const u of users) {
-      if (isPlaceholderEmail(u.email)) {
-        u.email = '';
+      if (!isPlaceholderEmail(u.email)) {
+        unchanged += 1;
+        continue;
+      }
+      const { updated: didUpdate, email } = syncPlaceholderEmailForUser(u);
+      if (didUpdate && email) {
+        u.email = email;
         await u.save();
-        cleared += 1;
+        updated += 1;
+      } else {
+        unchanged += 1;
       }
     }
-    res.json({ message: `Cleared ${cleared} placeholder email(s).`, cleared });
+    res.json({
+      message: `Synced ${updated} placeholder email(s) from personnel roster.`,
+      updated,
+      unchanged,
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error clearing emails', error: err.message });
+    res.status(500).json({ message: 'Error syncing placeholder emails', error: err.message });
   }
 };
 

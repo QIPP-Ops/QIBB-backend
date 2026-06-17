@@ -647,7 +647,7 @@ exports.assignQuiz = async (req, res) => {
     if (Array.isArray(userIds) && userIds.length) {
       targets = await AdminUser.find({ _id: { $in: userIds }, approved: true }).select('_id').lean();
     } else if (crew) {
-      targets = await AdminUser.find({ crew: String(crew), approved: true }).select('_id').lean();
+      targets = await AdminUser.find({ crew: String(crew), isApproved: true, isActive: { $ne: false } }).select('_id').lean();
     } else {
       return res.status(400).json({ message: 'Provide userIds or crew' });
     }

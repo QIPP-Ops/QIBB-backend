@@ -3,6 +3,7 @@ const { isPlaceholderEmail, isValidEmailFormat } = require('../utils/placeholder
 
 let byEmpId = null;
 let byName = null;
+let rowsCache = null;
 
 function normalizeName(value) {
   return String(value || '')
@@ -36,9 +37,11 @@ function loadIndexes() {
   if (byEmpId) return;
   byEmpId = new Map();
   byName = new Map();
+  rowsCache = [];
   for (const row of personnelEmails) {
     const email = String(row.email || '').trim().toLowerCase();
     if (!email || !isValidEmailFormat(email)) continue;
+    rowsCache.push(row);
     const empId = String(row.empId || '').trim();
     if (empId) byEmpId.set(empId, email);
     const nameKey = normalizeName(row.name);
@@ -49,11 +52,12 @@ function loadIndexes() {
 function resetPersonnelEmailIndexes() {
   byEmpId = null;
   byName = null;
+  rowsCache = null;
 }
 
 /**
- * Resolve a deliverable @nomac.com (or real) address for broadcast/notifications.
- * Falls back to bundled personnel-emails.json when Mongo has placeholder roster emails.
+ * Resolve a deliverable address for broadcast/notifications.
+ * Maps seeded @roster.acwaops.local placeholders to personnel-emails.json.
  */
 function resolveDeliverableEmail(user) {
   loadIndexes();
@@ -65,24 +69,42 @@ function resolveDeliverableEmail(user) {
   const empId = String(user?.empId || '').trim();
   if (empId && byEmpId.has(empId)) return byEmpId.get(empId);
 
-  const nameKey = normalizeName(user?.name);
-  if (nameKey && byName.has(nameKey)) return byName.get(nameKey);
+  for (const key of [user?.name, user?.fullName]) {
+    const nameKey = normalizeName(key);
+    if (nameKey && byName.has(nameKey)) return byName.get(nameKey);
+  }
 
-  // Fuzzy fallback only for multi-token names — avoids "Ali" matching "Izhar Ali".
-  if (nameTokens(user?.name).length < 2) return '';
-
-  for (const row of personnelEmails) {
-    if (namesMatch(user?.name, row.name)) {
-      const email = String(row.email || '').trim().toLowerCase();
-      if (email && isValidEmailFormat(email)) return email;
+  for (const row of rowsCache || []) {
+    const email = String(row.email || '').trim().toLowerCase();
+    if (!email || !isValidEmailFormat(email)) continue;
+    if (
+      namesMatch(user?.name, row.name) ||
+      namesMatch(user?.fullName, row.name)
+    ) {
+      return email;
     }
   }
 
   return '';
 }
 
+/**
+ * Replace placeholder roster emails with personnel-emails.json matches.
+ */
+function syncPlaceholderEmailForUser(user) {
+  if (!user || !isPlaceholderEmail(user.email)) {
+    return { updated: false, email: user?.email || '' };
+  }
+  const resolved = resolveDeliverableEmail(user);
+  if (resolved && resolved !== user.email) {
+    return { updated: true, email: resolved };
+  }
+  return { updated: false, email: user.email };
+}
+
 module.exports = {
   resolveDeliverableEmail,
+  syncPlaceholderEmailForUser,
   resetPersonnelEmailIndexes,
   normalizeName,
   namesMatch,

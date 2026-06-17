@@ -28,6 +28,7 @@ const {
   resolveSuperAdminCredentials,
   bundledEmailPresets,
 } = require('./lib/atlasSeedHelpers');
+const { syncPlaceholderEmailForUser } = require('../services/personnelEmailLookup');
 
 const rosterData = require('../data/roster.json');
 const personnelEmails = require('../data/personnel-emails.json');
@@ -142,6 +143,21 @@ async function seedRosterUsers(defaultPassword) {
   }
 
   return { created, updated, placeholderEmails, total: rosterData.length };
+}
+
+async function syncPlaceholderEmailsInDb() {
+  const users = await AdminUser.find({ email: /@roster\.acwaops\.local$/i });
+  let updated = 0;
+  for (const u of users) {
+    const { updated: didUpdate, email } = syncPlaceholderEmailForUser(u);
+    if (didUpdate && email) {
+      u.email = email;
+      await u.save();
+      updated += 1;
+    }
+  }
+  if (updated) log(`📧 Synced ${updated} placeholder email(s) from personnel-emails.json`);
+  return { updated };
 }
 
 async function seedSuperAdmin() {
@@ -259,6 +275,8 @@ async function runAtlasSeed(options = {}) {
     `👥 Roster: ${roster.created} created, ${roster.updated} updated, ` +
     `${roster.placeholderEmails} placeholder emails, ${roster.total} total in roster.json`
   );
+
+  await syncPlaceholderEmailsInDb();
 
   const superAdmin = await seedSuperAdmin();
   const ptw = await ensurePtwPersonnelSeeded();
