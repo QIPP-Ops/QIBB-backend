@@ -36,7 +36,7 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     try {
       const quizSeed = await ensureBuiltinQuizzesSeeded();
       if (quizSeed.seeded) {
-        console.log(`[quiz] ${quizSeed.action} built-in quiz ${quizSeed.quizId}`);
+        console.log(`[quiz] built-in quizzes: ${quizSeed.action}`);
       }
     } catch (quizErr) {
       console.warn('[quiz] startup auto-seed skipped:', quizErr.message);
