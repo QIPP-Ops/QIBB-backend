@@ -6,7 +6,10 @@ const { isProtectedAccountEmail, filterProtectedAccounts } = require('../utils/p
 const ShiftOverride = require('../models/ShiftOverride');
 const { getShiftForDate, userCanAccessOpsTools } = require('../services/shiftScheduleService');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
-const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
+const {
+  redactLeaveBalancesForClient,
+  canEditCompensateBalance,
+} = require('../utils/leaveBalanceAccess');
 const {
   isAnnualLeaveType,
   isBankLeaveType,
@@ -30,14 +33,6 @@ function calendarDaysInclusive(start, end) {
   e.setHours(0, 0, 0, 0);
   if (e < s) return 0;
   return Math.floor((e - s) / 86400000) + 1;
-}
-
-function canEditCompensateBalance(req, targetUser) {
-  if (!req.user) return false;
-  if (hasPortalAdminAccess(req)) return true;
-  if (req.user.canOpsLead) return true;
-  if (req.user.role === 'management' && targetUser.crew === req.user.crew) return true;
-  return false;
 }
 
 function rosterRowForClient(doc) {
@@ -651,6 +646,9 @@ exports.patchLeaveBalances = async (req, res) => {
 
 exports.patchCompensateBalance = async (req, res) => {
   try {
+    if (!isCompensateLeaveType('Compensate Off')) {
+      return res.status(500).json({ message: 'Compensate leave type is not configured.' });
+    }
     const { empId } = req.params;
     const bal = req.body?.balance;
     if (bal === undefined || Number.isNaN(Number(bal))) {

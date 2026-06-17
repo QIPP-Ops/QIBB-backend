@@ -1,4 +1,8 @@
-const { canViewLeaveBalance, redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
+const {
+  canViewLeaveBalance,
+  canEditCompensateBalance,
+  redactLeaveBalancesForClient,
+} = require('../utils/leaveBalanceAccess');
 
 describe('leaveBalanceAccess', () => {
   const row = {
@@ -34,5 +38,32 @@ describe('leaveBalanceAccess', () => {
     const req = { user: { accessRole: 'management', empId: 'E9', crew: 'A' } };
     expect(canViewLeaveBalance(req, 'E2', 'A')).toBe(true);
     expect(canViewLeaveBalance(req, 'E3', 'B')).toBe(false);
+  });
+
+  describe('canEditCompensateBalance', () => {
+    const target = { empId: 'E2', crew: 'A' };
+
+    it('allows super admin for any crew', () => {
+      const req = { user: { email: 'admin@acwaops.com', accessRole: 'admin', crew: 'B' } };
+      expect(canEditCompensateBalance(req, target)).toBe(true);
+    });
+
+    it('allows admin for same crew only', () => {
+      const sameCrew = { user: { accessRole: 'admin', empId: 'E9', crew: 'A' } };
+      const otherCrew = { user: { accessRole: 'admin', empId: 'E9', crew: 'B' } };
+      expect(canEditCompensateBalance(sameCrew, target)).toBe(true);
+      expect(canEditCompensateBalance(otherCrew, target)).toBe(false);
+    });
+
+    it('allows management for same crew only', () => {
+      const req = { user: { accessRole: 'management', empId: 'E9', crew: 'A' } };
+      expect(canEditCompensateBalance(req, target)).toBe(true);
+      expect(canEditCompensateBalance({ user: { accessRole: 'management', crew: 'B' } }, target)).toBe(false);
+    });
+
+    it('denies viewers', () => {
+      const req = { user: { accessRole: 'viewer', empId: 'E2', crew: 'A' } };
+      expect(canEditCompensateBalance(req, target)).toBe(false);
+    });
   });
 });
