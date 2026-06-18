@@ -17,6 +17,7 @@ const quizUpload = upload.fields([
 ]);
 
 router.get('/catalog', protect, c.getCatalog);
+router.get('/courses-for-reminder', protect, admin, c.getCoursesForReminder);
 router.get('/completed-courses', protect, c.getCompletedCourses);
 router.get('/recent-achievements', protect, c.getRecentAchievements);
 router.get('/my-certificates', protect, c.getMyCertificates);

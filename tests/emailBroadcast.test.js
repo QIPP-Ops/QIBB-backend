@@ -2,7 +2,7 @@ const {
   _internals,
 } = require('../controllers/emailBroadcastController');
 
-const { parseRecipientFilters, parseExplicitRecipients } = _internals;
+const { parseRecipientFilters, parseExplicitRecipients, substituteTemplate } = _internals;
 
 describe('emailBroadcast recipient parsing', () => {
   test('splits email addresses out of empIds array', () => {
@@ -25,6 +25,26 @@ describe('emailBroadcast recipient parsing', () => {
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].email).toBe('ahmed.mostafa@nomac.com');
+  });
+});
+
+describe('emailBroadcast template substitution', () => {
+  test('substitutes course reminder placeholders', () => {
+    const subject = substituteTemplate('Reminder: complete {{courseTitle}}', {
+      courseTitle: 'LOTO',
+    });
+    expect(subject).toBe('Reminder: complete LOTO');
+
+    const body = substituteTemplate(
+      '<a href="{{courseLink}}">{{courseTitle}}</a>{{courseDescription}}',
+      {
+        courseTitle: 'LOTO',
+        courseLink: 'https://acwaops.com/qipp/trainings',
+        courseDescription: '<p>Isolation procedures</p>',
+      }
+    );
+    expect(body).toContain('https://acwaops.com/qipp/trainings');
+    expect(body).toContain('Isolation procedures');
   });
 });
 

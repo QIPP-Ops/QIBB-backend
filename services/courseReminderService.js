@@ -8,6 +8,7 @@ const {
   mergeEmailPresets,
   findEmailPreset,
 } = require('./emailPresetsService');
+const { findCourseForReminder } = require('./trainingCourseListService');
 
 function substituteTemplate(text, vars) {
   return String(text || '').replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
@@ -104,7 +105,13 @@ async function sendOverdueCourseReminders({ now = new Date() } = {}) {
       skipped += 1;
       continue;
     }
-    const result = await sendCourseReminderEmail(user, row.courseTitle, '', '');
+    const matched = await findCourseForReminder(row.courseId);
+    const result = await sendCourseReminderEmail(
+      user,
+      row.courseTitle,
+      matched?.description || '',
+      matched?.link || ''
+    );
     if (result.sent) {
       await CourseAssignment.updateOne({ _id: row._id }, { $set: { lastReminderAt: now } });
       sent += 1;

@@ -246,6 +246,10 @@ exports.sendEmailBroadcast = async (req, res) => {
     let sent = 0;
     const failures = [];
 
+    const courseDescriptionHtml = variables.courseDescription
+      ? `<p>${String(variables.courseDescription).trim()}</p>`
+      : '';
+
     for (const user of recipients) {
       const vars = {
         name: user.name,
@@ -256,6 +260,9 @@ exports.sendEmailBroadcast = async (req, res) => {
         deadline: variables.deadline || '',
         date: variables.date || '',
         month: variables.month || '',
+        courseTitle: variables.courseTitle || '',
+        courseDescription: courseDescriptionHtml,
+        courseLink: variables.courseLink || '',
       };
       const subj = substituteTemplate(finalSubject, vars);
       const html = emailTemplate(subj, substituteTemplate(finalBody, vars));
@@ -315,4 +322,5 @@ exports._internals = {
   parseExplicitRecipients,
   getMergedPresets,
   loadBundledEmailPresets,
+  substituteTemplate,
 };

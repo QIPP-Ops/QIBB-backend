@@ -30,6 +30,10 @@ const {
   listCourseAssignments,
   unassignCourse,
 } = require('../services/courseAssignmentService');
+const {
+  listCoursesForReminder,
+  findCourseForReminder,
+} = require('../services/trainingCourseListService');
 const { memberQuizStatus } = require('../utils/memberQuizStatus');
 
 const catalogPath = path.join(__dirname, '../data/training-catalog.json');
@@ -121,6 +125,18 @@ async function assignmentCountsByQuiz() {
 exports.getCatalog = async (_req, res) => {
   try {
     res.json({ success: true, data: loadCatalog(), provider: 'local' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCoursesForReminder = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({ message: 'Administrator privileges required.' });
+    }
+    const courses = await listCoursesForReminder();
+    res.json({ success: true, courses });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -1118,7 +1134,13 @@ exports.sendCourseReminder = async (req, res) => {
       dryRun = false,
     } = req.body || {};
 
-    const title = String(courseTitle || '').trim();
+    const matchedCourse = courseId ? await findCourseForReminder(courseId) : null;
+    const title = String(courseTitle || matchedCourse?.title || '').trim();
+    const description = String(
+      courseDescription || matchedCourse?.description || ''
+    ).trim();
+    const link = String(courseLink || matchedCourse?.link || '').trim();
+
     if (!title) {
       return res.status(400).json({ message: 'courseTitle is required.' });
     }
@@ -1156,7 +1178,7 @@ exports.sendCourseReminder = async (req, res) => {
         continue;
       }
       try {
-        const result = await sendCourseReminderEmail(user, title, courseDescription, courseLink);
+        const result = await sendCourseReminderEmail(user, title, description, link);
         if (result.sent) sent += 1;
         else failed.push({ empId: user.empId, error: result.reason || 'send_failed' });
       } catch (err) {
