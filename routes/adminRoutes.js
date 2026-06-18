@@ -11,6 +11,7 @@ const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
 const blobController = require('../controllers/blobController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
+const tabVisibility = require('../controllers/tabVisibilityController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -97,5 +98,7 @@ router.patch('/users/:id/role', protect, admin, c.updateUserRole);
 router.delete('/users/:id/reject', protect, admin, c.rejectUser);
 router.delete('/users/:id', protect, admin, c.rejectUser);
 router.post('/users/:id/reset-password', protect, requireSuperAdmin, authController.adminResetPassword);
+router.get('/users/:id/tab-visibility', protect, requireSuperAdmin, tabVisibility.getUserTabVisibility);
+router.patch('/users/:id/tab-visibility', protect, requireSuperAdmin, tabVisibility.patchUserTabVisibility);
 
 module.exports = router;

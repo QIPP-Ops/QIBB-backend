@@ -530,13 +530,18 @@ exports.updateProfile = async (req, res) => {
 
 function buildAuthMePayload(decodedUser, dbRow) {
   const { portalRoleFromUser } = require('../utils/jwtAuth');
+  const { resolveTabVisibilityForUser } = require('../utils/tabVisibility');
   const accessRole = dbRow?.accessRole || decodedUser.accessRole || 'viewer';
   const portalRole = dbRow ? portalRoleFromUser(dbRow) : decodedUser.role;
+  const email = dbRow?.email || decodedUser.email;
+  const tabVisibility = dbRow
+    ? resolveTabVisibilityForUser({ email, tabVisibility: dbRow.tabVisibility })
+    : resolveTabVisibilityForUser({ email: decodedUser.email });
   return {
     ok: true,
     user: {
       id: decodedUser.userId || decodedUser.id,
-      email: dbRow?.email || decodedUser.email,
+      email,
       role: portalRole,
       accessRole,
       displayName: dbRow?.name || decodedUser.displayName || decodedUser.name,
@@ -546,6 +551,7 @@ function buildAuthMePayload(decodedUser, dbRow) {
       canOpsLead: dbRow ? Boolean(dbRow.canOpsLead) : decodedUser.canOpsLead === true,
       profilePhotoUrl: dbRow?.profilePhotoUrl || '',
       jobRole: dbRow?.role || decodedUser.jobRole,
+      tabVisibility,
     },
   };
 }
@@ -563,7 +569,7 @@ exports.me = async (req, res) => {
   }
   try {
     const row = await AdminUser.findById(userId)
-      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive')
+      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive tabVisibility')
       .lean();
     if (row?.isActive === false) {
       return res.status(403).json({ message: 'Access revoked.', code: 'ACCESS_REVOKED' });

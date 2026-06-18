@@ -48,6 +48,8 @@ const AdminUserSchema = new mongoose.Schema({
   /** Super-admin controlled: leave conflicts, chemistry alarms, daily digest */
   receiveEmailNotifications: { type: Boolean, default: false },
   canOpsLead:        { type: Boolean, default: false },
+  /** Super-admin per-user portal tab visibility (missing key = visible). */
+  tabVisibility:     { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
   compensateDayBalance: { type: Number, default: 0 },
   annualLeaveBalance: { type: Number, default: 0 },
   bankLeaveBalance: { type: Number, default: 0 },
