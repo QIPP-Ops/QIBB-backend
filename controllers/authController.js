@@ -38,6 +38,7 @@ const {
   isAutoApprovedDomain: checkAutoApprovedDomain,
   emailDomain: getEmailDomain,
 } = require('../services/emailDomainPolicy');
+const { resolveLoginEmail } = require('../utils/resolveLoginEmail');
 
 // ─── Register options (public) ───────────────────────────────────────────────
 
@@ -233,10 +234,11 @@ exports.resendOtp = async (req, res) => {
 // ─── Login ───────────────────────────────────────────────────────────────────
 
 exports.login = async (req, res) => {
-  const email = normalizeEmail(req.body.email);
+  const rawIdentifier = req.body.email || req.body.username || req.body.identifier;
+  const email = await resolveLoginEmail(rawIdentifier);
   const { password } = req.body;
   if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required.' });
+    return res.status(400).json({ message: 'Email or username and password are required.' });
   }
   try {
     const user = await findUserByEmail(email);
