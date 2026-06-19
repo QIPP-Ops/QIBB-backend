@@ -47,11 +47,19 @@ function rosterRowForClient(doc) {
   return row;
 }
 
+function isLeaveTimesheetRosterRequest(req) {
+  const raw = req.query.forLeaveTimesheet;
+  return raw === '1' || raw === 'true';
+}
+
 exports.getRoster = async (req, res) => {
   try {
     const { sortRosterEmployees } = require('../utils/rosterRowSort');
+    const rosterFilter = isLeaveTimesheetRosterRequest(req)
+      ? { hiddenFromLeaveTimesheet: { $ne: true } }
+      : {};
     const rows = sortRosterEmployees(
-      await AdminUser.find().select('-passwordHash').lean()
+      await AdminUser.find(rosterFilter).select('-passwordHash').lean()
     );
     res.json(
       filterProtectedAccounts(rows)

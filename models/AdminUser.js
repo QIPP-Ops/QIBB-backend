@@ -50,6 +50,8 @@ const AdminUserSchema = new mongoose.Schema({
   canOpsLead:        { type: Boolean, default: false },
   /** Super-admin per-user portal tab visibility (missing key = visible). */
   tabVisibility:     { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+  /** When true, user is omitted from leave timesheet / operations roster grids. */
+  hiddenFromLeaveTimesheet: { type: Boolean, default: false },
   compensateDayBalance: { type: Number, default: 0 },
   annualLeaveBalance: { type: Number, default: 0 },
   bankLeaveBalance: { type: Number, default: 0 },

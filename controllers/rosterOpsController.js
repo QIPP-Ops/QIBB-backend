@@ -27,7 +27,9 @@ async function buildSchedulePayload(start, end) {
   const config = await AdminConfig.findOne();
     const { sortRosterEmployees } = require('../utils/rosterRowSort');
     const allEmployees = filterProtectedAccounts(
-      await AdminUser.find().select('-passwordHash').lean()
+      await AdminUser.find({ hiddenFromLeaveTimesheet: { $ne: true } })
+        .select('-passwordHash')
+        .lean()
     );
     const employees = sortRosterEmployees(allEmployees);
   const overrideMap = await loadOverridesForRange(start, end);

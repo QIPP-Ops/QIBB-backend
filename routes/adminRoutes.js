@@ -12,6 +12,7 @@ const authController = require('../controllers/authController');
 const blobController = require('../controllers/blobController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
+const leaveTimesheetVisibility = require('../controllers/leaveTimesheetVisibilityController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -100,5 +101,7 @@ router.delete('/users/:id', protect, admin, c.rejectUser);
 router.post('/users/:id/reset-password', protect, requireSuperAdmin, authController.adminResetPassword);
 router.get('/users/:id/tab-visibility', protect, requireSuperAdmin, tabVisibility.getUserTabVisibility);
 router.patch('/users/:id/tab-visibility', protect, requireSuperAdmin, tabVisibility.patchUserTabVisibility);
+router.get('/users/:id/leave-timesheet-visibility', protect, requireSuperAdmin, leaveTimesheetVisibility.getUserLeaveTimesheetVisibility);
+router.patch('/users/:id/leave-timesheet-visibility', protect, requireSuperAdmin, leaveTimesheetVisibility.patchUserLeaveTimesheetVisibility);
 
 module.exports = router;
