@@ -1,8 +1,10 @@
 const AdminUser = require('../models/AdminUser');
 const AdminConfig = require('../models/AdminConfig');
 const ShiftOverride = require('../models/ShiftOverride');
+const ActingAssignment = require('../models/ActingAssignment');
 const RosterAuditLog = require('../models/RosterAuditLog');
 const { buildRosterSchedule, overrideMapFromDocs } = require('../services/shiftScheduleService');
+const { enrichScheduleRows } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
 const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
@@ -34,6 +36,15 @@ async function loadOverridesForRange(start, end) {
   return overrideMapFromDocs(docs);
 }
 
+async function loadActingAssignmentsForRange(start, end) {
+  const startStr = fmtDate(start);
+  const endStr = fmtDate(end);
+  return ActingAssignment.find({
+    startDate: { $lte: endStr },
+    endDate: { $gte: startStr },
+  }).lean();
+}
+
 async function buildSchedulePayload(start, end) {
   const config = await AdminConfig.findOne();
     const { sortRosterEmployees } = require('../utils/rosterRowSort');
@@ -50,6 +61,10 @@ async function buildSchedulePayload(start, end) {
     baseDate: config?.shiftCycleBaseDate || '2026-01-01',
     overrideMap,
   });
+  const actingAssignments = await loadActingAssignmentsForRange(start, end);
+  const employeeById = new Map(employees.map((e) => [e.empId, e]));
+  schedule.rows = enrichScheduleRows(schedule.rows, actingAssignments, employeeById);
+  schedule.actingAssignments = actingAssignments;
   return schedule;
 }
 

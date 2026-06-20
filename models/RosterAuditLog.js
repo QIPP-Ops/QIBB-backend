@@ -14,6 +14,8 @@ const RosterAuditLogSchema = new mongoose.Schema({
       'LEAVE_UPDATED',
       'PROFILE_UPDATED',
       'SHIFT_OVERRIDE',
+      'ACTING_COVER_SET',
+      'ACTING_COVER_CLEARED',
     ],
   },
   actorId:    { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', default: null },

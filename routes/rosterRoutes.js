@@ -1,8 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const c = require('../controllers/rosterController');
+const actingCover = require('../controllers/actingCoverController');
 const { protect, admin } = require('../middleware/auth');
 const { checkEditingLock } = require('../middleware/lock');
+
+router.get('/acting-cover', protect, actingCover.listActingCover);
+router.post('/acting-cover', protect, admin, actingCover.createActingCover);
+router.delete('/acting-cover/:id', protect, admin, actingCover.deleteActingCover);
 
 router.get('/', protect, c.getRoster);
 router.get('/personnel-directory', protect, admin, c.getPersonnelDirectory);

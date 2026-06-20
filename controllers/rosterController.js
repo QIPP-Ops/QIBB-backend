@@ -240,9 +240,22 @@ exports.addLeave = async (req, res) => {
 
     try {
       const { processLeaveSaved } = require('../services/leaveConflictService');
+      const ActingAssignment = require('../models/ActingAssignment');
       const employees = await AdminUser.find().select('-passwordHash').lean();
       const savedLeave = user.leaves[user.leaves.length - 1];
-      await processLeaveSaved(user.toObject ? user.toObject() : user, savedLeave, employees);
+      const leaveStart = new Date(savedLeave.start).toISOString().slice(0, 10);
+      const leaveEnd = new Date(savedLeave.end).toISOString().slice(0, 10);
+      const actingAssignments = await ActingAssignment.find({
+        crew: user.crew,
+        startDate: { $lte: leaveEnd },
+        endDate: { $gte: leaveStart },
+      }).lean();
+      await processLeaveSaved(
+        user.toObject ? user.toObject() : user,
+        savedLeave,
+        employees,
+        actingAssignments
+      );
     } catch (conflictErr) {
       console.warn('[leave] conflict notify skipped:', conflictErr.message);
     }
@@ -445,6 +458,24 @@ exports.updateEmployee = async (req, res) => {
         after: { accessRole: user?.accessRole, role: user?.role, crew: user?.crew },
         req,
       });
+    }
+
+    const notifyUser = req.body?.notifyUser === true;
+    if (notifyUser) {
+      if (!isSuperAdmin(req)) {
+        return res.status(403).json({
+          message: 'Only the designated super administrator may notify users about personnel changes.',
+        });
+      }
+      const { notifyPersonnelChanges } = require('../services/personnelNotifyService');
+      notifyPersonnelChanges({
+        user,
+        actor,
+        before: existing?.toObject ? existing.toObject() : existing,
+        after: user?.toObject ? user.toObject() : user,
+        fields: ['crew', 'role'],
+        req,
+      }).catch((err) => console.warn('[personnel-notify]', err.message));
     }
 
     res.json(user);
@@ -839,6 +870,24 @@ exports.patchPersonnelInline = async (req, res) => {
       after: user?.toObject ? user.toObject() : user,
       req,
     });
+
+    const notifyUser = req.body?.notifyUser === true;
+    if (notifyUser) {
+      if (!superAdmin) {
+        return res.status(403).json({
+          message: 'Only the designated super administrator may notify users about personnel changes.',
+        });
+      }
+      const { notifyPersonnelChanges } = require('../services/personnelNotifyService');
+      notifyPersonnelChanges({
+        user,
+        actor,
+        before: existing?.toObject ? existing.toObject() : existing,
+        after: user?.toObject ? user.toObject() : user,
+        fields: ['crew', 'role'],
+        req,
+      }).catch((err) => console.warn('[personnel-notify]', err.message));
+    }
 
     res.json(user);
   } catch (error) {

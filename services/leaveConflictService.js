@@ -1,4 +1,5 @@
 const { leaveOnDate, fmtDate, parseDateOnly } = require('./shiftScheduleService');
+const { actingCoverCountForRole } = require('./actingCoverService');
 const { sendAdminBulkEmail } = require('./adminEmailService');
 const { notifyLeaveConflict } = require('./notificationService');
 const {
@@ -67,28 +68,38 @@ function findSameCrewRoleOverlaps(employees, subjectEmployee, newLeave) {
   return overlaps;
 }
 
-function staffingCountsForDate(employees, crew, dateStr) {
+function staffingCountsForDate(employees, crew, dateStr, actingAssignments = []) {
+  const roleKeyByLabel = {
+    'Shift in Charge': 'shift_in_charge',
+    Supervisor: 'supervisor',
+  };
   const counts = STAFFING_RULES.map((rule) => {
     const roster = employees.filter((e) => e.crew === crew && rule.match(e.role));
     const available = roster.filter((e) => !employeeOnLeave(e, dateStr));
+    const roleKey = roleKeyByLabel[rule.label];
+    const actingBoost = roleKey
+      ? actingCoverCountForRole(employees, actingAssignments, crew, dateStr, roleKey)
+      : 0;
+    const totalAvailable = available.length + actingBoost;
     return {
       label: rule.label,
       min: rule.min,
-      available: available.length,
+      available: totalAvailable,
       rosterSize: roster.length,
-      shortfall: Math.max(0, rule.min - available.length),
+      actingCover: actingBoost,
+      shortfall: Math.max(0, rule.min - totalAvailable),
     };
   });
   return counts.filter((c) => c.rosterSize > 0);
 }
 
-function findStaffingShortfalls(employees, subjectEmployee, newLeave) {
+function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssignments = []) {
   const crew = subjectEmployee.crew;
   const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
   const alerts = [];
 
   for (const dateStr of dates) {
-    const counts = staffingCountsForDate(employees, crew, dateStr);
+    const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments);
     const below = counts.filter((c) => c.shortfall > 0);
     if (!below.length) continue;
     alerts.push({ crew, date: dateStr, below });
@@ -134,7 +145,7 @@ async function emailStaffingBelowMinimum(crew, date, below) {
 /**
  * Run conflict + staffing checks after a leave record is saved.
  */
-async function processLeaveSaved(subjectEmployee, newLeave, allEmployees) {
+async function processLeaveSaved(subjectEmployee, newLeave, allEmployees, actingAssignments = []) {
   const overlaps = findSameCrewRoleOverlaps(allEmployees, subjectEmployee, newLeave);
   if (overlaps.length) {
     const msg = `${subjectEmployee.name} (${subjectEmployee.crew}, ${subjectEmployee.role}) overlaps with ${overlaps[0].otherName} on leave`;
@@ -146,7 +157,7 @@ async function processLeaveSaved(subjectEmployee, newLeave, allEmployees) {
     await emailLeaveConflict(subjectEmployee.crew, subjectEmployee.role, subjectEmployee, overlaps);
   }
 
-  const staffingAlerts = findStaffingShortfalls(allEmployees, subjectEmployee, newLeave);
+  const staffingAlerts = findStaffingShortfalls(allEmployees, subjectEmployee, newLeave, actingAssignments);
   for (const alert of staffingAlerts) {
     try {
       await notifyLeaveConflict(
