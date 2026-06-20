@@ -248,8 +248,21 @@ async function getMemberKpiById(memberId) {
   return scoreMember(member, context);
 }
 
+async function getAvailableCrewSet() {
+  const config = await AdminConfig.findOne().lean();
+  const crews = config?.availableCrews ?? ['A', 'B', 'C', 'D', 'General', 'S'];
+  return new Set(
+    crews.map((c) => String(c).trim()).filter(Boolean)
+  );
+}
+
 async function getCrewKpi(crewId) {
   const crew = String(crewId || '').trim();
+  const activeCrews = await getAvailableCrewSet();
+  if (!activeCrews.has(crew)) {
+    return { crewKPI: 0, members: [] };
+  }
+
   const members = await AdminUser.find({
     crew,
     isApproved: true,
@@ -270,6 +283,7 @@ async function getCrewKpi(crewId) {
 }
 
 async function getAllCrewKpis() {
+  const activeCrews = await getAvailableCrewSet();
   const members = await AdminUser.find({ isApproved: true })
     .select('_id empId name email crew role')
     .lean();
@@ -277,6 +291,7 @@ async function getAllCrewKpis() {
   const byCrew = new Map();
   for (const m of members) {
     const c = String(m.crew || '').trim() || 'Unassigned';
+    if (!activeCrews.has(c)) continue;
     if (!byCrew.has(c)) byCrew.set(c, []);
     byCrew.get(c).push(m);
   }
@@ -310,4 +325,5 @@ module.exports = {
   getMemberKpiById,
   getCrewKpi,
   getAllCrewKpis,
+  getAvailableCrewSet,
 };
