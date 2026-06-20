@@ -13,6 +13,7 @@ const blobController = require('../controllers/blobController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
 const leaveTimesheetVisibility = require('../controllers/leaveTimesheetVisibilityController');
+const orgLayout = require('../controllers/orgLayoutController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -50,6 +51,10 @@ router.post('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.c
 router.patch('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.patchTrendDefinition);
 router.delete('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.deleteTrendDefinition);
 router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
+
+router.get('/org-layout/:crewId', protect, admin, orgLayout.getOrgLayout);
+router.patch('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.patchOrgLayout);
+router.delete('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.resetOrgLayout);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);

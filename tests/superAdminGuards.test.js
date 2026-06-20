@@ -6,12 +6,13 @@ const { buildJwtPayload } = require('../utils/jwtAuth');
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-at-least-32-chars-long';
 
 function tokenFor(email) {
+  const isMember = email === 'member@acwaops.com';
   return jwt.sign(
     buildJwtPayload({
       _id: '507f1f77bcf86cd799439011',
       email,
       name: 'Test User',
-      accessRole: 'admin',
+      accessRole: isMember ? 'viewer' : 'admin',
       crew: 'A',
       empId: '100001',
     }),
@@ -29,10 +30,10 @@ describe('super-admin write guards', () => {
     expect(res.status).toBe(403);
   });
 
-  test('PATCH /api/personnel/:empId blocks non super admin', async () => {
+  test('PATCH /api/personnel/:empId blocks non-admin users', async () => {
     const res = await request(app)
       .patch('/api/personnel/100001')
-      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwaops.com')}`)
+      .set('Authorization', `Bearer ${tokenFor('member@acwaops.com')}`)
       .send({ name: 'Changed' });
     expect(res.status).toBe(403);
   });

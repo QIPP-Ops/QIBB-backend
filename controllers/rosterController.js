@@ -768,17 +768,44 @@ exports.exportIcs = async (req, res) => {
 
 exports.patchPersonnelInline = async (req, res) => {
   try {
-    if (!isSuperAdmin(req)) {
+    const actor = await loadActor(req);
+    const superAdmin = isSuperAdmin(req);
+    const portalAdmin = hasPortalAdminAccess(req);
+
+    if (!superAdmin && !portalAdmin) {
       return res.status(403).json({
-        message: 'Only admin@acwaops.com may edit personnel profile fields.',
+        message: 'Only administrators may edit personnel profile fields.',
       });
     }
+
     const { empId } = req.params;
-    const editable = ['name', 'empId', 'role', 'crew', 'opsGroupLabel', 'email', 'position'];
+    const editable = superAdmin
+      ? ['name', 'empId', 'role', 'crew', 'opsGroupLabel', 'email', 'position']
+      : ['name'];
+
     const patch = {};
     for (const key of editable) {
       if (req.body?.[key] !== undefined) patch[key] = req.body[key];
     }
+    if (!Object.keys(patch).length) {
+      return res.status(400).json({ message: 'No editable fields provided.' });
+    }
+
+    const existing = await AdminUser.findOne({ empId }).select('-passwordHash');
+    if (!existing) return res.status(404).json({ message: 'Personnel not found' });
+
+    if (!superAdmin) {
+      const actorCrew = String(actor?.crew || '').trim().toUpperCase();
+      const targetCrew = String(existing.crew || '').trim().toUpperCase();
+      const actorCrewNorm = actorCrew.replace(/^CREW\s*/i, '');
+      const targetCrewNorm = targetCrew.replace(/^CREW\s*/i, '');
+      if (!actorCrewNorm || actorCrewNorm !== targetCrewNorm) {
+        return res.status(403).json({
+          message: 'Crew administrators may only edit names for members of their own crew.',
+        });
+      }
+    }
+
     if (patch.email !== undefined) {
       const trimmed = String(patch.email || '').trim().toLowerCase();
       if (!trimmed || !isValidEmailFormat(trimmed)) {
@@ -786,12 +813,33 @@ exports.patchPersonnelInline = async (req, res) => {
       }
       patch.email = trimmed;
     }
+
     const user = await AdminUser.findOneAndUpdate(
       { empId },
       { $set: patch },
       { new: true, runValidators: true }
     ).select('-passwordHash');
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    const nameChanged = patch.name !== undefined && patch.name !== existing.name;
+    await logRosterEvent({
+      action: nameChanged ? 'NAME_UPDATED' : 'PROFILE_UPDATED',
+      actor,
+      target: user,
+      summary: `${superAdmin ? 'Super admin' : 'Crew admin'} inline-updated ${user.name} (${user.empId})`,
+      metadata: { fields: Object.keys(patch), inline: true },
+    });
+    await logAction({
+      actor,
+      action: nameChanged ? AUDIT_ACTIONS.EMPLOYEE_NAME_UPDATED : AUDIT_ACTIONS.EMPLOYEE_UPDATED,
+      targetType: 'employee',
+      targetId: user.empId,
+      targetName: user.name,
+      before: existing?.toObject ? existing.toObject() : existing,
+      after: user?.toObject ? user.toObject() : user,
+      req,
+    });
+
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
