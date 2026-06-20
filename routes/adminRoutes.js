@@ -14,6 +14,7 @@ const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
 const leaveTimesheetVisibility = require('../controllers/leaveTimesheetVisibilityController');
 const orgLayout = require('../controllers/orgLayoutController');
+const surveyController = require('../controllers/surveyController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
@@ -55,6 +56,10 @@ router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
 router.get('/org-layout/:crewId', protect, admin, orgLayout.getOrgLayout);
 router.patch('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.patchOrgLayout);
 router.delete('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.resetOrgLayout);
+
+router.get('/surveys', protect, admin, surveyController.listSurveys);
+router.post('/surveys', protect, admin, surveyController.createSurvey);
+router.post('/surveys/assign', protect, admin, surveyController.assignSurvey);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);

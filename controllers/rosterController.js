@@ -253,7 +253,7 @@ exports.addLeave = async (req, res) => {
 
 exports.createEmployee = async (req, res) => {
   if (!hasPortalAdminAccess(req)) {
-    return res.status(403).json({ message: 'Only administrators can add roster members.' });
+    return res.status(403).json({ message: 'Only administrators can add team members.' });
   }
   try {
     const bcrypt = require('bcryptjs');

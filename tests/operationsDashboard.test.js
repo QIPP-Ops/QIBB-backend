@@ -14,6 +14,14 @@ jest.mock('../models/CourseAssignment', () => ({
   find: jest.fn(),
 }));
 
+jest.mock('../controllers/surveyController', () => {
+  const actual = jest.requireActual('../controllers/surveyController');
+  return {
+    ...actual,
+    listPendingSurveyAssignmentsForUser: jest.fn().mockResolvedValue([]),
+  };
+});
+
 jest.mock('../services/onDutyService', () => ({
   fmtDate: jest.fn(() => '2026-06-20'),
   getEmployeeDutyStatus: jest.fn().mockResolvedValue({

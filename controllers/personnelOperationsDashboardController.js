@@ -2,6 +2,7 @@ const AdminUser = require('../models/AdminUser');
 const ShiftReport = require('../models/ShiftReport');
 const QuizAssignment = require('../models/QuizAssignment');
 const CourseAssignment = require('../models/CourseAssignment');
+const { listPendingSurveyAssignmentsForUser } = require('../controllers/surveyController');
 const { fmtDate, getEmployeeDutyStatus } = require('../services/onDutyService');
 const { canEditShiftReport } = require('../utils/rosterLeavePermissions');
 
@@ -64,7 +65,7 @@ exports.getOperationsDashboard = async (req, res) => {
     const duty = await getEmployeeDutyStatus(user, today);
     const canEdit = canEditShiftReport(req, user, duty);
 
-    const [reports, quizAssignments, courseAssignments] = await Promise.all([
+    const [reports, quizAssignments, courseAssignments, surveys] = await Promise.all([
       ShiftReport.find({ empId, date: today }).sort({ shift: 1 }).lean(),
       QuizAssignment.find({ userId, completedAt: null })
         .sort({ dueDate: 1, assignedAt: -1 })
@@ -73,12 +74,12 @@ exports.getOperationsDashboard = async (req, res) => {
       CourseAssignment.find({ userId, completedAt: null })
         .sort({ dueDate: 1, createdAt: -1 })
         .lean(),
+      listPendingSurveyAssignmentsForUser(userId),
     ]);
 
     const pendingQuizzes = pendingQuizRows(quizAssignments);
     const pendingCourses = pendingCourseRows(courseAssignments);
     const kpiSummary = kpiSummaryFromUser(user);
-    const surveys = [];
 
     const pendingCounts = {
       quizzes: pendingQuizzes.length,

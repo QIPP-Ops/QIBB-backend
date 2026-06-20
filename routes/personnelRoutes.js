@@ -17,7 +17,10 @@ router.put('/shift-reports/:id', protect, c.updateShiftReport);
 router.get('/shift-reports/:id/audit', protect, admin, c.getShiftReportAudit);
 
 const operationsDashboard = require('../controllers/personnelOperationsDashboardController');
+const surveyController = require('../controllers/surveyController');
 router.get('/me/operations-dashboard', protect, operationsDashboard.getOperationsDashboard);
+router.get('/me/surveys', protect, surveyController.getMyPendingSurveys);
+router.post('/me/surveys/:assignmentId/submit', protect, surveyController.submitSurveyResponse);
 
 function requirePersonnelInlineEditor(req, res, next) {
   if (hasPortalAdminAccess(req)) return next();

@@ -213,7 +213,7 @@ exports.setLock = async (req, res) => {
       action: config.editingLocked ? AUDIT_ACTIONS.ROSTER_LOCKED : AUDIT_ACTIONS.ROSTER_UNLOCKED,
       targetType: 'system',
       targetId: 'editingLocked',
-      targetName: 'Roster editing lock',
+      targetName: 'Operations schedule editing lock',
       before: { editingLocked: beforeLocked },
       after: { editingLocked: config.editingLocked },
       req,
@@ -543,7 +543,7 @@ exports.clearPlaceholderEmails = async (req, res) => {
       }
     }
     res.json({
-      message: `Synced ${updated} placeholder email(s) from personnel roster.`,
+      message: `Synced ${updated} placeholder email(s) from personnel records.`,
       updated,
       unchanged,
     });
