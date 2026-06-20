@@ -14,6 +14,17 @@ function fmtDate(d) {
   return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}`;
 }
 
+/** Leave timesheet default: 2 weeks before today through 2 calendar months after today. */
+function leaveTimesheetDefaultRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 14);
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  end.setMonth(end.getMonth() + 2);
+  return { start, end };
+}
+
 async function loadOverridesForRange(start, end) {
   const startStr = fmtDate(start);
   const endStr = fmtDate(end);
@@ -52,14 +63,23 @@ function scheduleForClient(schedule, req) {
 
 exports.getSchedule = async (req, res) => {
   try {
-    const days = Math.min(parseInt(req.query.days, 10) || 48, 366);
     const startRaw = req.query.start || req.query.from;
     const endRaw = req.query.end || req.query.to;
-    const start = startRaw ? new Date(startRaw) : new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = endRaw
-      ? new Date(endRaw)
-      : new Date(start.getTime() + (days - 1) * 86400000);
+    let start;
+    let end;
+    if (startRaw || endRaw) {
+      start = new Date(startRaw || endRaw);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(endRaw || startRaw);
+      end.setHours(0, 0, 0, 0);
+    } else if (req.query.days) {
+      const days = Math.min(parseInt(req.query.days, 10) || 48, 366);
+      start = new Date();
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start.getTime() + (days - 1) * 86400000);
+    } else {
+      ({ start, end } = leaveTimesheetDefaultRange());
+    }
 
     const schedule = await buildSchedulePayload(start, end);
     res.json({ success: true, data: scheduleForClient(schedule, req) });
