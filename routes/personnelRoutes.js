@@ -16,6 +16,9 @@ router.post('/shift-reports', protect, c.createShiftReport);
 router.put('/shift-reports/:id', protect, c.updateShiftReport);
 router.get('/shift-reports/:id/audit', protect, admin, c.getShiftReportAudit);
 
+const operationsDashboard = require('../controllers/personnelOperationsDashboardController');
+router.get('/me/operations-dashboard', protect, operationsDashboard.getOperationsDashboard);
+
 function requirePersonnelInlineEditor(req, res, next) {
   if (hasPortalAdminAccess(req)) return next();
   return res.status(403).json({ message: 'Only administrators may edit personnel profile fields.' });
