@@ -152,6 +152,9 @@ exports.addLeave = async (req, res) => {
     workingDays,
     totalDays,
     appliedOnSap,
+    delegateEmpId,
+    coverEmpId,
+    delegationNotes,
   } = req.body;
   const targetId = employeeId || empId;
   if (!targetId) return res.status(400).json({ message: 'employeeId (or empId) is required.' });
@@ -215,6 +218,18 @@ exports.addLeave = async (req, res) => {
       user.compensateDayBalance = bal - span;
     }
 
+    const delegateId = delegateEmpId || coverEmpId;
+    let delegateUser = null;
+    if (delegateId) {
+      delegateUser = await AdminUser.findOne({ empId: delegateId }).select('-passwordHash');
+      if (!delegateUser) {
+        return res.status(400).json({ message: 'Delegate not found.' });
+      }
+      if (delegateId === targetId) {
+        return res.status(400).json({ message: 'Delegate cannot be the same as the absent employee.' });
+      }
+    }
+
     user.leaves.push(leaveData);
     await user.save();
 
@@ -241,10 +256,27 @@ exports.addLeave = async (req, res) => {
     try {
       const { processLeaveSaved } = require('../services/leaveConflictService');
       const ActingAssignment = require('../models/ActingAssignment');
+      const { createDelegationForLeave } = require('./actingCoverController');
       const employees = await AdminUser.find().select('-passwordHash').lean();
       const savedLeave = user.leaves[user.leaves.length - 1];
       const leaveStart = new Date(savedLeave.start).toISOString().slice(0, 10);
       const leaveEnd = new Date(savedLeave.end).toISOString().slice(0, 10);
+
+      const delegateId = delegateEmpId || coverEmpId;
+      if (delegateId && delegateUser) {
+        await createDelegationForLeave({
+          req,
+          actor,
+          absent: user,
+          cover: delegateUser,
+          crew: user.crew,
+          startDate: leaveStart,
+          endDate: leaveEnd,
+          leaveId: savedLeave._id?.toString(),
+          notes: delegationNotes || '',
+        });
+      }
+
       const actingAssignments = await ActingAssignment.find({
         crew: user.crew,
         startDate: { $lte: leaveEnd },

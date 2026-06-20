@@ -62,6 +62,11 @@ describe('acting cover API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActor({ email: SUPER_ADMIN_EMAIL });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([]),
+      }),
+    });
   });
 
   test('POST /api/roster/acting-cover requires auth', async () => {
@@ -84,7 +89,7 @@ describe('acting cover API', () => {
     expect(res.status).toBe(403);
   });
 
-  test('super admin can create acting cover', async () => {
+  test('super admin can create pending delegation', async () => {
     AdminUser.findOne
       .mockReturnValueOnce({
         select: jest.fn().mockResolvedValue({
@@ -108,13 +113,23 @@ describe('acting cover API', () => {
       absentEmpId: 'SIC-1',
       coverEmpId: 'SUP-1',
       role: 'shift_in_charge',
+      roleAtTime: 'Shift in Charge Engineer',
       crew: 'A',
       startDate: '2026-06-01',
       endDate: '2026-06-05',
+      status: 'pending',
       notes: '',
       toObject() {
         return { ...this };
       },
+    });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { empId: 'SIC-1', name: 'Absent SIC' },
+          { empId: 'SUP-1', name: 'Cover Sup' },
+        ]),
+      }),
     });
 
     const res = await request(app)
@@ -132,6 +147,7 @@ describe('acting cover API', () => {
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.coverEmpId).toBe('SUP-1');
+    expect(res.body.data.status).toBe('pending');
     expect(ActingAssignment.create).toHaveBeenCalled();
   });
 

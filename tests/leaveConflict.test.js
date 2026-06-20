@@ -89,4 +89,80 @@ describe('leaveConflictService', () => {
     const ccrShort = alerts.some((a) => a.below.some((b) => b.label === 'CCR Operator'));
     expect(ccrShort).toBe(true);
   });
+
+  test('approved delegation skips overlap when absent employee is covered', () => {
+    const subject = {
+      empId: 'E2',
+      name: 'Bob',
+      crew: 'A',
+      role: 'CCR Operator',
+      leaves: [],
+    };
+    const newLeave = { start: new Date('2026-06-02'), end: new Date('2026-06-04') };
+    const employees = crewA.map((e) =>
+      e.empId === 'E1'
+        ? { ...e, leaves: [{ start: new Date('2026-06-01'), end: new Date('2026-06-03') }] }
+        : e
+    );
+    const withoutCover = findSameCrewRoleOverlaps(employees, subject, newLeave, []);
+    expect(withoutCover.length).toBeGreaterThan(0);
+
+    const approvedDelegation = [
+      {
+        absentEmpId: 'E1',
+        coverEmpId: 'E4',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
+        crew: 'A',
+        startDate: '2026-06-01',
+        endDate: '2026-06-05',
+        status: 'approved',
+      },
+    ];
+    const withCover = findSameCrewRoleOverlaps(employees, subject, newLeave, approvedDelegation);
+    expect(withCover.length).toBe(0);
+  });
+
+  test('pending delegation does not remove staffing shortfall', () => {
+    const subject = {
+      empId: 'E2',
+      name: 'Bob',
+      crew: 'A',
+      role: 'CCR Operator',
+      leaves: [{ start: new Date('2026-06-05'), end: new Date('2026-06-05') }],
+    };
+    const employees = crewA.map((e) =>
+      e.empId === 'E2'
+        ? { ...e, leaves: [{ start: new Date('2026-06-05'), end: new Date('2026-06-05') }] }
+        : {
+            ...e,
+            leaves:
+              e.empId === 'E1'
+                ? [{ start: new Date('2026-06-05'), end: new Date('2026-06-05') }]
+                : e.empId === 'E3'
+                  ? [{ start: new Date('2026-06-05'), end: new Date('2026-06-05') }]
+                  : [],
+          }
+    );
+    const pendingDelegation = [
+      {
+        absentEmpId: 'E1',
+        coverEmpId: 'E4',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
+        crew: 'A',
+        startDate: '2026-06-05',
+        endDate: '2026-06-05',
+        status: 'pending',
+      },
+    ];
+    const alerts = findStaffingShortfalls(
+      employees,
+      subject,
+      { start: new Date('2026-06-05'), end: new Date('2026-06-05') },
+      pendingDelegation
+    );
+    const ccrShort = alerts.some((a) => a.below.some((b) => b.label === 'CCR Operator'));
+    expect(ccrShort).toBe(true);
+  });
 });

@@ -28,12 +28,34 @@ function resolveAbsentRole(role) {
   return null;
 }
 
+function roleSlugFromLabel(roleLabel) {
+  const key = resolveAbsentRole(roleLabel);
+  if (key) return key;
+  return String(roleLabel || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '') || 'role';
+}
+
 function isCoverEligibleRole(role) {
   const r = String(role || '');
   if (MANAGEMENT_JOB_ROLES.has(r)) return true;
   if (/shift in charge/i.test(r) || /\bsic\b/i.test(r)) return true;
   if (/\bsupervisor\b/i.test(r) && !/shift in charge/i.test(r)) return true;
   return false;
+}
+
+function delegationStatus(assignment) {
+  return assignment?.status || 'approved';
+}
+
+function isApprovedDelegation(assignment) {
+  return delegationStatus(assignment) === 'approved';
+}
+
+function isPendingDelegation(assignment) {
+  return delegationStatus(assignment) === 'pending';
 }
 
 function assignmentActiveOnDate(assignment, dateStr) {
@@ -46,6 +68,19 @@ function assignmentsForRange(assignments, startStr, endStr) {
   );
 }
 
+function approvedAssignmentsForRange(assignments, startStr, endStr) {
+  return assignmentsForRange(assignments, startStr, endStr).filter(isApprovedDelegation);
+}
+
+function assignmentRoleLabel(assignment) {
+  return assignment.roleAtTime || ROLE_LABELS[assignment.role] || assignment.role;
+}
+
+function roleMatchesStaffingRule(roleLabel, ruleMatchFn) {
+  if (!ruleMatchFn) return true;
+  return ruleMatchFn(roleLabel);
+}
+
 function staffingRuleForActingRole(roleKey) {
   if (roleKey === 'shift_in_charge') {
     return (r) => /shift in charge/i.test(r || '');
@@ -56,19 +91,43 @@ function staffingRuleForActingRole(roleKey) {
   return () => false;
 }
 
+function hasApprovedCoverOnDate(assignments, absentEmpId, dateStr) {
+  return (assignments || []).some(
+    (a) =>
+      a.absentEmpId === absentEmpId &&
+      isApprovedDelegation(a) &&
+      assignmentActiveOnDate(a, dateStr)
+  );
+}
+
+function findDelegationForEmpDate(assignments, absentEmpId, dateStr) {
+  return (assignments || []).find(
+    (a) => a.absentEmpId === absentEmpId && assignmentActiveOnDate(a, dateStr)
+  );
+}
+
 /**
- * Count cover employees acting in a staffing role on a given date.
+ * Count approved cover employees acting in a staffing role on a given date.
  */
-function actingCoverCountForRole(employees, assignments, crew, dateStr, roleKey) {
+function actingCoverCountForRole(employees, assignments, crew, dateStr, roleKey, ruleMatchFn) {
   const empById = new Map((employees || []).map((e) => [e.empId, e]));
+  const matchFn = ruleMatchFn || staffingRuleForActingRole(roleKey);
   let count = 0;
   for (const a of assignments || []) {
+    if (!isApprovedDelegation(a)) continue;
     if (!crewsMatch(a.crew, crew)) continue;
-    if (a.role !== roleKey) continue;
-    if (!assignmentActiveOnDate(a, dateStr)) continue;
     const cover = empById.get(a.coverEmpId);
     if (!cover) continue;
     if (employeeOnLeave(cover, dateStr)) continue;
+    const absent = empById.get(a.absentEmpId);
+    if (!absent || !employeeOnLeave(absent, dateStr)) continue;
+    const roleLabel = assignmentRoleLabel(a);
+    if (roleKey && !ruleMatchFn && a.role !== roleKey) continue;
+    if (ruleMatchFn && !roleMatchesStaffingRule(roleLabel, matchFn)) continue;
+    if (!roleKey && !ruleMatchFn) continue;
+    // Same-role cover: delegate is already in headcount — no staffing boost.
+    if (ruleMatchFn && ruleMatchFn(cover.role || '')) continue;
+    if (!assignmentActiveOnDate(a, dateStr)) continue;
     count += 1;
   }
   return count;
@@ -82,13 +141,38 @@ function employeeOnLeave(employee, dateStr) {
   });
 }
 
+function filterConflictsByDelegations(conflicts, assignments) {
+  return (conflicts || [])
+    .map((c) => {
+      const employees = (c.employees || []).map((emp) => {
+        const delegation = findDelegationForEmpDate(assignments, emp.empId, c.date);
+        return {
+          ...emp,
+          delegation: delegation
+            ? {
+                id: String(delegation._id || ''),
+                status: delegationStatus(delegation),
+                coverEmpId: delegation.coverEmpId,
+              }
+            : null,
+        };
+      });
+      const uncovered = employees.filter(
+        (emp) => !hasApprovedCoverOnDate(assignments, emp.empId, c.date)
+      );
+      return { ...c, employees, uncoveredCount: uncovered.length };
+    })
+    .filter((c) => c.uncoveredCount >= 2);
+}
+
 function enrichScheduleRows(rows, assignments, employeeById) {
-  if (!rows?.length || !assignments?.length) return rows;
+  if (!rows?.length) return rows;
 
   const actingByCover = new Map();
   const coverByAbsent = new Map();
 
-  assignments.forEach((a) => {
+  (assignments || []).forEach((a) => {
+    if (!isApprovedDelegation(a)) return;
     const absent = employeeById.get(a.absentEmpId);
     const cover = employeeById.get(a.coverEmpId);
     if (!cover) return;
@@ -96,7 +180,7 @@ function enrichScheduleRows(rows, assignments, employeeById) {
     const entry = {
       id: String(a._id || ''),
       role: a.role,
-      roleLabel: ROLE_LABELS[a.role] || a.role,
+      roleLabel: assignmentRoleLabel(a),
       absentEmpId: a.absentEmpId,
       absentName: absent?.name || a.absentEmpId,
       coverEmpId: a.coverEmpId,
@@ -104,6 +188,7 @@ function enrichScheduleRows(rows, assignments, employeeById) {
       startDate: a.startDate,
       endDate: a.endDate,
       notes: a.notes || '',
+      status: delegationStatus(a),
     };
 
     if (!actingByCover.has(a.coverEmpId)) actingByCover.set(a.coverEmpId, []);
@@ -117,6 +202,24 @@ function enrichScheduleRows(rows, assignments, employeeById) {
     ...row,
     actingAssignments: actingByCover.get(row.empId) || [],
     actingCoverFor: coverByAbsent.get(row.empId) || [],
+    pendingDelegations: (assignments || [])
+      .filter(
+        (a) =>
+          isPendingDelegation(a) &&
+          (a.coverEmpId === row.empId || a.absentEmpId === row.empId)
+      )
+      .map((a) => ({
+        id: String(a._id || ''),
+        status: delegationStatus(a),
+        roleLabel: assignmentRoleLabel(a),
+        absentEmpId: a.absentEmpId,
+        absentName: employeeById.get(a.absentEmpId)?.name || a.absentEmpId,
+        coverEmpId: a.coverEmpId,
+        coverName: employeeById.get(a.coverEmpId)?.name || a.coverEmpId,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        notes: a.notes || '',
+      })),
   }));
 }
 
@@ -125,11 +228,20 @@ module.exports = {
   normCrew,
   crewsMatch,
   resolveAbsentRole,
+  roleSlugFromLabel,
   isCoverEligibleRole,
+  delegationStatus,
+  isApprovedDelegation,
+  isPendingDelegation,
   assignmentActiveOnDate,
   assignmentsForRange,
+  approvedAssignmentsForRange,
+  assignmentRoleLabel,
   staffingRuleForActingRole,
   actingCoverCountForRole,
   employeeOnLeave,
+  hasApprovedCoverOnDate,
+  findDelegationForEmpDate,
+  filterConflictsByDelegations,
   enrichScheduleRows,
 };

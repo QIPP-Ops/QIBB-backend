@@ -2,7 +2,12 @@ const AdminUser = require('../models/AdminUser');
 const ShiftReport = require('../models/ShiftReport');
 const QuizAssignment = require('../models/QuizAssignment');
 const CourseAssignment = require('../models/CourseAssignment');
+const ActingAssignment = require('../models/ActingAssignment');
 const { listPendingSurveyAssignmentsForUser } = require('../controllers/surveyController');
+const {
+  assignmentRoleLabel,
+  delegationStatus,
+} = require('../services/actingCoverService');
 const { fmtDate, getEmployeeDutyStatus } = require('../services/onDutyService');
 const { canEditShiftReport } = require('../utils/rosterLeavePermissions');
 
@@ -65,7 +70,7 @@ exports.getOperationsDashboard = async (req, res) => {
     const duty = await getEmployeeDutyStatus(user, today);
     const canEdit = canEditShiftReport(req, user, duty);
 
-    const [reports, quizAssignments, courseAssignments, surveys] = await Promise.all([
+    const [reports, quizAssignments, courseAssignments, surveys, delegationDocs] = await Promise.all([
       ShiftReport.find({ empId, date: today }).sort({ shift: 1 }).lean(),
       QuizAssignment.find({ userId, completedAt: null })
         .sort({ dueDate: 1, assignedAt: -1 })
@@ -75,7 +80,28 @@ exports.getOperationsDashboard = async (req, res) => {
         .sort({ dueDate: 1, createdAt: -1 })
         .lean(),
       listPendingSurveyAssignmentsForUser(userId),
+      ActingAssignment.find({ coverEmpId: empId, status: 'pending' })
+        .sort({ requestedAt: 1 })
+        .lean(),
     ]);
+
+    const absentIds = delegationDocs.map((d) => d.absentEmpId);
+    const absentUsers = absentIds.length
+      ? await AdminUser.find({ empId: { $in: absentIds } }).select('empId name').lean()
+      : [];
+    const absentById = new Map(absentUsers.map((u) => [u.empId, u]));
+    const pendingDelegations = delegationDocs.map((d) => ({
+      id: String(d._id),
+      absentEmpId: d.absentEmpId,
+      absentName: absentById.get(d.absentEmpId)?.name || d.absentEmpId,
+      roleLabel: assignmentRoleLabel(d),
+      crew: d.crew,
+      startDate: d.startDate,
+      endDate: d.endDate,
+      notes: d.notes || '',
+      status: delegationStatus(d),
+      requestedAt: d.requestedAt || d.createdAt || null,
+    }));
 
     const pendingQuizzes = pendingQuizRows(quizAssignments);
     const pendingCourses = pendingCourseRows(courseAssignments);
@@ -86,7 +112,12 @@ exports.getOperationsDashboard = async (req, res) => {
       courses: pendingCourses.length,
       kpi: kpiSummary.goalCount,
       surveys: surveys.length,
-      total: pendingQuizzes.length + pendingCourses.length + surveys.length,
+      delegations: pendingDelegations.length,
+      total:
+        pendingQuizzes.length +
+        pendingCourses.length +
+        surveys.length +
+        pendingDelegations.length,
     };
 
     res.json({
@@ -106,6 +137,7 @@ exports.getOperationsDashboard = async (req, res) => {
         pendingCourses,
         kpiSummary,
         surveys,
+        pendingDelegations,
         pendingCounts,
       },
     });

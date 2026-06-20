@@ -4,12 +4,23 @@ const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
+const { sendMail, emailTemplate, isEmailConfigured } = require('../services/emailService');
+const {
+  emailCallout,
+  emailCtaButton,
+  emailDetailTable,
+} = require('../services/emailHtmlHelpers');
+const { getFrontendBaseUrl } = require('../config/frontendUrl');
+const { isPlaceholderEmail } = require('../utils/placeholderEmail');
 const {
   ROLE_LABELS,
   crewsMatch,
   resolveAbsentRole,
-  isCoverEligibleRole,
+  roleSlugFromLabel,
   assignmentsForRange,
+  assignmentRoleLabel,
+  delegationStatus,
+  isApprovedDelegation,
 } = require('../services/actingCoverService');
 
 async function loadActor(req) {
@@ -34,40 +45,197 @@ function fmtDate(d) {
 function assertCrewAccess(req, actor, crew) {
   if (isSuperAdmin(req)) return null;
   if (!hasPortalAdminAccess(req)) {
-    return 'Only administrators may manage acting cover assignments.';
+    return 'Only administrators may manage leave delegations for other crews.';
   }
   const actorCrew = String(actor?.crew || '').trim();
   if (!crewsMatch(actorCrew, crew)) {
-    return 'Crew administrators may only manage acting cover for their own crew.';
+    return 'Crew administrators may only manage delegations for their own crew.';
   }
   return null;
 }
 
-exports.createActingCover = async (req, res) => {
-  try {
-    const actor = await loadActor(req);
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Only administrators may assign acting cover.' });
-    }
+function canRequestDelegation(req, actor, absentEmpId) {
+  if (hasPortalAdminAccess(req)) return true;
+  return Boolean(actor?.empId && actor.empId === absentEmpId);
+}
 
-    const {
-      absentEmpId,
-      coverEmpId,
-      role,
+async function populateDelegation(doc, employeeMap) {
+  const absent = employeeMap?.get(doc.absentEmpId);
+  const cover = employeeMap?.get(doc.coverEmpId);
+  return {
+    ...doc,
+    absentName: absent?.name || doc.absentEmpId,
+    coverName: cover?.name || doc.coverEmpId,
+    roleLabel: assignmentRoleLabel(doc),
+    status: delegationStatus(doc),
+  };
+}
+
+async function loadEmployeeMap(empIds) {
+  const ids = [...new Set(empIds.filter(Boolean))];
+  const employees = await AdminUser.find({ empId: { $in: ids } })
+    .select('empId name crew role email')
+    .lean();
+  return new Map(employees.map((e) => [e.empId, e]));
+}
+
+async function notifyDelegatePending({ delegate, absent, actor, doc }) {
+  const email = String(delegate?.email || '').trim();
+  if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return;
+  const html = emailTemplate(
+    'Cover request pending your approval',
+    `
+      ${emailCallout(`<p>Hi <strong>${delegate.name || delegate.empId}</strong>,</p><p>${absent?.name || doc.absentEmpId} asked you to cover their duties while they are on leave.</p>`)}
+      ${emailDetailTable([
+        { label: 'Role', value: assignmentRoleLabel(doc) },
+        { label: 'Crew', value: doc.crew },
+        { label: 'Period', value: `${doc.startDate} → ${doc.endDate}` },
+        { label: 'Requested by', value: actor?.name || 'Colleague' },
+        { label: 'Notes', value: doc.notes || '—' },
+      ])}
+      ${emailCtaButton(`${getFrontendBaseUrl()}/personnel`, 'Review in My Work')}
+    `
+  );
+  await sendMail({
+    to: email,
+    subject: `QIPP cover request — ${absent?.name || doc.absentEmpId}`,
+    html,
+  });
+}
+
+async function notifyAbsentDelegationResponse({ absent, delegate, doc, approved }) {
+  const email = String(absent?.email || '').trim();
+  if (!email || isPlaceholderEmail(email) || !isEmailConfigured()) return;
+  const html = emailTemplate(
+    approved ? 'Cover request approved' : 'Cover request declined',
+    `
+      ${emailCallout(
+        `<p>Hi <strong>${absent.name || absent.empId}</strong>,</p><p>${delegate?.name || doc.coverEmpId} has <strong>${approved ? 'approved' : 'declined'}</strong> your cover request.</p>`,
+        approved ? 'success' : 'warning'
+      )}
+      ${emailDetailTable([
+        { label: 'Role', value: assignmentRoleLabel(doc) },
+        { label: 'Period', value: `${doc.startDate} → ${doc.endDate}` },
+      ])}
+      ${emailCtaButton(`${getFrontendBaseUrl()}/calendar`, 'Open leave timesheet')}
+    `
+  );
+  await sendMail({
+    to: email,
+    subject: `QIPP cover request ${approved ? 'approved' : 'declined'}`,
+    html,
+  });
+}
+
+async function createDelegationRecord({
+  req,
+  actor,
+  absent,
+  cover,
+  crew,
+  startDate,
+  endDate,
+  leaveId,
+  notes,
+  allowOverlapReplace = false,
+}) {
+  const roleAtTime = String(absent.role || '').trim();
+  const roleKey = resolveAbsentRole(roleAtTime) || roleSlugFromLabel(roleAtTime);
+
+  const overlapFilter = {
+    absentEmpId: absent.empId,
+    status: { $in: ['pending', 'approved'] },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  };
+  const overlap = await ActingAssignment.findOne(overlapFilter);
+  if (overlap && !allowOverlapReplace) {
+    const err = new Error('A delegation request already exists for this employee and period.');
+    err.status = 409;
+    throw err;
+  }
+  if (overlap && allowOverlapReplace) {
+    overlap.status = 'cancelled';
+    overlap.respondedAt = new Date();
+    await overlap.save();
+  }
+
+  const doc = await ActingAssignment.create({
+    absentEmpId: absent.empId,
+    coverEmpId: cover.empId,
+    role: roleKey,
+    roleAtTime,
+    crew: String(crew).trim(),
+    startDate,
+    endDate,
+    leaveId: leaveId || null,
+    status: 'pending',
+    requestedBy: req.user?.id || null,
+    requestedAt: new Date(),
+    createdBy: req.user?.id || null,
+    notes: String(notes || '').trim(),
+  });
+
+  await logRosterEvent({
+    action: 'DELEGATION_REQUESTED',
+    actor,
+    target: absent,
+    summary: `${actor?.name || absent.name} requested ${cover.name} to cover ${absent.name} (${roleAtTime || roleKey}) ${startDate} – ${endDate}`,
+    metadata: {
+      absentEmpId: absent.empId,
+      coverEmpId: cover.empId,
+      role: roleKey,
+      roleAtTime,
       crew,
       startDate,
       endDate,
+      leaveId: leaveId || null,
+    },
+  });
+  await logAction({
+    actor,
+    action: AUDIT_ACTIONS.DELEGATION_REQUESTED,
+    targetType: 'employee',
+    targetId: absent.empId,
+    targetName: absent.name,
+    after: doc.toObject ? doc.toObject() : doc,
+    req,
+  });
+
+  try {
+    await notifyDelegatePending({ delegate: cover, absent, actor, doc });
+  } catch (err) {
+    console.warn('[delegation] delegate notify failed:', err.message);
+  }
+
+  return doc;
+}
+
+exports.createDelegation = exports.createActingCover = async (req, res) => {
+  try {
+    const actor = await loadActor(req);
+    const {
+      absentEmpId,
+      coverEmpId,
+      delegateEmpId,
+      crew,
+      startDate,
+      endDate,
+      leaveId,
       notes,
     } = req.body || {};
+    const delegateId = coverEmpId || delegateEmpId;
 
-    if (!absentEmpId || !coverEmpId || !role || !crew || !startDate || !endDate) {
+    if (!absentEmpId || !delegateId || !crew || !startDate || !endDate) {
       return res.status(400).json({
-        message: 'absentEmpId, coverEmpId, role, crew, startDate, and endDate are required.',
+        message: 'absentEmpId, coverEmpId (or delegateEmpId), crew, startDate, and endDate are required.',
       });
     }
 
-    if (!['shift_in_charge', 'supervisor'].includes(role)) {
-      return res.status(400).json({ message: 'role must be shift_in_charge or supervisor.' });
+    if (!canRequestDelegation(req, actor, absentEmpId)) {
+      return res.status(403).json({
+        message: 'You may only request cover for yourself unless you are an administrator.',
+      });
     }
 
     const start = parseDateOnly(startDate);
@@ -76,111 +244,61 @@ exports.createActingCover = async (req, res) => {
       return res.status(400).json({ message: 'Invalid startDate or endDate.' });
     }
 
-    const accessErr = assertCrewAccess(req, actor, crew);
-    if (accessErr) return res.status(403).json({ message: accessErr });
+    if (hasPortalAdminAccess(req) && actor?.empId !== absentEmpId) {
+      const accessErr = assertCrewAccess(req, actor, crew);
+      if (accessErr) return res.status(403).json({ message: accessErr });
+    }
 
     const [absent, cover] = await Promise.all([
       AdminUser.findOne({ empId: absentEmpId }).select('-passwordHash'),
-      AdminUser.findOne({ empId: coverEmpId }).select('-passwordHash'),
+      AdminUser.findOne({ empId: delegateId }).select('-passwordHash'),
     ]);
     if (!absent) return res.status(404).json({ message: 'Absent employee not found.' });
-    if (!cover) return res.status(404).json({ message: 'Cover employee not found.' });
+    if (!cover) return res.status(404).json({ message: 'Delegate not found.' });
 
     if (!crewsMatch(absent.crew, crew)) {
       return res.status(400).json({ message: 'Absent employee must belong to the specified crew.' });
     }
     if (!crewsMatch(cover.crew, crew)) {
-      return res.status(400).json({ message: 'Cover person must belong to the same crew.' });
+      return res.status(400).json({ message: 'Delegate must belong to the same crew.' });
     }
-    if (absentEmpId === coverEmpId) {
-      return res.status(400).json({ message: 'Cover person cannot be the same as the absent employee.' });
-    }
-
-    const absentRole = resolveAbsentRole(absent.role);
-    if (!absentRole) {
-      return res.status(400).json({
-        message: 'Acting cover can only be assigned when the absent employee is Shift in Charge or Supervisor.',
-      });
-    }
-    if (role !== absentRole) {
-      return res.status(400).json({
-        message: `Role must match absent employee role (${ROLE_LABELS[absentRole]}).`,
-      });
-    }
-    if (!isCoverEligibleRole(cover.role)) {
-      return res.status(400).json({
-        message: 'Cover person must be Shift in Charge, Supervisor, or Management.',
-      });
+    if (absentEmpId === delegateId) {
+      return res.status(400).json({ message: 'Delegate cannot be the same as the absent employee.' });
     }
 
-    const overlap = await ActingAssignment.findOne({
-      absentEmpId,
-      role,
-      startDate: { $lte: fmtDate(end) },
-      endDate: { $gte: fmtDate(start) },
-    });
-    if (overlap) {
-      return res.status(409).json({
-        message: 'An acting cover assignment already exists for this employee and period.',
-      });
-    }
-
-    const doc = await ActingAssignment.create({
-      absentEmpId,
-      coverEmpId,
-      role,
-      crew: String(crew).trim(),
+    const doc = await createDelegationRecord({
+      req,
+      actor,
+      absent,
+      cover,
+      crew,
       startDate: fmtDate(start),
       endDate: fmtDate(end),
-      createdBy: req.user?.id || null,
-      notes: String(notes || '').trim(),
+      leaveId,
+      notes,
     });
 
-    await logRosterEvent({
-      action: 'ACTING_COVER_SET',
-      actor,
-      target: absent,
-      summary: `${actor?.name || 'Admin'} assigned ${cover.name} as acting ${ROLE_LABELS[role]} for ${absent.name} (${fmtDate(start)} – ${fmtDate(end)})`,
-      metadata: {
-        absentEmpId,
-        coverEmpId,
-        role,
-        crew,
-        startDate: fmtDate(start),
-        endDate: fmtDate(end),
-      },
-    });
-    await logAction({
-      actor,
-      action: AUDIT_ACTIONS.ACTING_COVER_CREATED,
-      targetType: 'employee',
-      targetId: absent.empId,
-      targetName: absent.name,
-      before: null,
-      after: doc.toObject ? doc.toObject() : doc,
-      req,
-    });
-
-    const populated = {
-      ...doc.toObject(),
-      absentName: absent.name,
-      coverName: cover.name,
-    };
+    const populated = await populateDelegation(doc.toObject(), await loadEmployeeMap([absentEmpId, delegateId]));
     res.status(201).json({ success: true, data: populated });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(err.status || 400).json({ message: err.message });
   }
 };
 
-exports.listActingCover = async (req, res) => {
+exports.createDelegationForLeave = createDelegationRecord;
+
+exports.listActingCover = exports.listDelegations = async (req, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: 'Not authorized' });
 
     const actor = await loadActor(req);
-    const { crew, start, end } = req.query;
+    const { crew, start, end, status, delegateEmpId, absentEmpId } = req.query;
     const filter = {};
 
     if (crew) filter.crew = String(crew).trim();
+    if (status) filter.status = String(status).trim();
+    if (delegateEmpId) filter.coverEmpId = String(delegateEmpId).trim();
+    if (absentEmpId) filter.absentEmpId = String(absentEmpId).trim();
 
     if (start || end) {
       const startStr = start ? fmtDate(parseDateOnly(start) || new Date()) : '1970-01-01';
@@ -189,85 +307,224 @@ exports.listActingCover = async (req, res) => {
       filter.endDate = { $gte: startStr };
     }
 
-    if (!isSuperAdmin(req) && hasPortalAdminAccess(req)) {
+    const isAdmin = isSuperAdmin(req) || hasPortalAdminAccess(req);
+    if (!isAdmin) {
+      if (!actor?.empId) {
+        return res.status(403).json({ message: 'Employee session is incomplete.' });
+      }
+      filter.$or = [{ coverEmpId: actor.empId }, { absentEmpId: actor.empId }];
+    } else if (!isSuperAdmin(req)) {
       if (!actor?.crew) {
         return res.status(403).json({ message: 'Crew administrators must belong to a crew.' });
       }
       if (crew && !crewsMatch(actor.crew, crew)) {
-        return res.status(403).json({ message: 'You may only list acting cover for your own crew.' });
+        return res.status(403).json({ message: 'You may only list delegations for your own crew.' });
       }
       if (!crew) {
         filter.crew = String(actor.crew).trim();
       }
-    } else if (!isSuperAdmin(req) && !hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Only administrators may view acting cover assignments.' });
     }
 
     const docs = await ActingAssignment.find(filter).sort({ startDate: -1 }).lean();
-    const empIds = [...new Set(docs.flatMap((d) => [d.absentEmpId, d.coverEmpId]))];
-    const employees = await AdminUser.find({ empId: { $in: empIds } })
-      .select('empId name crew role')
-      .lean();
-    const byId = new Map(employees.map((e) => [e.empId, e]));
-
-    const data = docs.map((d) => ({
-      ...d,
-      absentName: byId.get(d.absentEmpId)?.name || d.absentEmpId,
-      coverName: byId.get(d.coverEmpId)?.name || d.coverEmpId,
-    }));
-
+    const empIds = docs.flatMap((d) => [d.absentEmpId, d.coverEmpId]);
+    const byId = await loadEmployeeMap(empIds);
+    const data = await Promise.all(docs.map((d) => populateDelegation(d, byId)));
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-exports.deleteActingCover = async (req, res) => {
+exports.getDelegationInbox = async (req, res) => {
   try {
     const actor = await loadActor(req);
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Only administrators may remove acting cover.' });
+    if (!actor?.empId) {
+      return res.status(400).json({ message: 'Employee session is incomplete.' });
+    }
+    const docs = await ActingAssignment.find({
+      coverEmpId: actor.empId,
+      status: 'pending',
+    })
+      .sort({ requestedAt: 1 })
+      .lean();
+    const byId = await loadEmployeeMap(docs.flatMap((d) => [d.absentEmpId, d.coverEmpId]));
+    const data = await Promise.all(docs.map((d) => populateDelegation(d, byId)));
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.approveDelegation = async (req, res) => {
+  try {
+    const actor = await loadActor(req);
+    const doc = await ActingAssignment.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Delegation request not found.' });
+    if (doc.status !== 'pending') {
+      return res.status(400).json({ message: `Delegation is already ${doc.status}.` });
+    }
+    if (actor?.empId !== doc.coverEmpId && !isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only the designated delegate may approve this request.' });
     }
 
-    const doc = await ActingAssignment.findById(req.params.id);
-    if (!doc) return res.status(404).json({ message: 'Acting cover assignment not found.' });
-
-    const accessErr = assertCrewAccess(req, actor, doc.crew);
-    if (accessErr) return res.status(403).json({ message: accessErr });
+    doc.status = 'approved';
+    doc.respondedAt = new Date();
+    await doc.save();
 
     const [absent, cover] = await Promise.all([
       AdminUser.findOne({ empId: doc.absentEmpId }).select('-passwordHash'),
       AdminUser.findOne({ empId: doc.coverEmpId }).select('-passwordHash'),
     ]);
 
-    await doc.deleteOne();
-
     await logRosterEvent({
-      action: 'ACTING_COVER_CLEARED',
+      action: 'DELEGATION_APPROVED',
       actor,
-      target: absent || { empId: doc.absentEmpId, name: doc.absentEmpId },
-      summary: `${actor?.name || 'Admin'} removed acting cover for ${absent?.name || doc.absentEmpId} (${doc.startDate} – ${doc.endDate})`,
-      metadata: {
-        absentEmpId: doc.absentEmpId,
-        coverEmpId: doc.coverEmpId,
-        role: doc.role,
-        startDate: doc.startDate,
-        endDate: doc.endDate,
-      },
+      target: absent || { empId: doc.absentEmpId },
+      summary: `${cover?.name || doc.coverEmpId} approved cover for ${absent?.name || doc.absentEmpId} (${doc.startDate} – ${doc.endDate})`,
+      metadata: { delegationId: String(doc._id) },
     });
     await logAction({
       actor,
-      action: AUDIT_ACTIONS.ACTING_COVER_DELETED,
+      action: AUDIT_ACTIONS.DELEGATION_APPROVED,
       targetType: 'employee',
       targetId: doc.absentEmpId,
       targetName: absent?.name || doc.absentEmpId,
-      before: doc.toObject ? doc.toObject() : { ...doc },
-      after: null,
+      after: doc.toObject ? doc.toObject() : doc,
       req,
+    });
+
+    if (absent) {
+      try {
+        await notifyAbsentDelegationResponse({ absent, delegate: cover, doc, approved: true });
+      } catch (err) {
+        console.warn('[delegation] absent notify failed:', err.message);
+      }
+    }
+
+    const populated = await populateDelegation(
+      doc.toObject(),
+      await loadEmployeeMap([doc.absentEmpId, doc.coverEmpId])
+    );
+    res.json({ success: true, data: populated });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.declineDelegation = async (req, res) => {
+  try {
+    const actor = await loadActor(req);
+    const doc = await ActingAssignment.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Delegation request not found.' });
+    if (doc.status !== 'pending') {
+      return res.status(400).json({ message: `Delegation is already ${doc.status}.` });
+    }
+    if (actor?.empId !== doc.coverEmpId && !isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only the designated delegate may decline this request.' });
+    }
+
+    doc.status = 'declined';
+    doc.respondedAt = new Date();
+    await doc.save();
+
+    const [absent, cover] = await Promise.all([
+      AdminUser.findOne({ empId: doc.absentEmpId }).select('-passwordHash'),
+      AdminUser.findOne({ empId: doc.coverEmpId }).select('-passwordHash'),
+    ]);
+
+    await logRosterEvent({
+      action: 'DELEGATION_DECLINED',
+      actor,
+      target: absent || { empId: doc.absentEmpId },
+      summary: `${cover?.name || doc.coverEmpId} declined cover for ${absent?.name || doc.absentEmpId}`,
+      metadata: { delegationId: String(doc._id) },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.DELEGATION_DECLINED,
+      targetType: 'employee',
+      targetId: doc.absentEmpId,
+      targetName: absent?.name || doc.absentEmpId,
+      after: doc.toObject ? doc.toObject() : doc,
+      req,
+    });
+
+    if (absent) {
+      try {
+        await notifyAbsentDelegationResponse({ absent, delegate: cover, doc, approved: false });
+      } catch (err) {
+        console.warn('[delegation] absent notify failed:', err.message);
+      }
+    }
+
+    const populated = await populateDelegation(
+      doc.toObject(),
+      await loadEmployeeMap([doc.absentEmpId, doc.coverEmpId])
+    );
+    res.json({ success: true, data: populated });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.deleteActingCover = exports.cancelDelegation = async (req, res) => {
+  try {
+    const actor = await loadActor(req);
+    const doc = await ActingAssignment.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Delegation request not found.' });
+
+    const isOwner = actor?.empId === doc.absentEmpId || actor?.empId === doc.coverEmpId;
+    if (!hasPortalAdminAccess(req) && !isOwner && !isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'You may not cancel this delegation.' });
+    }
+
+    const accessErr = hasPortalAdminAccess(req) ? assertCrewAccess(req, actor, doc.crew) : null;
+    if (accessErr) return res.status(403).json({ message: accessErr });
+
+    const wasApproved = isApprovedDelegation(doc);
+
+    const [absent, cover] = await Promise.all([
+      AdminUser.findOne({ empId: doc.absentEmpId }).select('-passwordHash'),
+      AdminUser.findOne({ empId: doc.coverEmpId }).select('-passwordHash'),
+    ]);
+
+    if (wasApproved) {
+      await doc.deleteOne();
+      await logAction({
+        actor,
+        action: AUDIT_ACTIONS.ACTING_COVER_DELETED,
+        targetType: 'employee',
+        targetId: doc.absentEmpId,
+        targetName: absent?.name || doc.absentEmpId,
+        before: doc.toObject ? doc.toObject() : { ...doc },
+        after: null,
+        req,
+      });
+    } else {
+      doc.status = 'cancelled';
+      doc.respondedAt = new Date();
+      await doc.save();
+      await logAction({
+        actor,
+        action: AUDIT_ACTIONS.DELEGATION_CANCELLED,
+        targetType: 'employee',
+        targetId: doc.absentEmpId,
+        targetName: absent?.name || doc.absentEmpId,
+        before: doc.toObject ? doc.toObject() : { ...doc },
+        after: null,
+        req,
+      });
+    }
+
+    await logRosterEvent({
+      action: wasApproved ? 'ACTING_COVER_CLEARED' : 'DELEGATION_CANCELLED',
+      actor,
+      target: absent || { empId: doc.absentEmpId, name: doc.absentEmpId },
+      summary: `${actor?.name || 'User'} cancelled cover for ${absent?.name || doc.absentEmpId}`,
       metadata: { coverName: cover?.name },
     });
 
-    res.json({ success: true, message: 'Acting cover removed.' });
+    res.json({ success: true, message: 'Delegation cancelled.' });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
