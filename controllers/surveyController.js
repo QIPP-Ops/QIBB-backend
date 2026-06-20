@@ -7,6 +7,28 @@ const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { resolveAssignTargets } = require('../services/quizAssignmentService');
 
+const SURVEY_TYPES = Survey.SURVEY_TYPES || [
+  'field_count',
+  'field_inspection',
+  'dcs_inventory',
+  'permit_audit',
+  'custom',
+];
+
+function sanitizeChecklist(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item, index) => ({
+      id: String(item?.id || `item${index + 1}`).trim(),
+      label: String(item?.label || item?.prompt || '').trim(),
+      inputType: ['number', 'text', 'photo'].includes(String(item?.inputType || '').trim())
+        ? String(item.inputType).trim()
+        : 'text',
+      required: Boolean(item?.required),
+    }))
+    .filter((item) => item.label);
+}
+
 function sanitizeQuestions(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -27,6 +49,12 @@ function surveyRow(doc) {
     id: String(doc._id),
     title: doc.title,
     description: doc.description || '',
+    surveyType: doc.surveyType || 'custom',
+    instructions: doc.instructions || '',
+    location: doc.location || '',
+    area: doc.area || '',
+    checklist: doc.checklist || [],
+    assigneeRoleFilter: doc.assigneeRoleFilter || '',
     questions: doc.questions || [],
     active: Boolean(doc.active),
     createdAt: doc.createdAt || null,
@@ -35,17 +63,42 @@ function surveyRow(doc) {
 }
 
 function assignmentRow(doc, survey) {
+  const checklist = survey?.checklist || doc.surveyId?.checklist || [];
+  const questions =
+    survey?.questions?.length
+      ? survey.questions
+      : checklist.length
+        ? checklist.map((item) => ({
+            id: item.id,
+            prompt: item.label,
+            type: item.inputType === 'number' ? 'number' : 'text',
+            required: item.required,
+          }))
+        : doc.surveyId?.questions || [];
+
   return {
     assignmentId: String(doc._id),
     surveyId: String(doc.surveyId?._id || doc.surveyId),
     title: survey?.title || doc.surveyId?.title || 'Survey',
     description: survey?.description || doc.surveyId?.description || '',
-    questions: survey?.questions || doc.surveyId?.questions || [],
+    surveyType: survey?.surveyType || doc.surveyId?.surveyType || 'custom',
+    instructions: survey?.instructions || doc.surveyId?.instructions || '',
+    location: survey?.location || doc.surveyId?.location || '',
+    area: survey?.area || doc.surveyId?.area || '',
+    checklist,
+    questions,
     dueDate: doc.dueDate || null,
     assignedAt: doc.createdAt || null,
     completedAt: doc.completedAt || null,
     responses: doc.responses || null,
   };
+}
+
+function matchesRoleFilter(role, filter) {
+  const needle = String(filter || '').trim().toLowerCase();
+  if (!needle) return true;
+  const hay = String(role || '').trim().toLowerCase();
+  return hay.includes(needle);
 }
 
 exports.listSurveys = async (req, res) => {
@@ -54,7 +107,7 @@ exports.listSurveys = async (req, res) => {
       return res.status(403).json({ message: 'Admin access required.' });
     }
     const rows = await Survey.find().sort({ updatedAt: -1 }).lean();
-    res.json({ success: true, surveys: rows.map(surveyRow) });
+    res.json({ success: true, surveys: rows.map(surveyRow), surveyTypes: SURVEY_TYPES });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -68,10 +121,22 @@ exports.createSurvey = async (req, res) => {
     const title = String(req.body?.title || '').trim();
     if (!title) return res.status(400).json({ message: 'Survey title is required.' });
 
+    const surveyType = SURVEY_TYPES.includes(req.body?.surveyType)
+      ? req.body.surveyType
+      : 'custom';
+    const checklist = sanitizeChecklist(req.body?.checklist);
+    const questions = sanitizeQuestions(req.body?.questions);
+
     const doc = await Survey.create({
       title,
       description: String(req.body?.description || '').trim(),
-      questions: sanitizeQuestions(req.body?.questions),
+      surveyType,
+      instructions: String(req.body?.instructions || '').trim(),
+      location: String(req.body?.location || '').trim(),
+      area: String(req.body?.area || '').trim(),
+      checklist,
+      assigneeRoleFilter: String(req.body?.assigneeRoleFilter || '').trim(),
+      questions,
       createdBy: req.user?.id || null,
       active: req.body?.active !== false,
     });
@@ -105,12 +170,18 @@ exports.assignSurvey = async (req, res) => {
     if (!survey) return res.status(404).json({ message: 'Survey not found.' });
     if (!survey.active) return res.status(400).json({ message: 'Survey is inactive.' });
 
-    const targets = await resolveAssignTargets({
+    let targets = await resolveAssignTargets({
       userIds: req.body?.userIds,
       crew: req.body?.crew,
     });
+    const roleFilter = String(req.body?.assigneeRoleFilter || survey.assigneeRoleFilter || '').trim();
+    if (roleFilter) {
+      targets = targets.filter((user) => matchesRoleFilter(user.role, roleFilter));
+    }
     if (!targets.length) {
-      return res.status(400).json({ message: 'Provide userIds or crew with at least one approved member.' });
+      return res.status(400).json({
+        message: 'Provide userIds or crew with at least one approved member matching the role filter.',
+      });
     }
 
     const due = req.body?.dueDate ? new Date(req.body.dueDate) : null;
@@ -137,7 +208,7 @@ exports.assignSurvey = async (req, res) => {
       targetType: 'survey',
       targetId: String(survey._id),
       targetName: survey.title,
-      after: { assigned, crew: req.body?.crew || null, userCount: targets.length },
+      after: { assigned, crew: req.body?.crew || null, userCount: targets.length, roleFilter },
       req,
     });
 
@@ -154,7 +225,10 @@ exports.getMyPendingSurveys = async (req, res) => {
 
     const rows = await SurveyAssignment.find({ userId, completedAt: null })
       .sort({ dueDate: 1, createdAt: -1 })
-      .populate('surveyId', 'title description questions active')
+      .populate(
+        'surveyId',
+        'title description surveyType instructions location area checklist questions active assigneeRoleFilter'
+      )
       .lean();
 
     const surveys = rows
@@ -178,7 +252,7 @@ exports.submitSurveyResponse = async (req, res) => {
 
     const assignment = await SurveyAssignment.findOne({ _id: assignmentId, userId }).populate(
       'surveyId',
-      'title active questions'
+      'title active questions checklist surveyType'
     );
     if (!assignment) return res.status(404).json({ message: 'Survey assignment not found.' });
     if (assignment.completedAt) {
@@ -215,10 +289,15 @@ exports.submitSurveyResponse = async (req, res) => {
 exports.listPendingSurveyAssignmentsForUser = async (userId) => {
   const rows = await SurveyAssignment.find({ userId, completedAt: null })
     .sort({ dueDate: 1, createdAt: -1 })
-    .populate('surveyId', 'title description questions active')
+    .populate(
+      'surveyId',
+      'title description surveyType instructions location area checklist questions active assigneeRoleFilter'
+    )
     .lean();
 
   return rows
     .filter((row) => row.surveyId && row.surveyId.active !== false)
     .map((row) => assignmentRow(row, row.surveyId));
 };
+
+exports.SURVEY_TYPES = SURVEY_TYPES;

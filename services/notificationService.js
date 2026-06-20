@@ -351,6 +351,37 @@ async function notifyKpiSubmitted({ employee }) {
   });
 }
 
+async function notifyKpiPendingFinal({ employee }) {
+  const base = getFrontendBaseUrlSafe();
+  const name = employee?.name || employee?.empId || 'Employee';
+  const { findPlantManagerUser } = require('./plantManagerService');
+  const plantManager = await findPlantManagerUser();
+  if (plantManager?.email) {
+    try {
+      await sendMail({
+        to: plantManager.email,
+        subject: `KPI goals awaiting your final approval — ${name}`,
+        html: emailTemplate(
+          'KPI final approval required',
+          `<p>Hi <strong>${plantManager.name || 'Plant Manager'}</strong>,</p>
+          ${emailCallout(`<p><strong>${name}</strong> (${employee?.empId || '—'}) has KPI goals ready for your final approval.</p>`)}
+          ${emailCtaButton(`${base}/settings`, 'Review KPI queue')}`
+        ),
+      });
+    } catch (err) {
+      console.error('[notification] KPI pending final email failed:', err.message);
+    }
+  }
+  await sendAdminBulkEmail({
+    subject: `KPI sent for plant manager approval — ${name}`,
+    bodyHtml: `
+      ${emailCallout(`<p><strong>${name}</strong> (${employee?.empId || '—'}) is awaiting plant manager final KPI approval.</p>`)}
+      ${emailCtaButton(`${base}/settings`, 'Open admin KPI review')}
+    `,
+    superAdminOnly: true,
+  });
+}
+
 async function notifyKpiFinalized({ employee, reviewNotes = '' }) {
   const base = getFrontendBaseUrlSafe();
   const email = (employee?.email || '').trim();
@@ -431,5 +462,6 @@ module.exports = {
   notifyQuizPrizeClaimed,
   notifyLeaveConflict,
   notifyKpiSubmitted,
+  notifyKpiPendingFinal,
   notifyKpiFinalized,
 };

@@ -1,8 +1,9 @@
 const AdminUser = require('../models/AdminUser');
 const KpiFactor = require('../models/KpiFactor');
 const { isSuperAdminUser } = require('../middleware/superAdmin');
+const { isPlantManagerUser } = require('../services/plantManagerService');
 const { logAction } = require('../services/auditLogService');
-const { notifyKpiSubmitted, notifyKpiFinalized } = require('../services/notificationService');
+const { notifyKpiSubmitted, notifyKpiFinalized, notifyKpiPendingFinal } = require('../services/notificationService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
 function actorEmpId(req) {
@@ -94,10 +95,79 @@ exports.submitMyKpiGoals = async (req, res) => {
   }
 };
 
+function canFinalApproveKpi(req) {
+  if (isSuperAdminUser(req)) return true;
+  return isPlantManagerUser(req.user);
+}
+
+exports.listPendingFinalKpiSubmissions = async (req, res) => {
+  try {
+    if (!canFinalApproveKpi(req)) {
+      return res.status(403).json({ message: 'Plant manager access required.' });
+    }
+    const users = await AdminUser.find({ kpiSubmissionStatus: 'pending_final' })
+      .select('empId name crew role kpis kpiSubmissionStatus kpiReviewNotes kpiSubmittedAt kpiReviewedAt')
+      .sort({ kpiSubmittedAt: -1, name: 1 })
+      .lean();
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.finalApproveEmployeeKpi = async (req, res) => {
+  try {
+    if (!canFinalApproveKpi(req)) {
+      return res.status(403).json({ message: 'Plant manager access required.' });
+    }
+    const { empId } = req.params;
+    const user = await AdminUser.findOne({ empId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found.' });
+    if (user.kpiSubmissionStatus !== 'pending_final') {
+      return res.status(400).json({ message: 'KPI goals are not awaiting final approval.' });
+    }
+
+    const { kpiReviewNotes } = req.body || {};
+    if (kpiReviewNotes !== undefined) user.kpiReviewNotes = String(kpiReviewNotes);
+    user.kpiSubmissionStatus = 'reviewed';
+    user.kpiReviewedAt = new Date();
+    user.kpiFinalApprovedAt = new Date();
+    user.kpiFinalApprovedByEmpId = actorEmpId(req);
+    await user.save();
+
+    try {
+      await notifyKpiFinalized({
+        employee: user.toObject ? user.toObject() : user,
+        reviewNotes: user.kpiReviewNotes,
+      });
+    } catch (err) {
+      console.error('[kpi] final approval notification failed:', err.message);
+    }
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.KPI_FINAL_APPROVED,
+      targetType: 'employee',
+      targetId: user._id?.toString(),
+      targetName: user.name,
+      after: {
+        kpiSubmissionStatus: user.kpiSubmissionStatus,
+        kpiFinalApprovedAt: user.kpiFinalApprovedAt,
+        kpiFinalApprovedByEmpId: user.kpiFinalApprovedByEmpId,
+      },
+      req,
+    });
+
+    res.json({ success: true, data: user });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 exports.listEmployeeKpiSubmissions = async (req, res) => {
   try {
     const users = await AdminUser.find({ 'kpis.0': { $exists: true } })
-      .select('empId name crew role kpis kpiSubmissionStatus kpiReviewNotes kpiSubmittedAt kpiReviewedAt')
+      .select('empId name crew role kpis kpiSubmissionStatus kpiReviewNotes kpiSubmittedAt kpiReviewedAt kpiFinalApprovedAt kpiFinalApprovedByEmpId')
       .sort({ name: 1 })
       .lean();
     res.json({ success: true, data: users });
@@ -115,12 +185,12 @@ exports.reviewEmployeeKpi = async (req, res) => {
     const { kpiReviewNotes, kpis, status, finalize } = req.body;
     const prevStatus = user.kpiSubmissionStatus;
     if (kpiReviewNotes !== undefined) user.kpiReviewNotes = String(kpiReviewNotes);
-    if (status === 'reviewed' || status === 'draft' || status === 'submitted' || status === 'rejected') {
+    if (status === 'reviewed' || status === 'draft' || status === 'submitted' || status === 'rejected' || status === 'pending_final') {
       user.kpiSubmissionStatus = status === 'rejected' ? 'draft' : status;
-      if (status === 'reviewed' || finalize) user.kpiReviewedAt = new Date();
+      if (status === 'reviewed' || status === 'pending_final' || finalize) user.kpiReviewedAt = new Date();
     }
     if (finalize === true) {
-      user.kpiSubmissionStatus = 'reviewed';
+      user.kpiSubmissionStatus = 'pending_final';
       user.kpiReviewedAt = new Date();
     }
 
@@ -144,7 +214,18 @@ exports.reviewEmployeeKpi = async (req, res) => {
     await user.save();
 
     const finalized =
-      (finalize === true || status === 'reviewed') && user.kpiSubmissionStatus === 'reviewed';
+      user.kpiSubmissionStatus === 'reviewed' && prevStatus !== 'reviewed';
+    const sentToFinal =
+      user.kpiSubmissionStatus === 'pending_final' && prevStatus !== 'pending_final';
+
+    if (sentToFinal) {
+      try {
+        await notifyKpiPendingFinal({ employee: user.toObject ? user.toObject() : user });
+      } catch (err) {
+        console.error('[kpi] pending final notification failed:', err.message);
+      }
+    }
+
     if (finalized && prevStatus !== 'reviewed') {
       try {
         await notifyKpiFinalized({

@@ -99,12 +99,14 @@ const AdminUserSchema = new mongoose.Schema({
   kpiEditingAllowed: { type: Boolean, default: true },
   kpiSubmissionStatus: {
     type: String,
-    enum: ['draft', 'submitted', 'reviewed'],
+    enum: ['draft', 'submitted', 'pending_final', 'reviewed'],
     default: 'draft',
   },
   kpiReviewNotes:  { type: String, default: '' },
   kpiSubmittedAt:  { type: Date, default: null },
   kpiReviewedAt:   { type: Date, default: null },
+  kpiFinalApprovedAt: { type: Date, default: null },
+  kpiFinalApprovedByEmpId: { type: String, default: '' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminUser', AdminUserSchema);

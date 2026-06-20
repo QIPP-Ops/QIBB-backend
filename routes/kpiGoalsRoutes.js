@@ -15,5 +15,7 @@ router.delete('/factors/:id', protect, requireSuperAdmin, c.deleteKpiFactor);
 
 router.get('/submissions', protect, requireSuperAdmin, c.listEmployeeKpiSubmissions);
 router.patch('/submissions/:empId', protect, requireSuperAdmin, c.reviewEmployeeKpi);
+router.get('/pending-final', protect, c.listPendingFinalKpiSubmissions);
+router.post('/submissions/:empId/final-approve', protect, c.finalApproveEmployeeKpi);
 
 module.exports = router;

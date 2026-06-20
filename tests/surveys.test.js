@@ -2,6 +2,7 @@ jest.mock('../models/Survey', () => ({
   find: jest.fn(),
   create: jest.fn(),
   findById: jest.fn(),
+  SURVEY_TYPES: ['field_count', 'field_inspection', 'dcs_inventory', 'permit_audit', 'custom'],
 }));
 
 jest.mock('../models/SurveyAssignment', () => ({
@@ -70,18 +71,24 @@ describe('Survey APIs', () => {
     jest.clearAllMocks();
   });
 
-  test('POST /api/admin/surveys creates a survey', async () => {
+  test('POST /api/admin/surveys creates a field_count survey with checklist', async () => {
     Survey.create.mockResolvedValue({
       _id: '507f1f77bcf86cd799439099',
-      title: 'Safety culture pulse',
-      description: 'Monthly check-in',
-      questions: [{ id: 'q1', prompt: 'How safe do you feel?', type: 'text' }],
+      title: 'Pump count audit',
+      description: '',
+      surveyType: 'field_count',
+      instructions: 'Count pumps per block',
+      location: 'Power block',
+      area: 'Block 1',
+      checklist: [{ id: 'pb1', label: 'Pump count', inputType: 'number', required: true }],
+      assigneeRoleFilter: 'local operator',
+      questions: [],
       active: true,
       createdAt: new Date('2026-06-20'),
       updatedAt: new Date('2026-06-20'),
       toObject: () => ({
         _id: '507f1f77bcf86cd799439099',
-        title: 'Safety culture pulse',
+        title: 'Pump count audit',
       }),
     });
 
@@ -89,23 +96,32 @@ describe('Survey APIs', () => {
       .post('/api/admin/surveys')
       .set('Authorization', `Bearer ${adminToken()}`)
       .send({
-        title: 'Safety culture pulse',
-        description: 'Monthly check-in',
-        questions: [{ prompt: 'How safe do you feel?' }],
+        title: 'Pump count audit',
+        surveyType: 'field_count',
+        instructions: 'Count pumps per block',
+        location: 'Power block',
+        area: 'Block 1',
+        assigneeRoleFilter: 'local operator',
+        checklist: [{ id: 'pb1', label: 'Pump count', inputType: 'number', required: true }],
       });
 
     expect(res.status).toBe(201);
     expect(res.body.success).toBe(true);
-    expect(res.body.survey.title).toBe('Safety culture pulse');
+    expect(res.body.survey.surveyType).toBe('field_count');
+    expect(res.body.survey.checklist).toHaveLength(1);
   });
 
-  test('POST /api/admin/surveys/assign upserts assignments', async () => {
+  test('POST /api/admin/surveys/assign filters by role when assigneeRoleFilter is set', async () => {
     Survey.findById.mockResolvedValue({
       _id: '507f1f77bcf86cd799439099',
-      title: 'Safety culture pulse',
+      title: 'DCS inventory',
       active: true,
+      assigneeRoleFilter: 'ccr operator',
     });
-    resolveAssignTargets.mockResolvedValue([{ _id: '507f1f77bcf86cd799439012' }]);
+    resolveAssignTargets.mockResolvedValue([
+      { _id: '507f1f77bcf86cd799439012', role: 'CCR Operator Group 1-2' },
+      { _id: '507f1f77bcf86cd799439013', role: 'Local Operator Group 1-2' },
+    ]);
     SurveyAssignment.findOneAndUpdate.mockResolvedValue({});
 
     const res = await request(app)
@@ -115,10 +131,10 @@ describe('Survey APIs', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.assigned).toBe(1);
-    expect(SurveyAssignment.findOneAndUpdate).toHaveBeenCalled();
+    expect(SurveyAssignment.findOneAndUpdate).toHaveBeenCalledTimes(1);
   });
 
-  test('GET /api/personnel/me/surveys returns pending assignments', async () => {
+  test('GET /api/personnel/me/surveys returns pending assignments with instructions', async () => {
     SurveyAssignment.find.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         populate: jest.fn().mockReturnValue({
@@ -127,9 +143,14 @@ describe('Survey APIs', () => {
               _id: '507f1f77bcf86cd799439088',
               surveyId: {
                 _id: '507f1f77bcf86cd799439099',
-                title: 'Safety culture pulse',
+                title: 'Permit audit',
                 description: '',
-                questions: [{ id: 'q1', prompt: 'How safe do you feel?' }],
+                surveyType: 'permit_audit',
+                instructions: 'Verify PTW surrendered',
+                location: 'Plant',
+                area: 'Key safe',
+                checklist: [{ id: 'ptw', label: 'Open PTW count', inputType: 'number', required: true }],
+                questions: [],
                 active: true,
               },
               dueDate: new Date('2026-06-30'),
@@ -148,6 +169,7 @@ describe('Survey APIs', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.surveys).toHaveLength(1);
-    expect(res.body.surveys[0].title).toBe('Safety culture pulse');
+    expect(res.body.surveys[0].instructions).toContain('PTW');
+    expect(res.body.surveys[0].checklist).toHaveLength(1);
   });
 });
