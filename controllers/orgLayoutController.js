@@ -3,6 +3,7 @@ const AdminUser = require('../models/AdminUser');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { isSuperAdmin, hasPortalAdminAccess } = require('../middleware/superAdmin');
+const { resolveCrewOpsLayoutNodes } = require('../utils/orgLayoutSanitize');
 
 const VALID_CREW_IDS = new Set(['A', 'B', 'C', 'D', 'General', 'S', 'plant']);
 
@@ -35,6 +36,40 @@ function sanitizeNodes(nodes) {
     .filter((node) => node.empId);
 }
 
+function crewMatchQuery(crewId) {
+  if (crewId === 'General') {
+    return { $or: [{ crew: 'General' }, { crew: 'G' }, { crew: /^crew\s*general$/i }] };
+  }
+  if (crewId === 'plant') return {};
+  return {
+    $or: [
+      { crew: crewId },
+      { crew: `Crew ${crewId}` },
+      { crew: new RegExp(`^crew\\s*${crewId}$`, 'i') },
+    ],
+  };
+}
+
+async function memberByIdForCrew(crewId) {
+  if (!crewId || crewId === 'plant' || crewId === 'General') return new Map();
+  const rows = await AdminUser.find(crewMatchQuery(crewId))
+    .select('empId role crew name')
+    .lean();
+  const map = new Map();
+  rows.forEach((row) => {
+    const id = String(row.empId || '').trim();
+    if (id) map.set(id, row);
+  });
+  return map;
+}
+
+async function sanitizeCrewOpsNodes(crewId, nodes) {
+  if (!nodes?.length || crewId === 'General' || crewId === 'plant') return nodes;
+  const memberById = await memberByIdForCrew(crewId);
+  if (!memberById.size) return nodes;
+  return resolveCrewOpsLayoutNodes(memberById, nodes);
+}
+
 async function loadActor(req) {
   if (!req.user?.id) return null;
   return AdminUser.findById(req.user.id).select('-passwordHash');
@@ -52,10 +87,11 @@ exports.getOrgLayout = async (req, res) => {
     if (!doc) {
       return res.json({ crewId, manual: false, nodes: [] });
     }
+    const nodes = await sanitizeCrewOpsNodes(crewId, doc.nodes || []);
     res.json({
       crewId: doc.crewId,
       manual: Boolean(doc.manual),
-      nodes: doc.nodes || [],
+      nodes,
       updatedAt: doc.updatedAt,
       updatedByEmail: doc.updatedByEmail || '',
       updatedByName: doc.updatedByName || '',
@@ -75,7 +111,7 @@ exports.patchOrgLayout = async (req, res) => {
     const crewId = normalizeCrewId(req.params.crewId);
     if (!crewId) return res.status(400).json({ message: 'Invalid crew id.' });
 
-    const nodes = sanitizeNodes(req.body?.nodes);
+    const nodes = await sanitizeCrewOpsNodes(crewId, sanitizeNodes(req.body?.nodes));
     const manual = req.body?.manual !== false;
     const actor = await loadActor(req);
 

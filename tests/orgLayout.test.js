@@ -8,6 +8,7 @@ jest.mock('../models/AdminUser', () => ({
   findOne: jest.fn(),
   findById: jest.fn(),
   findOneAndUpdate: jest.fn(),
+  find: jest.fn(),
 }));
 
 jest.mock('../services/rosterAuditService', () => ({
@@ -77,6 +78,14 @@ describe('org layout API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActor({ email: SUPER_ADMIN_EMAIL });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { empId: '10', role: 'Shift in Charge Engineer', crew: 'A', name: 'SIC' },
+          { empId: '20', role: 'CCR Operator Group 1-2', crew: 'A', name: 'CCR' },
+        ]),
+      }),
+    });
   });
 
   test('GET /api/admin/org-layout/:crewId requires admin', async () => {
