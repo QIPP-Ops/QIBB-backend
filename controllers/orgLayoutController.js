@@ -3,7 +3,7 @@ const AdminUser = require('../models/AdminUser');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { isSuperAdmin, hasPortalAdminAccess } = require('../middleware/superAdmin');
-const { resolveCrewOpsLayoutNodes } = require('../utils/orgLayoutSanitize');
+const { resolveCrewOpsLayoutNodes, nodesParentLinksEqual } = require('../utils/orgLayoutSanitize');
 
 const VALID_CREW_IDS = new Set(['A', 'B', 'C', 'D', 'General', 'S', 'plant']);
 
@@ -87,7 +87,16 @@ exports.getOrgLayout = async (req, res) => {
     if (!doc) {
       return res.json({ crewId, manual: false, nodes: [] });
     }
-    const nodes = await sanitizeCrewOpsNodes(crewId, doc.nodes || []);
+    const rawNodes = doc.nodes || [];
+    const nodes = await sanitizeCrewOpsNodes(crewId, rawNodes);
+    if (
+      doc.manual &&
+      nodes?.length &&
+      rawNodes.length &&
+      !nodesParentLinksEqual(rawNodes, nodes)
+    ) {
+      await OrgLayout.updateOne({ crewId }, { $set: { nodes } });
+    }
     res.json({
       crewId: doc.crewId,
       manual: Boolean(doc.manual),

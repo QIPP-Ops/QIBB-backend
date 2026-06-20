@@ -116,9 +116,17 @@ function repairCrewOpsLayoutNodes(memberById, nodes) {
   });
 }
 
+function nodesParentLinksEqual(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  const byId = new Map(b.map((n) => [String(n.empId || ''), String(n.parentEmpId || '')]));
+  return a.every((node) => {
+    const id = String(node.empId || '');
+    return byId.has(id) && byId.get(id) === String(node.parentEmpId || '');
+  });
+}
+
 function resolveCrewOpsLayoutNodes(memberById, nodes) {
   if (!Array.isArray(nodes) || !nodes.length) return nodes;
-  if (isValidCrewOpsLayout(memberById, nodes)) return nodes;
   const repaired = repairCrewOpsLayoutNodes(memberById, nodes);
   return isValidCrewOpsLayout(memberById, repaired) ? repaired : nodes;
 }
@@ -126,4 +134,5 @@ function resolveCrewOpsLayoutNodes(memberById, nodes) {
 module.exports = {
   repairCrewOpsLayoutNodes,
   resolveCrewOpsLayoutNodes,
+  nodesParentLinksEqual,
 };
