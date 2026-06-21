@@ -4,7 +4,6 @@ const {
   getBundleDateBounds,
   metricsFromBundle,
 } = require('./metricSeriesFromBundle');
-const { getSyncState } = require('./syncTrendsBlobsService');
 
 const PLANT_CAPACITY_MW = 3883.2;
 
@@ -203,11 +202,8 @@ async function buildOperationalOverview(query = {}) {
   const kpiSeries = mergeExtendedKpiRows(seriesMap);
   const dashboard = await buildHistoricalDashboard({ from, to });
 
-  const sync = getSyncState();
   const lastDataAt = bounds.maxDate || null;
-  const lastIngestAt = sync?.lastResult?.lastRunAt
-    ? new Date(sync.lastResult.lastRunAt).toISOString()
-    : null;
+  const lastIngestAt = bounds.maxDate ? new Date(`${bounds.maxDate}T00:00:00`).toISOString() : null;
 
   return {
     plantCapacityMw: PLANT_CAPACITY_MW,

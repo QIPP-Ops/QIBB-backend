@@ -9,7 +9,7 @@ const { expandDayColumnSeries } = require('./seriesTimeline');
 const { canonicalMetricKey, canonicalLabel, dedupeMetricsForListing } = require('./metricKeys');
 const { getDateBounds } = require('./historicalDashboard');
 
-/** Committed seed / deploy bundle (often read-only on Azure WEBSITE_RUN_FROM_PACKAGE). */
+/** Committed seed / deploy bundle. */
 const BUNDLED_CACHE_DIR = path.join(__dirname, '../../data');
 const BUNDLED_CACHE_FILE = path.join(BUNDLED_CACHE_DIR, 'plant-trends-cache.json');
 const BUNDLED_RAW_METRICS_FILE = path.join(BUNDLED_CACHE_DIR, 'plant-raw-metrics.json');
@@ -21,18 +21,9 @@ function resetPlantTrendsCacheDir() {
   resolvedCacheDir = null;
 }
 
-function isAzureAppService() {
-  return Boolean(
-    process.env.WEBSITE_SITE_NAME ||
-      process.env.WEBSITE_INSTANCE_ID ||
-      process.env.WEBSITE_RUN_FROM_PACKAGE
-  );
-}
-
 /**
  * Writable directory for plant-trends-cache.json (and plant-raw-metrics.json).
- * Azure App Service: set PLANT_TRENDS_CACHE_DIR=/home/data (recommended) — wwwroot is read-only.
- * Local dev: defaults to repo data/ when writable.
+ * Set PLANT_TRENDS_CACHE_DIR when the bundled data/ dir is read-only.
  */
 function isDirWritable(dir) {
   try {
@@ -56,10 +47,7 @@ function getPlantTrendsCacheDir() {
 
   const homeData = path.join(process.env.HOME || '/home', 'data');
   const tmpFallback = path.join(os.tmpdir(), 'qibb-plant-trends');
-  // Never pick wwwroot/data as writable on App Service (WEBSITE_RUN_FROM_PACKAGE is read-only).
-  const candidates = isAzureAppService()
-    ? [homeData, tmpFallback]
-    : [BUNDLED_CACHE_DIR, homeData, tmpFallback];
+  const candidates = [BUNDLED_CACHE_DIR, homeData, tmpFallback];
 
   for (const dir of candidates) {
     if (isDirWritable(dir)) {
@@ -363,7 +351,6 @@ module.exports = {
   BUNDLED_CACHE_DIR,
   BUNDLED_CACHE_FILE,
   resetPlantTrendsCacheDir,
-  isAzureAppService,
   getPlantTrendsCacheDir,
   getPlantTrendsCachePath,
   getPlantRawMetricsPath,

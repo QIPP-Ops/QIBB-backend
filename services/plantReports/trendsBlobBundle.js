@@ -2,7 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-/** Read-only seed blobs shipped in the deploy package (wwwroot on Azure). */
+/** Read-only seed blobs shipped in the deploy package. */
 const SEED_DIR = path.join(__dirname, '../../data/trends-blobs');
 
 const KIND_TO_FILE = {
@@ -21,14 +21,6 @@ function resetTrendsBlobsDir() {
   resolvedWritableDir = null;
 }
 
-function isAzureAppService() {
-  return Boolean(
-    process.env.WEBSITE_SITE_NAME ||
-      process.env.WEBSITE_INSTANCE_ID ||
-      process.env.WEBSITE_RUN_FROM_PACKAGE
-  );
-}
-
 function isDirWritable(dir) {
   try {
     fs.mkdirSync(dir, { recursive: true });
@@ -41,10 +33,6 @@ function isDirWritable(dir) {
   }
 }
 
-/**
- * Writable directory for synced qipp-data blobs.
- * Azure: set TRENDS_BLOBS_DIR=/home/data/trends-blobs or PLANT_TRENDS_CACHE_DIR=/home/data.
- */
 function getTrendsBlobsWritableDir() {
   if (resolvedWritableDir) return resolvedWritableDir;
 
@@ -60,9 +48,7 @@ function getTrendsBlobsWritableDir() {
 
   const homeData = path.join(process.env.HOME || '/home', 'data', 'trends-blobs');
   const tmpFallback = path.join(os.tmpdir(), 'qibb-trends-blobs');
-  const candidates = isAzureAppService()
-    ? [homeData, tmpFallback]
-    : [SEED_DIR, homeData, tmpFallback];
+  const candidates = [SEED_DIR, homeData, tmpFallback];
 
   for (const dir of candidates) {
     if (isDirWritable(dir)) {
@@ -178,7 +164,7 @@ const api = {
   seedWritableBlobsIfNeeded,
 };
 
-/** Primary dir used by sync + status — writable on Azure (lazy getter). */
+/** Primary writable trends-blobs directory (lazy getter). */
 Object.defineProperty(api, 'BUNDLED_DIR', {
   enumerable: true,
   get() {

@@ -9,7 +9,6 @@ const ingestAdmin = require('../controllers/ingestAdminController');
 const trendDisplay = require('../controllers/trendDisplayController');
 const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
-const blobController = require('../controllers/blobController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
 const leaveTimesheetVisibility = require('../controllers/leaveTimesheetVisibilityController');
@@ -26,10 +25,7 @@ const pinLimiter = rateLimit({
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
 
-router.get('/list-blobs', protect, admin, blobController.listAllBlobs);
 router.get('/ingest-status', protect, admin, ingestAdmin.getIngestStatus);
-router.get('/sync-trends-blobs/progress', protect, admin, ingestAdmin.getSyncProgress);
-router.post('/ingest/trigger', protect, requireSuperAdmin, ingestAdmin.triggerIngest);
 
 router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);
 router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);

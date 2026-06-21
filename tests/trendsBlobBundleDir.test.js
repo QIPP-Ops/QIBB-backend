@@ -35,16 +35,4 @@ describe('trends blob bundle directory resolution', () => {
     process.env.PLANT_TRENDS_CACHE_DIR = cacheRoot;
     expect(getTrendsBlobsWritableDir()).toBe(path.join(path.resolve(cacheRoot), 'trends-blobs'));
   });
-
-  it('on Azure without env uses HOME/data/trends-blobs not wwwroot seed', () => {
-    process.env.WEBSITE_SITE_NAME = 'qipp-api';
-    delete process.env.TRENDS_BLOBS_DIR;
-    delete process.env.PLANT_TRENDS_CACHE_DIR;
-    process.env.HOME = tmpHome;
-
-    const expected = path.join(tmpHome, 'data', 'trends-blobs');
-    expect(getTrendsBlobsWritableDir()).toBe(expected);
-    expect(getTrendsBlobDirs().seedDir).toBe(SEED_DIR);
-    expect(fs.existsSync(expected)).toBe(true);
-  });
 });

@@ -1,29 +1,14 @@
 # QIPP migration: MongoDB Atlas + Render + GitHub Pages
 
-This guide replaces **Azure App Service** (`qipp-api`, `qippop`) with:
+Production stack:
 
-| Component | New host | URL |
-|-----------|----------|-----|
+| Component | Host | URL |
+|-----------|------|-----|
 | **Frontend** | GitHub Pages | `https://acwaops.com/qipp` |
 | **Backend API** | Render (Frankfurt) | `https://qibb-backend.onrender.com` |
 | **Database** | MongoDB Atlas | Database `QIPP` |
-| **SMTP** | GoDaddy / existing mailbox | Configured on Render |
-| **Trend blobs** | Deferred | Azure Blob sync optional later |
-
-## What you can decommission on Azure
-
-After verifying production on Render + GitHub Pages:
-
-- **Azure App Service `qipp-api`** — backend API (replaced by Render)
-- **Azure App Service `qippop`** — frontend (replaced by GitHub Pages)
-- **Azure Cosmos DB (MongoDB API)** — if fully migrated to Atlas (seed fresh data)
-- **GitHub Actions `main_qipp-api.yml`** — Azure backend deploy workflow (disable or delete)
-- **GitHub Actions `master_qippop.yml`** — Azure frontend deploy workflow (disable or delete)
-
-Keep until trend blob migration is done:
-
-- **Azure Blob Storage** (`acwaopsqipp` / `report` container) — six trend JSON blobs
-- `AZURE_STORAGE_CONNECTION_STRING` on Render (optional, when ready)
+| **SMTP** | GoDaddy / Resend | Configured on Render |
+| **Trend blobs** | Bundled JSON | `data/trends-blobs/` in repo |
 
 ## 1. MongoDB Atlas
 
@@ -70,9 +55,7 @@ MONGODB_DB_NAME=QIPP
 | `SMTP_PORT` | Paid Render only | `465` (recommended) or `587` |
 | `SMTP_SECURE` | Paid Render only | `true` for port 465; `false` for port 587 STARTTLS |
 | `SMTP_FROM` | Optional | `QIPP Operations <admin@acwaops.com>` (fallback if `RESEND_FROM` unset) |
-| `PLANT_INGEST_ON_STARTUP` | Optional | `0` (disable Azure blob ingest until migrated) |
-| `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled stubs until blob sync) |
-| `AZURE_STORAGE_CONNECTION_STRING` | Deferred | For `npm run sync:trends-blobs` later |
+| `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled trend JSON) |
 
 ### Email on Render (Resend recommended on free tier)
 
@@ -160,19 +143,11 @@ Super admin login is created from **SMTP_USER + SMTP_PASS** (same mailbox used f
 2. **Actions** → **Seed MongoDB Atlas** → **Run workflow**
 3. Verify `GET https://qibb-backend.onrender.com/ready` shows `rosterVisible` ≥ 50
 
-See `docs/MIGRATE_AZURE_MONGO_TO_ATLAS.md` (Option E).
-
 Destructive reset (wipes users/config/KPI first):
 
 ```bash
 SEED_FORCE_RESET=1 npm run seed:mongodb
 ```
-
-### Restore from Azure Cosmos (full production data)
-
-If the old Azure MongoDB/Cosmos database still exists, copy all collections to Atlas:
-
-See **[docs/MIGRATE_AZURE_MONGO_TO_ATLAS.md](./MIGRATE_AZURE_MONGO_TO_ATLAS.md)** — `npm run migrate:azure-to-atlas` with `SOURCE_MONGODB_URI` (Azure) and `TARGET_MONGODB_URI` (Atlas).
 
 Optional KPI sample data:
 

@@ -1,6 +1,6 @@
 /**
  * Build TrendsSnapshot field shapes from Excel buffers via the parser registry.
- * Used by snapshotPickers / syncTrendsSnapshot (not PlantMetricPoint ingest).
+ * Used by snapshotPickers (legacy report parsing).
  */
 const ExcelJS = require('exceljs');
 const { cellText } = require('./services/plantReports/excelUtils');

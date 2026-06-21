@@ -23,7 +23,7 @@ const {
   buildPlantTrendsCacheFromPoints,
 } = require('../services/plantReports/plantTrendsCache');
 
-describe('buildPlantTrendsCachePayload (Cosmos PlantMetricPoint)', () => {
+describe('buildPlantTrendsCachePayload (PlantMetricPoint)', () => {
   beforeEach(() => {
     PlantMetric.find.mockReturnValue({
       lean: jest.fn().mockResolvedValue([

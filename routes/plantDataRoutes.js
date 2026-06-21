@@ -16,8 +16,6 @@ router.get('/chemistry-water-overview', c.getChemistryWaterOverview);
 router.get('/trends-bundle', c.getTrendsBundle);
 router.get('/trends-cache', c.getTrendsCache);
 router.get('/trends-blobs/status', c.getTrendsBlobBundleStatus);
-router.get('/sync-trends-blobs/progress', protect, c.getSyncTrendsBlobsProgress);
-router.post('/sync-trends-blobs', protect, requireSuperAdmin, c.syncTrendsBlobs);
 router.get('/trends-blobs/:kind', c.getTrendsBlobBundle);
 router.get('/trend-panels', c.getTrendPanels);
 router.get('/trend-panels/:panelId', c.getTrendPanelById);

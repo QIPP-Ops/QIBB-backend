@@ -20,7 +20,6 @@ const personnelRoutes = require('./routes/personnelRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const metricLimitRoutes = require('./routes/metricLimitRoutes');
 const personnelKpiRoutes = require('./routes/personnelKpiRoutes');
-const blobRoutes = require('./routes/blobRoutes');
 const ingestRoutes = require('./routes/ingestRoutes');
 const kpiGoalsRoutes = require('./routes/kpiGoalsRoutes');
 
@@ -163,10 +162,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/metric-limits', metricLimitRoutes);
 app.use('/api/kpi', personnelKpiRoutes);
 app.use('/api/kpi-goals', kpiGoalsRoutes);
-app.use('/api/blob', blobRoutes);
 app.use('/api/ingest', ingestRoutes);
-
-require('./services/plantReportsV3/azureSync')();
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

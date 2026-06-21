@@ -14,7 +14,7 @@ const plantData = require('./data/plant_data.json');
 async function seed() {
   try {
     await mongoose.connect(getMongoUri(), { retryWrites: false });
-    console.log('🌱 Connected to CosmosDB for seeding...');
+    console.log('🌱 Connected to MongoDB for seeding...');
 
     // 1. Clear existing data
     await PlantPerformance.deleteMany({});

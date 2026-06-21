@@ -33,11 +33,11 @@ exports.syncFromSharePoint = async (_req, res) => {
   });
 };
 
-/** @deprecated Legacy Cosmos ingest — trends use six-blob bundle only. */
+/** @deprecated Legacy ingest — trends use six-blob bundle only. */
 exports.syncFromBlob = async (_req, res) => {
   res.status(410).json({
     message:
-      'Legacy blob ingest to Cosmos removed. Sync qipp-data JSON with npm run sync:trends-blobs.',
+      'Legacy blob ingest removed. Trends load from bundled JSON in data/trends-blobs/.',
   });
 };
 
@@ -45,7 +45,7 @@ exports.syncFromBlob = async (_req, res) => {
 
 exports.uploadReport = async (_req, res) => {
   return res.status(410).json({
-    message: 'Manual trends upload removed. Reports ingest via Azure Blob container.',
+    message: 'Manual trends upload removed. Trends load from bundled JSON in data/trends-blobs/.',
   });
   try {
     const { type } = req.body;

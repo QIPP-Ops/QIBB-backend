@@ -1,20 +1,18 @@
 {
   "name": "qipp-backend",
   "version": "1.0.0",
-  "description": "QIPP operational data API (Express + MongoDB/Cosmos)",
+  "description": "QIPP operational data API (Express + MongoDB Atlas)",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
     "seed": "node seed.js",
     "seed:mongodb": "node scripts/seed-mongodb.js",
-    "migrate:azure-to-atlas": "node scripts/migrate-azure-mongo-to-atlas.js",
     "seed:super-admin": "node scripts/seed-super-admin.js",
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",
     "seed:ptw": "node seeders/ptwSeed.js",
     "parse:ptw": "node scripts/parse-ptw-excel.js",
-    "sync:trends-blobs": "node scripts/sync-trends-blobs-from-azure.js",
     "migrate:trend-definitions": "node scripts/migrate-trend-definitions.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",
@@ -28,7 +26,6 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@azure/storage-blob": "^12.28.0",
     "axios": "^1.7.7",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
@@ -55,9 +52,6 @@
     "testMatch": [
       "**/tests/**/*.test.js",
       "**/__tests__/**/*.test.js"
-    ],
-    "moduleNameMapper": {
-      "^@azure/storage-blob$": "<rootDir>/tests/mocks/azure-storage-blob.js"
-    }
+    ]
   }
 }

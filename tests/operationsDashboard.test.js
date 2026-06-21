@@ -14,6 +14,10 @@ jest.mock('../models/CourseAssignment', () => ({
   find: jest.fn(),
 }));
 
+jest.mock('../models/ActingAssignment', () => ({
+  find: jest.fn(),
+}));
+
 jest.mock('../controllers/surveyController', () => {
   const actual = jest.requireActual('../controllers/surveyController');
   return {
@@ -41,6 +45,7 @@ const AdminUser = require('../models/AdminUser');
 const ShiftReport = require('../models/ShiftReport');
 const QuizAssignment = require('../models/QuizAssignment');
 const CourseAssignment = require('../models/CourseAssignment');
+const ActingAssignment = require('../models/ActingAssignment');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
 process.env.COSMOS_URI = 'mongodb://localhost:27017/qipp-test';
@@ -113,6 +118,11 @@ describe('GET /api/personnel/me/operations-dashboard', () => {
             createdAt: new Date('2026-06-10'),
           },
         ]),
+      }),
+    });
+    ActingAssignment.find.mockReturnValue({
+      sort: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([]),
       }),
     });
   });

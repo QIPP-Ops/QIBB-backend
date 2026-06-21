@@ -1,5 +1,5 @@
 /**
- * MongoDB connection URI (Cosmos DB API or MongoDB Atlas).
+ * MongoDB connection URI (MongoDB Atlas).
  * Appends MONGODB_DB_NAME when the URI has no database path (Atlas default is "test").
  */
 function normalizeDbName(name) {

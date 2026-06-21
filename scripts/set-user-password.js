@@ -5,7 +5,7 @@
  * Usage:
  *   node scripts/set-user-password.js admin@acwaops.com "YourNewPassword"
  *
- * Requires COSMOS_URI or MONGODB_URI in .env or environment (same value as Azure qipp-api).
+ * Requires MONGODB_URI in .env or environment.
  */
 require('dotenv').config();
 const mongoose = require('mongoose');
@@ -21,8 +21,7 @@ if (!uri) {
   console.error('Missing database connection string.');
   console.error('');
   console.error('Create QIBB-backend-main/.env with one of:');
-  console.error('  MONGODB_URI=mongodb+srv://...   (copy from Azure → qipp-api → Environment variables)');
-  console.error('  COSMOS_URI=mongodb+srv://...    (same value)');
+  console.error('  MONGODB_URI=mongodb+srv://...   (copy from Render dashboard → Environment)');
   console.error('');
   console.error('Or run once in PowerShell:');
   console.error('  $env:MONGODB_URI="mongodb+srv://YOUR_CONNECTION_STRING"');

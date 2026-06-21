@@ -6,7 +6,7 @@ function validateEnv() {
     process.exit(1);
   }
   if (!getMongoUri()) {
-    console.error('Missing database URI: set COSMOS_URI or MONGODB_URI');
+    console.error('Missing database URI: set MONGODB_URI');
     process.exit(1);
   }
 

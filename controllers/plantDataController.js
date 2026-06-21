@@ -7,11 +7,6 @@ const {
   CustomTrend,
   ManagementTrendAccess,
 } = require('../models/PlantMetric');
-const {
-  blobIngestConfigured,
-  CONTAINER,
-  getBlobAccessInfo,
-} = require('../services/plantReports/blobReports');
 const { userCanAccessOpsTools } = require('../services/shiftScheduleService');
 const AdminUser = require('../models/AdminUser');
 const { logAction } = require('../services/auditLogService');
@@ -31,14 +26,8 @@ exports.getStatus = async (_req, res) => {
       success: true,
       data: {
         mongo: { ok: true, ...uriInfo },
-        reportsRoot: state?.reportsRoot || '',
-        blobAccount: process.env.BLOB_STORAGE_ACCOUNT || '',
-        blobContainer: process.env.BLOB_CONTAINER_NAME || CONTAINER,
-        blobSasConfigured: blobIngestConfigured(),
-        blobAccess: getBlobAccessInfo(),
-        allowLocalFolderIngest: process.env.ALLOW_LOCAL_FOLDER_INGEST === '1',
-        maxAgeDays: parseInt(process.env.PLANT_INGEST_MAX_AGE_DAYS || '365', 10),
-        ingestSource: state?.ingestSource || (blobIngestConfigured() ? 'blob' : ''),
+        trendsSource: 'bundled-json',
+        trendsBlobsDir: process.env.TRENDS_BLOBS_DIR || 'data/trends-blobs',
         lastRunAt: state?.lastRunAt,
         lastSuccessAt: state?.lastSuccessAt,
         lastError: state?.lastError || '',
@@ -49,7 +38,6 @@ exports.getStatus = async (_req, res) => {
         metricsDiscovered: state?.metricsDiscovered || 0,
         lastByKind: state?.lastByKind || {},
         lastIngestErrors: state?.lastIngestErrors || [],
-        autoIngest: blobIngestConfigured(),
       },
     });
   } catch (err) {
@@ -62,7 +50,6 @@ exports.getStatus = async (_req, res) => {
         mongo: { ok: false, ...uriInfo },
         lastError: c.summary,
         lastErrorSource: 'database',
-        blobSasConfigured: blobIngestConfigured(),
       },
     });
   }
@@ -88,7 +75,7 @@ exports.runIngestNow = async (_req, res) => {
   res.status(410).json({
     success: false,
     message:
-      'Legacy Cosmos plant ingest removed. Trends load from the six-blob bundle — run npm run sync:trends-blobs on the API host.',
+      'Legacy plant ingest removed. Trends load from bundled JSON in data/trends-blobs/.',
   });
 };
 
@@ -206,7 +193,7 @@ exports.getChemistryWaterOverview = async (_req, res) => {
         data: {
           latest: null,
           snapshots: [],
-          message: 'No chemistry/water data in six-blob bundle. Run npm run sync:trends-blobs.',
+          message: 'No chemistry/water data in six-blob bundle. Run npm run seed:mongodb or ensure bundled JSON exists in data/trends-blobs/.',
         },
       });
     }
@@ -338,7 +325,7 @@ exports.getTrendsBlobBundle = async (req, res) => {
     if (raw == null) {
       return res.status(404).json({
         success: false,
-        message: `Bundled trends blob missing for ${kind}. Run npm run sync:trends-blobs.`,
+        message: `Bundled trends blob missing for ${kind}. Run npm run seed:mongodb or ensure bundled JSON exists in data/trends-blobs/.`,
       });
     }
 
@@ -398,7 +385,7 @@ function sendTrendsBundleResponse(req, res) {
   if (!hasUsableTrendsBundle(payload)) {
     return res.status(503).json({
       success: false,
-      message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run sync:trends-blobs.`,
+      message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run seed:mongodb or ensure bundled JSON exists in data/trends-blobs/.`,
       bundledDir: BUNDLED_DIR,
       data: payload || null,
     });
@@ -672,7 +659,7 @@ exports.getTrendStudioMetrics = async (_req, res) => {
     if (!hasUsableTrendsBundle(payload)) {
       return res.status(503).json({
         success: false,
-        message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run sync:trends-blobs.`,
+        message: `Six-blob trends bundle is missing or empty under ${BUNDLED_DIR}. Run npm run seed:mongodb or ensure bundled JSON exists in data/trends-blobs/.`,
         bundledDir: BUNDLED_DIR,
       });
     }
@@ -717,40 +704,4 @@ exports.listManagementTrendAccess = async (req, res) => {
   }
   const rows = await ManagementTrendAccess.find().lean();
   res.json({ success: true, data: rows });
-};
-
-/** Super admin — download six qipp-data blobs from Azure (same as npm run sync:trends-blobs). */
-exports.syncTrendsBlobs = async (req, res) => {
-  const { syncTrendsBlobsFromAzure, getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
-  try {
-    const result = await syncTrendsBlobsFromAzure();
-    await logAction({
-      actor: req.user,
-      action: AUDIT_ACTIONS.MANUAL_INGEST_TRIGGERED,
-      targetType: 'ingest',
-      targetId: 'sync-trends-blobs',
-      targetName: 'Azure trends blob sync',
-      after: {
-        filesProcessed: result.filesProcessed,
-        metricsWritten: result.metricsWritten,
-        errors: result.errors,
-      },
-      req,
-    });
-    res.json({ success: result.success, data: result });
-  } catch (err) {
-    if (err.code === 'SYNC_IN_PROGRESS') {
-      return res.status(409).json({ success: false, message: err.message, data: getSyncState() });
-    }
-    if (err.code === 'MISSING_AZURE_CONFIG') {
-      return res.status(503).json({ success: false, message: err.message });
-    }
-    console.error('[sync-trends-blobs]', err.message);
-    res.status(500).json({ success: false, message: err.message || 'Blob sync failed' });
-  }
-};
-
-exports.getSyncTrendsBlobsProgress = async (_req, res) => {
-  const { getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
-  res.json({ success: true, data: getSyncState() });
 };

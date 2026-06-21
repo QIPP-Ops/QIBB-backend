@@ -36,7 +36,7 @@ const {
 } = require('../services/emailDomainPolicy');
 
 const TREND_BLOB_PAGES = ['home', 'historical-trends', 'trend-studio'];
-const TREND_DATA_SOURCE = 'Azure qipp-data → trends-bundle';
+const TREND_DATA_SOURCE = 'bundled trends-blobs → trends-bundle';
 
 function trendBlobLabels() {
   return loadMetricKeyRegistry().blobs || {};
@@ -56,11 +56,9 @@ exports.getTrendSources = async (_req, res) => {
       BLOB_FILE_KIND,
       normalizeTrendBlobByKind,
     } = require('../services/plantReports/trendBlobNormalize');
-    const { getSyncState } = require('../services/plantReports/syncTrendsBlobsService');
 
     const { payload } = buildTrendsBundleFromSixBlobs();
-    const sync = getSyncState();
-    const syncAt = sync.lastResult?.lastRunAt || payload?.generatedAt || null;
+    const bundleAt = payload?.generatedAt ?? null;
     const now = Date.now();
 
     const rows = Object.keys(KIND_TO_FILE).map((kind) => {
@@ -72,10 +70,9 @@ exports.getTrendSources = async (_req, res) => {
       const lastDataPoint = dates[dates.length - 1] ?? null;
 
       let healthStatus = healthFromLastDataPoint(lastDataPoint, now);
-      if (!lastDataPoint && sync.errors?.length) healthStatus = 'red';
-      else if (!lastDataPoint && syncAt) {
-        const syncAgeMs = now - new Date(syncAt).getTime();
-        healthStatus = syncAgeMs <= 7 * 24 * 60 * 60 * 1000 ? 'yellow' : 'red';
+      if (!lastDataPoint && bundleAt) {
+        const bundleAgeMs = now - new Date(bundleAt).getTime();
+        healthStatus = bundleAgeMs <= 7 * 24 * 60 * 60 * 1000 ? 'yellow' : 'red';
       }
 
       return {
@@ -92,7 +89,7 @@ exports.getTrendSources = async (_req, res) => {
           metricsInKind: metricKeys.length,
           pointsInKind: blobRows.length,
           kindsLoaded: payload?.bundleMeta?.kindsLoaded ?? [],
-          lastSyncAt: syncAt,
+          lastBundleAt: bundleAt,
         },
       };
     });
