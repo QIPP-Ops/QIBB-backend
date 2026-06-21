@@ -96,6 +96,10 @@ const AdminConfigSchema = new mongoose.Schema({
     type: [String],
     default: ['acwapower.com', 'nomac.com'],
   },
+  groupPresets: {
+    type: [String],
+    default: ['GR #1 - 2', 'GR #3 - 4', 'GR #5 - 6', 'BOP', 'LAB', 'Operation', 'PTW'],
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminConfig', AdminConfigSchema);

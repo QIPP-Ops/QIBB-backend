@@ -3,6 +3,7 @@ const Survey = require('../models/Survey');
 const SurveyAssignment = require('../models/SurveyAssignment');
 const AdminUser = require('../models/AdminUser');
 const { hasPortalAdminAccess } = require('../middleware/superAdmin');
+const { isPlantManagerUser } = require('../services/plantManagerService');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { resolveAssignTargets } = require('../services/quizAssignmentService');
@@ -101,10 +102,16 @@ function matchesRoleFilter(role, filter) {
   return hay.includes(needle);
 }
 
+async function canManageSurveys(req) {
+  if (hasPortalAdminAccess(req)) return true;
+  const user = await AdminUser.findById(req.user?.id).select('-passwordHash').lean();
+  return isPlantManagerUser(user);
+}
+
 exports.listSurveys = async (req, res) => {
   try {
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Admin access required.' });
+    if (!(await canManageSurveys(req))) {
+      return res.status(403).json({ message: 'Admin or plant manager access required.' });
     }
     const rows = await Survey.find().sort({ updatedAt: -1 }).lean();
     res.json({ success: true, surveys: rows.map(surveyRow), surveyTypes: SURVEY_TYPES });
@@ -115,8 +122,8 @@ exports.listSurveys = async (req, res) => {
 
 exports.createSurvey = async (req, res) => {
   try {
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Admin access required.' });
+    if (!(await canManageSurveys(req))) {
+      return res.status(403).json({ message: 'Admin or plant manager access required.' });
     }
     const title = String(req.body?.title || '').trim();
     if (!title) return res.status(400).json({ message: 'Survey title is required.' });
@@ -159,8 +166,8 @@ exports.createSurvey = async (req, res) => {
 
 exports.assignSurvey = async (req, res) => {
   try {
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Admin access required.' });
+    if (!(await canManageSurveys(req))) {
+      return res.status(403).json({ message: 'Admin or plant manager access required.' });
     }
     const surveyId = String(req.body?.surveyId || '').trim();
     if (!surveyId || !mongoose.Types.ObjectId.isValid(surveyId)) {

@@ -5,17 +5,16 @@ const c = require('../controllers/adminController');
 const audit = require('../controllers/auditLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
-const ingestAdmin = require('../controllers/ingestAdminController');
-const trendDisplay = require('../controllers/trendDisplayController');
-const trendDefinitions = require('../controllers/trendDefinitionController');
 const authController = require('../controllers/authController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
 const leaveTimesheetVisibility = require('../controllers/leaveTimesheetVisibilityController');
 const orgLayout = require('../controllers/orgLayoutController');
 const surveyController = require('../controllers/surveyController');
+const groupPreset = require('../controllers/groupPresetController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
+const { requireAuditLogViewer } = require('../middleware/auditLogAccess');
 
 const pinLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -24,8 +23,6 @@ const pinLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: 'Too many PIN attempts. Please try again later.' },
 });
-
-router.get('/ingest-status', protect, admin, ingestAdmin.getIngestStatus);
 
 router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);
 router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);
@@ -38,24 +35,21 @@ router.patch('/settings/email-notifications/:userId', protect, requireSuperAdmin
 router.get('/email-presets', protect, requireSuperAdmin, emailBroadcast.listEmailPresets);
 router.put('/email-presets', protect, requireSuperAdmin, emailBroadcast.saveEmailPresets);
 router.post('/email-broadcast', protect, requireSuperAdmin, emailBroadcast.sendEmailBroadcast);
-router.get('/trend-sources', protect, requireSuperAdmin, c.getTrendSources);
 router.get('/email-domains', protect, requireSuperAdmin, c.getEmailDomains);
 router.patch('/email-domains', protect, requireSuperAdmin, c.patchEmailDomains);
-router.get('/trend-display', protect, trendDisplay.getTrendDisplay);
-router.patch('/trend-display', protect, requireSuperAdmin, trendDisplay.patchTrendDisplay);
-router.get('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.listTrendDefinitions);
-router.post('/trend-definitions', protect, requireSuperAdmin, trendDefinitions.createTrendDefinition);
-router.patch('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.patchTrendDefinition);
-router.delete('/trend-definitions/:panelId', protect, requireSuperAdmin, trendDefinitions.deleteTrendDefinition);
-router.get('/audit-log', protect, requireSuperAdmin, audit.getAuditLog);
+router.get('/audit-log', protect, requireAuditLogViewer, audit.getAuditLog);
+
+router.get('/group-presets', protect, admin, groupPreset.listGroupPresets);
+router.put('/group-presets', protect, requireSuperAdmin, groupPreset.saveGroupPresets);
+router.patch('/employees/:empId/group', protect, admin, groupPreset.assignEmployeeGroup);
 
 router.get('/org-layout/:crewId', protect, admin, orgLayout.getOrgLayout);
 router.patch('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.patchOrgLayout);
 router.delete('/org-layout/:crewId', protect, requireSuperAdmin, orgLayout.resetOrgLayout);
 
-router.get('/surveys', protect, admin, surveyController.listSurveys);
-router.post('/surveys', protect, admin, surveyController.createSurvey);
-router.post('/surveys/assign', protect, admin, surveyController.assignSurvey);
+router.get('/surveys', protect, surveyController.listSurveys);
+router.post('/surveys', protect, surveyController.createSurvey);
+router.post('/surveys/assign', protect, surveyController.assignSurvey);
 
 router.post('/seed-ptw', protect, requireSuperAdmin, c.seedPtwAuthorization);
 router.get('/ptw-audit', protect, requireSuperAdmin, c.getPtwAuditLog);

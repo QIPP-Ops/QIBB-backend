@@ -41,15 +41,16 @@ describe('super-admin write guards', () => {
   test('PATCH /api/admin/crews/:crewId blocks non super admin', async () => {
     const res = await request(app)
       .patch('/api/admin/crews/A')
-      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwaops.com')}`)
+      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwapower.com')}`)
       .send({ name: 'Alpha' });
     expect(res.status).toBe(403);
   });
 
-  test('GET /api/admin/trend-sources blocks non super admin', async () => {
+  test('PUT /api/admin/group-presets blocks non super admin', async () => {
     const res = await request(app)
-      .get('/api/admin/trend-sources')
-      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwaops.com')}`);
+      .put('/api/admin/group-presets')
+      .set('Authorization', `Bearer ${tokenFor('ops-admin@acwapower.com')}`)
+      .send({ presets: ['BOP'] });
     expect(res.status).toBe(403);
   });
 });

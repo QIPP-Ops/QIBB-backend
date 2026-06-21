@@ -10,14 +10,14 @@ const app = require('../app');
 
 describe('auth middleware', () => {
   test('protect rejects requests without Authorization header', async () => {
-    const res = await request(app).get('/api/kpis');
+    const res = await request(app).get('/api/roster');
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/token/i);
   });
 
   test('protect rejects invalid tokens', async () => {
     const res = await request(app)
-      .get('/api/kpis')
+      .get('/api/roster')
       .set('Authorization', 'Bearer invalid-token');
     expect(res.status).toBe(401);
   });

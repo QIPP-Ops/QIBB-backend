@@ -531,3 +531,68 @@ exports.deleteActingCover = exports.cancelDelegation = async (req, res) => {
 };
 
 exports.assignmentsForRange = assignmentsForRange;
+
+function dateInLeaveRange(dateStr, leave) {
+  const d = String(dateStr).slice(0, 10);
+  const start = leave?.start ? fmtDate(leave.start) : '';
+  const end = leave?.end ? fmtDate(leave.end) : '';
+  return start && end && d >= start && d <= end;
+}
+
+exports.getOrgOverlay = async (req, res) => {
+  try {
+    const dateStr = String(req.query.date || fmtDate()).slice(0, 10);
+    const crew = String(req.query.crew || '').trim();
+
+    const userFilter = crew ? { crew } : {};
+    const employees = await AdminUser.find(userFilter)
+      .select('empId name crew role leaves')
+      .lean();
+
+    const onLeave = [];
+    for (const emp of employees) {
+      const activeLeave = (emp.leaves || []).find((leave) => dateInLeaveRange(dateStr, leave));
+      if (activeLeave) {
+        onLeave.push({
+          empId: emp.empId,
+          name: emp.name,
+          leaveType: activeLeave.type || 'Planned',
+          start: activeLeave.start,
+          end: activeLeave.end,
+        });
+      }
+    }
+
+    const delegationFilter = {
+      status: 'approved',
+      startDate: { $lte: dateStr },
+      endDate: { $gte: dateStr },
+    };
+    if (crew) delegationFilter.crew = crew;
+
+    const delegations = await ActingAssignment.find(delegationFilter).lean();
+    const empIds = [
+      ...new Set(delegations.flatMap((d) => [d.absentEmpId, d.coverEmpId]).filter(Boolean)),
+    ];
+    const employeeMap = await loadEmployeeMap(empIds);
+
+    const overlays = delegations.map((d) => ({
+      absentEmpId: d.absentEmpId,
+      absentName: employeeMap.get(d.absentEmpId)?.name || d.absentEmpId,
+      coverEmpId: d.coverEmpId,
+      coverName: employeeMap.get(d.coverEmpId)?.name || d.coverEmpId,
+      roleLabel: assignmentRoleLabel(d),
+      startDate: d.startDate,
+      endDate: d.endDate,
+    }));
+
+    res.json({
+      date: dateStr,
+      crew: crew || null,
+      onLeave,
+      delegations: overlays,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

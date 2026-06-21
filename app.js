@@ -8,19 +8,13 @@ const requestLogger = require('./middleware/requestLogger');
 
 const rosterRoutes = require('./routes/rosterRoutes');
 const rosterOpsRoutes = require('./routes/rosterOpsRoutes');
-const kpiRoutes = require('./routes/kpiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const ptwRoutes = require('./routes/ptwRoutes');
-const trendsRoutes = require('./routes/trendsRoutes');
-const plantDataRoutes = require('./routes/plantDataRoutes');
-const chemistryRoutes = require('./routes/chemistryRoutes');
 const trainingRoutes = require('./routes/trainingRoutes');
 const personnelRoutes = require('./routes/personnelRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-const metricLimitRoutes = require('./routes/metricLimitRoutes');
 const personnelKpiRoutes = require('./routes/personnelKpiRoutes');
-const ingestRoutes = require('./routes/ingestRoutes');
 const kpiGoalsRoutes = require('./routes/kpiGoalsRoutes');
 
 const app = express();
@@ -41,7 +35,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(requestLogger);
 
 const authLimiter = rateLimit({
@@ -55,8 +49,6 @@ const authLimiter = rateLimit({
 const { isEmailConfigured, getSmtpUser, getSmtpPassword } = require('./config/smtp');
 const {
   verifyEmailConnection,
-  verifySmtpConnection,
-  verifyResendConnection,
   smtpFailureHint,
   isLikelyRenderSmtpBlock,
   getSmtpTransportOptions,
@@ -147,22 +139,15 @@ app.get('/ready', async (_req, res) => {
 });
 
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/trends', trendsRoutes);
-app.use('/api/reports-v3', require('./services/plantReportsV3/routes/reportsV3Router'));
 app.use('/api/roster', rosterRoutes);
 app.use('/api/roster-ops', rosterOpsRoutes);
-app.use('/api/kpis', kpiRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ptw', ptwRoutes);
-app.use('/api/plant-data', plantDataRoutes);
-app.use('/api/chemistry', chemistryRoutes);
 app.use('/api/training', trainingRoutes);
 app.use('/api/personnel', personnelRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/metric-limits', metricLimitRoutes);
 app.use('/api/kpi', personnelKpiRoutes);
 app.use('/api/kpi-goals', kpiGoalsRoutes);
-app.use('/api/ingest', ingestRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

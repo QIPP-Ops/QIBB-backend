@@ -21,98 +21,12 @@ exports.getStatus = async (req, res) => {
   }
 };
 
-const { loadMetricKeyRegistry } = require('../services/metricKeyRegistry');
-const {
-  healthFromLastDataPoint,
-  healthLabel,
-  FRESH_HOURS,
-  STALE_HOURS,
-} = require('../utils/blobHealth');
 const {
   getEmailDomainPolicy,
   normalizeDomainList,
   DEFAULT_ALLOWED_DOMAINS,
   DEFAULT_AUTO_APPROVED_DOMAINS,
 } = require('../services/emailDomainPolicy');
-
-const TREND_BLOB_PAGES = ['home', 'historical-trends', 'trend-studio'];
-const TREND_DATA_SOURCE = 'bundled trends-blobs → trends-bundle';
-
-function trendBlobLabels() {
-  return loadMetricKeyRegistry().blobs || {};
-}
-
-exports.getTrendSources = async (_req, res) => {
-  try {
-    const {
-      buildTrendsBundleFromSixBlobs,
-      slugMetricKey,
-    } = require('../services/plantReports/buildTrendsBundleFromSixBlobs');
-    const {
-      KIND_TO_FILE,
-      readBundledRaw,
-    } = require('../services/plantReports/trendsBlobBundle');
-    const {
-      BLOB_FILE_KIND,
-      normalizeTrendBlobByKind,
-    } = require('../services/plantReports/trendBlobNormalize');
-
-    const { payload } = buildTrendsBundleFromSixBlobs();
-    const bundleAt = payload?.generatedAt ?? null;
-    const now = Date.now();
-
-    const rows = Object.keys(KIND_TO_FILE).map((kind) => {
-      const normalizeKind = BLOB_FILE_KIND[kind] || kind;
-      const raw = readBundledRaw(kind);
-      const blobRows = raw != null ? normalizeTrendBlobByKind(normalizeKind, raw) : [];
-      const metricKeys = [...new Set(blobRows.map((row) => slugMetricKey(row.metric)).filter(Boolean))];
-      const dates = blobRows.map((row) => String(row.date || '').slice(0, 10)).filter(Boolean).sort();
-      const lastDataPoint = dates[dates.length - 1] ?? null;
-
-      let healthStatus = healthFromLastDataPoint(lastDataPoint, now);
-      if (!lastDataPoint && bundleAt) {
-        const bundleAgeMs = now - new Date(bundleAt).getTime();
-        healthStatus = bundleAgeMs <= 7 * 24 * 60 * 60 * 1000 ? 'yellow' : 'red';
-      }
-
-      return {
-        trendId: kind,
-        name: trendBlobLabels()[kind] || kind,
-        pages: [...TREND_BLOB_PAGES],
-        dataSource: TREND_DATA_SOURCE,
-        lastDataPoint,
-        healthStatus,
-        healthLabel: healthLabel(healthStatus),
-        metricKeys,
-        matchedFilePatterns: [KIND_TO_FILE[kind]],
-        bundleMeta: {
-          metricsInKind: metricKeys.length,
-          pointsInKind: blobRows.length,
-          kindsLoaded: payload?.bundleMeta?.kindsLoaded ?? [],
-          lastBundleAt: bundleAt,
-        },
-      };
-    });
-
-    const worst = rows.reduce(
-      (acc, r) => (r.healthStatus === 'red' ? 'red' : acc === 'red' ? 'red' : r.healthStatus === 'yellow' ? 'yellow' : acc),
-      'green'
-    );
-
-    res.json({
-      success: true,
-      data: rows,
-      summary: {
-        worstStatus: worst,
-        freshHours: FRESH_HOURS,
-        staleHours: STALE_HOURS,
-        hasStale: rows.some((r) => r.healthStatus !== 'green'),
-      },
-    });
-  } catch (err) {
-    res.status(500).json({ message: 'Error fetching trend sources', error: err.message });
-  }
-};
 
 exports.getEmailDomains = async (_req, res) => {
   try {

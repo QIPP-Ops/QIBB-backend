@@ -1,4 +1,5 @@
 const { isSuperAdmin } = require('../middleware/superAdmin');
+const { isPlantManagerUser } = require('../services/plantManagerService');
 
 /** Whether the user may view or interact with leave / shift report rows for this employee. */
 function canEditLeaveRow(user, row) {
@@ -21,6 +22,7 @@ function canEditLeaveRow(user, row) {
 }
 
 function canAccessShiftReport(req, employee) {
+  if (isPlantManagerUser(req.user)) return false;
   return canEditLeaveRow(req.user, {
     empId: employee?.empId,
     crew: employee?.crew || '',
@@ -28,6 +30,7 @@ function canAccessShiftReport(req, employee) {
 }
 
 function canEditShiftReport(req, employee, duty) {
+  if (isPlantManagerUser(employee) || isPlantManagerUser(req.user)) return false;
   if (!canAccessShiftReport(req, employee)) return false;
   if (isSuperAdmin(req)) return true;
 

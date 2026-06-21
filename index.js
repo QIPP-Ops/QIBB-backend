@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const { validateEnv } = require('./config/validateEnv');
 const app = require('./app');
 const { startShiftReportReminderScheduler } = require('./services/shiftReportReminderService');
-const { startDailyDigestCron } = require('./jobs/dailyDigestCron');
 const { startLeaveAccrualCron } = require('./jobs/leaveAccrualCron');
 const { startMonthlyLeaveSummaryCron } = require('./jobs/monthlyLeaveSummaryCron');
 const { startPtwExpiryReminderCron } = require('./jobs/ptwExpiryReminderJob');
@@ -67,7 +66,6 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     }
 
     startShiftReportReminderScheduler();
-    startDailyDigestCron();
     startLeaveAccrualCron();
     startMonthlyLeaveSummaryCron();
     startPtwExpiryReminderCron();

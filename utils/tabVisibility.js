@@ -1,31 +1,21 @@
-const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
-
-/** Portal sidebar / route tab keys — keep in sync with QIBB-frontend portal-access SidebarRouteKey + settings. */
+/** Portal sidebar / route tab keys — personnel management focus. */
 const PORTAL_TAB_KEYS = [
   'home',
   'leave',
   'admin',
-  'trendStudio',
-  'historicalTrends',
-  'reports',
   'management',
   'ptw',
-  'chemistry',
   'trainings',
   'personnel',
   'settings',
 ];
 
 const TAB_LABELS = {
-  home: 'Home / Dashboard',
+  home: 'Home',
   leave: 'Leave Timesheet',
   admin: 'Admin Control',
-  trendStudio: 'Trend Studio',
-  historicalTrends: 'Historical Trends',
-  reports: 'Reports',
   management: 'Management',
   ptw: 'PTW',
-  chemistry: 'Chemistry & RO',
   trainings: 'Training Hub',
   personnel: 'Operation Team',
   settings: 'Settings & Profile',
@@ -33,26 +23,14 @@ const TAB_LABELS = {
 
 const PATH_PREFIX_TO_TAB = [
   { prefix: '/admin-portal', tab: 'admin' },
-  { prefix: '/trend-studio', tab: 'trendStudio' },
-  { prefix: '/historical-trends', tab: 'historicalTrends' },
-  { prefix: '/daily-operation', tab: 'historicalTrends' },
-  { prefix: '/water-balance', tab: 'historicalTrends' },
-  { prefix: '/gt-filter', tab: 'historicalTrends' },
-  { prefix: '/environment', tab: 'historicalTrends' },
-  { prefix: '/timers-counters', tab: 'historicalTrends' },
-  { prefix: '/energy', tab: 'historicalTrends' },
-  { prefix: '/chemistry/trends', tab: 'historicalTrends' },
   { prefix: '/leave', tab: 'leave' },
   { prefix: '/my-leaves', tab: 'leave' },
-  { prefix: '/reports', tab: 'reports' },
-  { prefix: '/trends', tab: 'reports' },
   { prefix: '/management', tab: 'management' },
   { prefix: '/ptw', tab: 'ptw' },
-  { prefix: '/chemistry', tab: 'chemistry' },
   { prefix: '/trainings', tab: 'trainings' },
   { prefix: '/personnel', tab: 'personnel' },
   { prefix: '/settings', tab: 'settings' },
-  { prefix: '/calendar', tab: 'home' },
+  { prefix: '/calendar', tab: 'leave' },
   { prefix: '/dashboard', tab: 'home' },
   { prefix: '/profile', tab: 'settings' },
 ];
@@ -62,6 +40,7 @@ function normalizeEmail(email) {
 }
 
 function isSuperAdminEmail(email) {
+  const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
   return normalizeEmail(email) === SUPER_ADMIN_EMAIL;
 }
 

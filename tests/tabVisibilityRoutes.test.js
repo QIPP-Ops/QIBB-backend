@@ -119,10 +119,10 @@ describe('admin tab visibility routes', () => {
     const res = await request(app)
       .patch('/api/admin/users/507f1f77bcf86cd799439011/tab-visibility')
       .set('Authorization', `Bearer ${token}`)
-      .send({ tabVisibility: { trendStudio: false, historicalTrends: false } });
+      .send({ tabVisibility: { personnel: false, leave: true } });
     expect(res.status).toBe(200);
-    expect(res.body.tabVisibility.trendStudio).toBe(false);
-    expect(res.body.tabVisibility.historicalTrends).toBe(false);
+    expect(res.body.tabVisibility.personnel).toBe(false);
+    expect(res.body.tabVisibility.leave).toBe(true);
     expect(target.save).toHaveBeenCalled();
     expect(logAction).toHaveBeenCalledWith(
       expect.objectContaining({ action: AUDIT_ACTIONS.TAB_VISIBILITY_CHANGED })

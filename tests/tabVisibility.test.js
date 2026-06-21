@@ -16,10 +16,10 @@ describe('tabVisibility utils', () => {
   });
 
   it('merges stored false values', () => {
-    const merged = mergeTabVisibility({ home: false, trendStudio: false });
+    const merged = mergeTabVisibility({ home: false, personnel: false });
     expect(merged.home).toBe(false);
     expect(merged.leave).toBe(true);
-    expect(merged.trendStudio).toBe(false);
+    expect(merged.personnel).toBe(false);
   });
 
   it('super admin always sees all tabs', () => {
@@ -35,16 +35,15 @@ describe('tabVisibility utils', () => {
 
   it('maps pathnames to tab keys', () => {
     expect(pathnameToTabKey('/')).toBe('home');
-    expect(pathnameToTabKey('/trend-studio')).toBe('trendStudio');
-    expect(pathnameToTabKey('/historical-trends')).toBe('historicalTrends');
-    expect(pathnameToTabKey('/daily-operation')).toBe('historicalTrends');
+    expect(pathnameToTabKey('/personnel')).toBe('personnel');
     expect(pathnameToTabKey('/leave')).toBe('leave');
     expect(pathnameToTabKey('/settings/leaves')).toBe('settings');
+    expect(pathnameToTabKey('/historical-trends')).toBeNull();
   });
 
   it('blocks hidden routes for regular users', () => {
-    const user = { email: 'user@acwapower.com', tabVisibility: { trendStudio: false } };
-    expect(isPathAllowedByTabVisibility('/trend-studio', user)).toBe(false);
+    const user = { email: 'user@acwapower.com', tabVisibility: { personnel: false } };
+    expect(isPathAllowedByTabVisibility('/personnel', user)).toBe(false);
     expect(isPathAllowedByTabVisibility('/leave', user)).toBe(true);
   });
 });
