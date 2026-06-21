@@ -13,6 +13,7 @@ const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
 const { buildJwtPayload, JWT_EXPIRES_IN } = require('../utils/jwtAuth');
 const { logAction } = require('../services/auditLogService');
+const { logLoginAttempt } = require('../services/loginLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
 function normalizeEmail(email) {
@@ -242,10 +243,14 @@ exports.login = async (req, res) => {
   }
   try {
     const user = await findUserByEmail(email);
-    if (!user) return res.status(401).json({ message: 'Invalid credentials.' });
+    if (!user) {
+      void logLoginAttempt({ email, success: false, failureCode: 'INVALID_CREDENTIALS', req });
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
 
     const domainPolicy = await getEmailDomainPolicy();
     if (!(await checkAllowedDomain(user.email)) && user.email !== SUPER_ADMIN_EMAIL) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'DOMAIN_NOT_ALLOWED', req });
       const allowedList = domainPolicy.allowed.map((d) => `@${d}`).join(', ');
       return res.status(403).json({
         message: `Sign-in is limited to ${allowedList} accounts.`,
@@ -254,30 +259,39 @@ exports.login = async (req, res) => {
     }
 
     if (!user.passwordHash) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'INVALID_CREDENTIALS', req });
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return res.status(401).json({ message: 'Invalid credentials.' });
+    if (!valid) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'INVALID_CREDENTIALS', req });
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
 
     if (!user.isEmailVerified) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'EMAIL_NOT_VERIFIED', req });
       return res.status(403).json({
         message: 'Please verify your email before logging in.',
         code: 'EMAIL_NOT_VERIFIED',
       });
     }
     if (!user.isApproved) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'PENDING_APPROVAL', req });
       return res.status(403).json({
         message: 'Your account is pending admin approval.',
         code: 'PENDING_APPROVAL',
       });
     }
     if (user.isActive === false) {
+      void logLoginAttempt({ email: user.email, user, success: false, failureCode: 'ACCESS_REVOKED', req });
       return res.status(403).json({
         message: 'Your account access has been revoked. Contact an administrator.',
         code: 'ACCESS_REVOKED',
       });
     }
+
+    void logLoginAttempt({ email: user.email, user, success: true, req });
 
     const payload = buildJwtPayload(user);
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
