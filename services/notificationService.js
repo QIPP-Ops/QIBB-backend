@@ -444,6 +444,31 @@ function isShiftReportDigestNotification(doc) {
   );
 }
 
+async function notifySafetyObservationReminder({ recipientUserId, empId, name, count, month }) {
+  const base = getFrontendBaseUrlSafe();
+  const remaining = Math.max(0, 2 - (count || 0));
+  await createNotification({
+    type: 'safety_observation_reminder',
+    recipientUserId,
+    title: 'Safety observation quota reminder',
+    body: `You have submitted ${count || 0} of 2 required safety observations for ${month}. ${remaining} more needed.`,
+    link: `${base}/personnel#safety-observations`,
+    dedupeKey: `safety-reminder:${empId}:${month}`,
+    sendEmail: true,
+    metadata: { empId, count, month, remaining },
+  });
+  const user = await AdminUser.findById(recipientUserId).select('email name').lean();
+  if (user?.email) {
+    await deliverEmail(
+      user,
+      'Safety observation reminder — QIPP',
+      `<p>Hi <strong>${name || user.name || ''}</strong>,</p>
+      ${emailCallout(`<p>You have submitted <strong>${count || 0}</strong> of <strong>2</strong> required safety observations for <strong>${month}</strong>.</p>`)}
+      ${emailCtaButton(`${base}/personnel#safety-observations`, 'Register observation')}`
+    );
+  }
+}
+
 module.exports = {
   RECIPIENT_MATRIX,
   SYSTEM_DIGEST_NOTIFICATION_TYPES,
@@ -464,4 +489,5 @@ module.exports = {
   notifyKpiSubmitted,
   notifyKpiPendingFinal,
   notifyKpiFinalized,
+  notifySafetyObservationReminder,
 };

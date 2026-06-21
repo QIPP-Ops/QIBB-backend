@@ -18,6 +18,10 @@ jest.mock('../models/ActingAssignment', () => ({
   find: jest.fn(),
 }));
 
+jest.mock('../models/SafetyObservation', () => ({
+  countDocuments: jest.fn(),
+}));
+
 jest.mock('../controllers/surveyController', () => {
   const actual = jest.requireActual('../controllers/surveyController');
   return {
@@ -46,6 +50,7 @@ const ShiftReport = require('../models/ShiftReport');
 const QuizAssignment = require('../models/QuizAssignment');
 const CourseAssignment = require('../models/CourseAssignment');
 const ActingAssignment = require('../models/ActingAssignment');
+const SafetyObservation = require('../models/SafetyObservation');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
 process.env.COSMOS_URI = 'mongodb://localhost:27017/qipp-test';
@@ -125,6 +130,7 @@ describe('GET /api/personnel/me/operations-dashboard', () => {
         lean: jest.fn().mockResolvedValue([]),
       }),
     });
+    SafetyObservation.countDocuments.mockResolvedValue(1);
   });
 
   test('returns aggregated pending work for signed-in user', async () => {
@@ -137,7 +143,10 @@ describe('GET /api/personnel/me/operations-dashboard', () => {
     expect(res.body.data.pendingQuizzes).toHaveLength(1);
     expect(res.body.data.pendingCourses).toHaveLength(1);
     expect(res.body.data.kpiSummary.goalCount).toBe(1);
-    expect(res.body.data.pendingCounts.total).toBe(2);
+    expect(res.body.data.safetySummary.count).toBe(1);
+    expect(res.body.data.safetySummary.minimum).toBe(2);
+    expect(res.body.data.pendingCounts.safetyObservations).toBe(1);
+    expect(res.body.data.pendingCounts.total).toBe(3);
     expect(res.body.data.shiftReport.canEdit).toBe(true);
     expect(res.body.data.surveys).toEqual([]);
   });

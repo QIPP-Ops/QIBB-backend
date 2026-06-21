@@ -1,5 +1,7 @@
 const AdminUser = require('../models/AdminUser');
+const SafetyObservation = require('../models/SafetyObservation');
 const ShiftReport = require('../models/ShiftReport');
+const { MONTHLY_MINIMUM } = require('../constants/safetyObservationOptions');
 const QuizAssignment = require('../models/QuizAssignment');
 const CourseAssignment = require('../models/CourseAssignment');
 const ActingAssignment = require('../models/ActingAssignment');
@@ -70,7 +72,8 @@ exports.getOperationsDashboard = async (req, res) => {
     const duty = await getEmployeeDutyStatus(user, today);
     const canEdit = canEditShiftReport(req, user, duty);
 
-    const [reports, quizAssignments, courseAssignments, surveys, delegationDocs] = await Promise.all([
+    const monthKey = `${today.slice(0, 7)}`;
+    const [reports, quizAssignments, courseAssignments, surveys, delegationDocs, safetyCount] = await Promise.all([
       ShiftReport.find({ empId, date: today }).sort({ shift: 1 }).lean(),
       QuizAssignment.find({ userId, completedAt: null })
         .sort({ dueDate: 1, assignedAt: -1 })
@@ -83,6 +86,11 @@ exports.getOperationsDashboard = async (req, res) => {
       ActingAssignment.find({ coverEmpId: empId, status: 'pending' })
         .sort({ requestedAt: 1 })
         .lean(),
+      SafetyObservation.countDocuments({
+        empId,
+        observationMonth: monthKey,
+        status: { $in: ['registered', 'pending_review', 'approved', 'pending', 'closed'] },
+      }),
     ]);
 
     const absentIds = delegationDocs.map((d) => d.absentEmpId);
@@ -107,17 +115,27 @@ exports.getOperationsDashboard = async (req, res) => {
     const pendingCourses = pendingCourseRows(courseAssignments);
     const kpiSummary = kpiSummaryFromUser(user);
 
+    const safetyRemaining = Math.max(0, MONTHLY_MINIMUM - safetyCount);
+    const safetySummary = {
+      count: safetyCount,
+      minimum: MONTHLY_MINIMUM,
+      metMinimum: safetyCount >= MONTHLY_MINIMUM,
+      remaining: safetyRemaining,
+    };
+
     const pendingCounts = {
       quizzes: pendingQuizzes.length,
       courses: pendingCourses.length,
       kpi: kpiSummary.goalCount,
       surveys: surveys.length,
       delegations: pendingDelegations.length,
+      safetyObservations: safetyRemaining,
       total:
         pendingQuizzes.length +
         pendingCourses.length +
         surveys.length +
-        pendingDelegations.length,
+        pendingDelegations.length +
+        safetyRemaining,
     };
 
     res.json({
@@ -136,6 +154,7 @@ exports.getOperationsDashboard = async (req, res) => {
         pendingQuizzes,
         pendingCourses,
         kpiSummary,
+        safetySummary,
         surveys,
         pendingDelegations,
         pendingCounts,

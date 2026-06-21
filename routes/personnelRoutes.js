@@ -36,12 +36,23 @@ router.get('/me/operations-dashboard', protect, operationsDashboard.getOperation
 router.get('/me/surveys', protect, surveyController.getMyPendingSurveys);
 router.post('/me/surveys/:assignmentId/submit', protect, surveyController.submitSurveyResponse);
 
+router.get('/safety-observations/options', protect, safetyObservation.getOptions);
+router.get('/safety-observations/compliance', protect, admin, safetyObservation.getMonthlyCompliance);
+router.get('/safety-observations/compliance/mine', protect, safetyObservation.getMyCompliance);
+router.get('/safety-observations/incentives', protect, safetyObservation.getIncentivesSummary);
+router.post('/safety-observations/reminders', protect, safetyObservation.sendReminders);
+router.get('/safety-observations/pending', protect, safetyObservation.listPendingReview);
+router.get('/safety-observations/case/:caseNumber', protect, safetyObservation.getByCaseNumber);
 router.post('/safety-observations', protect, safetyObservation.submitObservation);
 router.get('/safety-observations/mine', protect, safetyObservation.listMyObservations);
-router.get('/safety-observations/pending', protect, safetyObservation.listPendingReview);
+router.get('/safety-observations/:id', protect, safetyObservation.getById);
+router.patch('/safety-observations/:id', protect, safetyObservation.patchObservation);
+router.post('/safety-observations/:id/comments', protect, safetyObservation.addComment);
+router.post('/safety-observations/:id/actions', protect, safetyObservation.addAction);
+router.post('/safety-observations/:id/links', protect, safetyObservation.addLink);
+router.post('/safety-observations/:id/upload', protect, safetyObservation.uploadAttachment);
 router.patch('/safety-observations/:id/review', protect, safetyObservation.reviewObservation);
-router.get('/safety-observations/compliance', protect, admin, safetyObservation.getMonthlyCompliance);
-router.post('/safety-observations/reminders', protect, admin, safetyObservation.sendReminders);
+router.delete('/safety-observations/:id', protect, safetyObservation.deleteObservation);
 
 router.patch('/:empId', protect, requirePersonnelInlineEditor, rosterController.patchPersonnelInline);
 
