@@ -16,6 +16,8 @@ const NotificationSchema = new mongoose.Schema(
         'roster_unlock',
         'ingest_complete',
         'ptw_expiry',
+        'chat_mention',
+        'chat_message',
       ],
     },
     recipientUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'AdminUser', required: true },

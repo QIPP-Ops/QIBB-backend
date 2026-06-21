@@ -16,6 +16,7 @@ const personnelRoutes = require('./routes/personnelRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const personnelKpiRoutes = require('./routes/personnelKpiRoutes');
 const kpiGoalsRoutes = require('./routes/kpiGoalsRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 
@@ -148,6 +149,7 @@ app.use('/api/personnel', personnelRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/kpi', personnelKpiRoutes);
 app.use('/api/kpi-goals', kpiGoalsRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

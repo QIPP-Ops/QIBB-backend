@@ -33,6 +33,20 @@ Required variables:
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Outbound email (or use `RESEND_API_KEY`) |
 | `TRENDS_BLOBS_DIR` | Optional — path to six trend JSON files (default `data/trends-blobs`) |
 
+### Crew Chat (optional)
+
+| Variable | Description |
+|----------|-------------|
+| `R2_ACCOUNT_ID` | Cloudflare account ID for R2 |
+| `R2_ACCESS_KEY_ID` | R2 API token access key |
+| `R2_SECRET_ACCESS_KEY` | R2 API token secret |
+| `R2_BUCKET_NAME` | Bucket name (default `qipp-chats`) |
+| `R2_PUBLIC_URL` | Optional CDN base; empty = signed URLs only |
+| `CHAT_MAX_FILE_MB` | Max upload size per file (default `25`) |
+| `CHAT_EMAIL_ON_MENTION` | Set `1` to email offline users on @mention |
+
+Real-time chat uses **Socket.io** on the same HTTP server (`/socket.io`). REST API under `/api/chat/*`.
+
 3. Start the server:
 
 ```bash

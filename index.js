@@ -1,4 +1,5 @@
 require('dotenv').config();
+const http = require('http');
 const mongoose = require('mongoose');
 const { validateEnv } = require('./config/validateEnv');
 const app = require('./app');
@@ -70,7 +71,11 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     startMonthlyLeaveSummaryCron();
     startPtwExpiryReminderCron();
     startCourseReminderCron();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    const { initChatSocket, seedChatOnStartup } = require('./services/chatSocketService');
+    await seedChatOnStartup();
+    const server = http.createServer(app);
+    initChatSocket(server);
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => {
     console.error('MongoDB connection error:', err);
