@@ -8,6 +8,7 @@ const crewCalendarController = require('../controllers/crewCalendarController');
 const { protect } = require('../middleware/auth');
 const { requirePtwAccess } = require('../middleware/ptwAccess');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
+const { requireMaintenancePortalAccess } = require('../middleware/requireMaintenancePortalAccess');
 
 router.get('/access', protect, ptwController.getMyAccess);
 router.get('/crew', protect, crewCalendarController.getCrew);
@@ -17,13 +18,15 @@ router.post('/workflow', protect, ptwWorkflowController.raise);
 router.post('/workflow/:id/advance', protect, ptwWorkflowController.advance);
 router.patch('/workflow/:id/archive', protect, ptwWorkflowController.archive);
 
+// Maintenance portal work orders — super admin or Bander Aldogaish only
+router.get('/work-orders', protect, requireMaintenancePortalAccess, qippEntityController.listWorkOrders);
+router.get('/work-orders/:code', protect, requireMaintenancePortalAccess, qippEntityController.getWorkOrder);
+
 router.use(protect, requirePtwAccess);
 
 router.get('/dashboard', ptwDashboardController.getDashboard);
 
 // Structured QIPP entities (Phase A)
-router.get('/work-orders', qippEntityController.listWorkOrders);
-router.get('/work-orders/:code', qippEntityController.getWorkOrder);
 router.get('/jhas', qippEntityController.listJhas);
 router.get('/jhas/:code', qippEntityController.getJha);
 router.get('/safety-permits', qippEntityController.listSafetyPermits);
