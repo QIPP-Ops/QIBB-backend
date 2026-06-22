@@ -570,7 +570,11 @@ exports.getKeySafe = async (req, res) => {
 
 /** Map structured entities to legacy dashboard row shape for frontend tables. */
 
-function woToRow(wo) {
+function woToRow(wo, equipLocationMap) {
+
+  const location =
+
+    (equipLocationMap && wo.equipmentCode && equipLocationMap.get(wo.equipmentCode)) || '';
 
   return {
 
@@ -587,6 +591,8 @@ function woToRow(wo) {
     'Planned Start': wo.plannedStart,
 
     'Planned Finish': wo.plannedFinish,
+
+    Location: location,
 
     Priority: wo.prometheusPriorityCode || wo.priority,
 
@@ -852,6 +858,12 @@ exports.buildDashboardPayload = async (department) => {
 
   const workAssess = workOrders.filter((w) => w.status === 'raised');
 
+  const equipLocationMap = new Map(
+
+    equipment.map((eq) => [eq.code, eq.locationName || ''])
+
+  );
+
 
 
   const suppTypeCounts = {};
@@ -886,9 +898,9 @@ exports.buildDashboardPayload = async (department) => {
 
     jha: jhas.map(jhaToRow),
 
-    work_assess: workAssess.map(woToRow),
+    work_assess: workAssess.map((w) => woToRow(w, equipLocationMap)),
 
-    work_all: workOrders.map(woToRow),
+    work_all: workOrders.map((w) => woToRow(w, equipLocationMap)),
 
     plant: equipment.map(equipToRow),
 
