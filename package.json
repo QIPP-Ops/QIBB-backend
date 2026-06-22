@@ -15,6 +15,7 @@
     "import:qipp": "node scripts/import-qipp-prometheus.js",
     "import:qipp:json": "node scripts/import-qipp-prometheus.js --json-only",
     "parse:ptw": "node scripts/parse-ptw-excel.js",
+    "build:crew-calendar": "node scripts/build-crew-calendar-seed.js",
     "migrate:trend-definitions": "node scripts/migrate-trend-definitions.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",

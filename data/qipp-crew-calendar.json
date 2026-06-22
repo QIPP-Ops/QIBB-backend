@@ -1,0 +1,1579 @@
+{
+  "source": "ACWA SuccessFactors People Profile (Qurayyah NOMC-NOQY)",
+  "generatedAt": "2026-06-22T13:38:00.280Z",
+  "workScheduleDefault": "12QY3",
+  "location": "Qurayyah Independent Power Plant",
+  "cluster": "Central Eastern Cluster",
+  "companyCode": "NOMC-NOQY",
+  "memberCount": 52,
+  "members": [
+    {
+      "id": "500440",
+      "empId": "500440",
+      "name": "IZHAR ALI",
+      "displayName": "Izhar Ali",
+      "initials": "IA",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-04-21",
+          "endDate": "2026-05-02",
+          "dates": "21 Apr 2026 – 2 May 2026",
+          "days": 12,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 1.16,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "izhar.ali@nomac.com"
+    },
+    {
+      "id": "500438",
+      "empId": "500438",
+      "name": "PURUSHOTHAMAN DEVARAJ",
+      "displayName": "Purushothaman",
+      "initials": "PD",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-04-27",
+          "endDate": "2026-05-07",
+          "dates": "27 Apr 2026 – 7 May 2026",
+          "days": 11,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "p.devaraj@nomac.com"
+    },
+    {
+      "id": "2028",
+      "empId": "2028",
+      "name": "Juma Khan",
+      "displayName": "Juma Khan",
+      "initials": "JK",
+      "jobTitle": "CCR Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-04-29",
+          "endDate": "2026-05-14",
+          "dates": "29 Apr 2026 – 14 May 2026",
+          "days": 16,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 2.83,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "juma.khan@nomac.com"
+    },
+    {
+      "id": "2024",
+      "empId": "2024",
+      "name": "Mustafa Salem Mustafa",
+      "displayName": "Mustafa Salem",
+      "initials": "MM",
+      "jobTitle": "Shift in Charge Engineer",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-19",
+          "endDate": "2026-06-19",
+          "dates": "19 May 2026 – 19 Jun 2026",
+          "days": 32,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 9.41,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 28
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "mustafa.salem@nomac.com"
+    },
+    {
+      "id": "3973",
+      "empId": "3973",
+      "name": "AHMAD ALSQOOR",
+      "displayName": "Ahmed Alsaqoor",
+      "initials": "AA",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-19",
+          "endDate": "2026-06-11",
+          "dates": "19 May 2026 – 11 Jun 2026",
+          "days": 24,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "ahmed.alsaqoor@nomac.com"
+    },
+    {
+      "id": "2025",
+      "empId": "2025",
+      "name": "Syed Shahnawaz Ahmed",
+      "displayName": "Syed Shahnawaz Ahmed",
+      "initials": "SA",
+      "jobTitle": "Shift Supervisor",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-20",
+          "endDate": "2026-06-04",
+          "dates": "20 May 2026 – 4 Jun 2026",
+          "days": 16,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": -1.16,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0.58
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "syed.shahnawaz@nomac.com"
+    },
+    {
+      "id": "1119",
+      "empId": "1119",
+      "name": "ABDUL HAMEED ABDULRASHEED",
+      "displayName": "Abdul Hameed",
+      "initials": "AA",
+      "jobTitle": "Shift Supervisor",
+      "crew": "General",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-20",
+          "endDate": "2026-06-10",
+          "dates": "20 May 2026 – 10 Jun 2026",
+          "days": 22,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 3.83,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "a_hameed@nomac.com"
+    },
+    {
+      "id": "501388",
+      "empId": "501388",
+      "name": "Walid Elshahhat Hussein Fayad",
+      "displayName": "Waleed Fayad",
+      "initials": "WF",
+      "jobTitle": "CCR Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-31",
+          "endDate": "2026-06-23",
+          "dates": "31 May 2026 – 23 Jun 2026",
+          "days": 24,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 3.16,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0.76
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "walid.fayad@nomac.com"
+    },
+    {
+      "id": "2237",
+      "empId": "2237",
+      "name": "Mark Anthony Ramirez",
+      "displayName": "Mark Ramirez",
+      "initials": "MR",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-31",
+          "endDate": "2026-06-15",
+          "dates": "31 May 2026 – 15 Jun 2026",
+          "days": 16,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "mark.ramirez@nomac.com"
+    },
+    {
+      "id": "2726",
+      "empId": "2726",
+      "name": "Ahmed Fathy Ibrahim AbduelKader",
+      "displayName": "Ahmed Fathy",
+      "initials": "AA",
+      "jobTitle": "CCR Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-06-06",
+          "endDate": "2026-06-14",
+          "dates": "6 Jun 2026 – 14 Jun 2026",
+          "days": 9,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 9.24,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "ahmed.abdelkhad@nomac.com"
+    },
+    {
+      "id": "2038",
+      "empId": "2038",
+      "name": "Moustafa Elansary Hewaidy",
+      "displayName": "Moustafa Elansari",
+      "initials": "MH",
+      "jobTitle": "Shift Supervisor",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-06-16",
+          "endDate": "2026-06-28",
+          "dates": "16 Jun 2026 – 28 Jun 2026",
+          "days": 13,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 10.83,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 10
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "moustafa.elansary@nomac.com"
+    },
+    {
+      "id": "2294",
+      "empId": "2294",
+      "name": "Veera Venkata Prasad Vaka",
+      "displayName": "Veera Prasad",
+      "initials": "VV",
+      "jobTitle": "CCR Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-07-06",
+          "endDate": "2026-08-06",
+          "dates": "6 Jul 2026 – 6 Aug 2026",
+          "days": 32,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 9.41,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 2
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "veera.venkata@nomac.com"
+    },
+    {
+      "id": "501234",
+      "empId": "501234",
+      "name": "LAKSHMI APPALA RAMA DURGA PRASAD",
+      "displayName": "Lakshmy Prasad",
+      "initials": "LP",
+      "jobTitle": "CCR Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-07-14",
+          "endDate": "2026-08-10",
+          "dates": "14 Jul 2026 – 10 Aug 2026",
+          "days": 28,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 9.16,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "lakshmi.rowthu@nomac.com"
+    },
+    {
+      "id": "3672",
+      "empId": "3672",
+      "name": "SOMANATHAN NAIR PRATHAPAN",
+      "displayName": "Prathapan",
+      "initials": "SP",
+      "jobTitle": "CCR Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-07-22",
+          "endDate": "2026-08-18",
+          "dates": "22 Jul 2026 – 18 Aug 2026",
+          "days": 28,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 10.83,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "prathapan@nomac.com"
+    },
+    {
+      "id": "502667",
+      "empId": "502667",
+      "name": "Zaid Hadi Almarri",
+      "displayName": "Zaid Almarri",
+      "initials": "ZA",
+      "jobTitle": "Shift Supervisor",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-08-01",
+          "endDate": "2026-08-15",
+          "dates": "1 Aug 2026 – 15 Aug 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 7.2,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "z.almarri@nomac.com"
+    },
+    {
+      "id": "2364",
+      "empId": "2364",
+      "name": "Sami Hamdan Dasan Alharbi",
+      "displayName": "Sami Hamdan",
+      "initials": "SA",
+      "jobTitle": "CCR Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-09-01",
+          "endDate": "2026-09-15",
+          "dates": "1 Sept 2026 – 15 Sept 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "2954",
+      "empId": "2954",
+      "name": "Fawaz Mari Saeed Alqahtani",
+      "displayName": "Fawaz Al Qahtani",
+      "initials": "FA",
+      "jobTitle": "CCR Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-09-16",
+          "endDate": "2026-09-30",
+          "dates": "16 Sept 2026 – 30 Sept 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 3,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 3
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "fawaz.alqahtani@nomac.com"
+    },
+    {
+      "id": "2202",
+      "empId": "2202",
+      "name": "Abdulwahab Mohammed Al Shehab",
+      "displayName": "Abdulwahab Al-Shehab",
+      "initials": "AS",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-10-01",
+          "endDate": "2026-10-15",
+          "dates": "1 Oct 2026 – 15 Oct 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 7.83,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 4
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "a.alshehab@nomac.com"
+    },
+    {
+      "id": "2711",
+      "empId": "2711",
+      "name": "Shaheer Yousaf",
+      "displayName": "Shaheer Yousaf",
+      "initials": "SY",
+      "jobTitle": "CCR Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-10-16",
+          "endDate": "2026-10-30",
+          "dates": "16 Oct 2026 – 30 Oct 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 8.91,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "shaheer.yousaf@nomac.com"
+    },
+    {
+      "id": "3865",
+      "empId": "3865",
+      "name": "Mohammad AL Dossary",
+      "displayName": "Mohamed Al Dossary",
+      "initials": "MD",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-11-01",
+          "endDate": "2026-11-15",
+          "dates": "1 Nov 2026 – 15 Nov 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "501369",
+      "empId": "501369",
+      "name": "ABDULLAH ALTULAYHI",
+      "displayName": "Abdullah Altulayhi",
+      "initials": "AA",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-11-16",
+          "endDate": "2026-11-30",
+          "dates": "16 Nov 2026 – 30 Nov 2026",
+          "days": 15,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "3617",
+      "empId": "3617",
+      "name": "Bakr Abdulmajed Alkhabeerani",
+      "displayName": "Bakr Abdulmajeed",
+      "initials": "BA",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "bakr.kamal@nomac.com"
+    },
+    {
+      "id": "4101",
+      "empId": "4101",
+      "name": "Saad Salem Al Hajri",
+      "displayName": "Saad Salem Al Hajiri",
+      "initials": "SH",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "saad.salem@nomac.com"
+    },
+    {
+      "id": "4095",
+      "empId": "4095",
+      "name": "Abdulhadi Mohammed AlMohammed Saleh",
+      "displayName": "Abdulhadi Mohammed Saleh",
+      "initials": "AS",
+      "jobTitle": "Field Operator",
+      "crew": "A",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "abdulhadi.mohammed@nomac.com"
+    },
+    {
+      "id": "2363",
+      "empId": "2363",
+      "name": "Abdullah Abdulrahman Alamri",
+      "displayName": "Abdullah Al Amri",
+      "initials": "AA",
+      "jobTitle": "Shift Supervisor",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 7.58,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 4
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "abdullah.alamri@nomac.com"
+    },
+    {
+      "id": "500446",
+      "empId": "500446",
+      "name": "Kanaka Naga Srinivasa Kolli",
+      "displayName": "Kanaka Naga Srinivasu Kolli",
+      "initials": "KK",
+      "jobTitle": "Shift Supervisor",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 9.24,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "kanaka.naga@nomac.com"
+    },
+    {
+      "id": "27",
+      "empId": "27",
+      "name": "AHMED MOUSTAFA AMIN FAWAZ",
+      "displayName": "Ahmed Fawaz",
+      "initials": "AF",
+      "jobTitle": "CCR Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "2369",
+      "empId": "2369",
+      "name": "Rashed Ghalib Alhajri",
+      "displayName": "Rashed Alhajri",
+      "initials": "RA",
+      "jobTitle": "CCR Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 10.41,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "r.hajri@nomac.com"
+    },
+    {
+      "id": "2035",
+      "empId": "2035",
+      "name": "Saravanakumar Madhaiyan",
+      "displayName": "Saravanakumar Madhaiyan",
+      "initials": "SM",
+      "jobTitle": "Field Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": -6.75,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "s.madhaiyan@nomac.com"
+    },
+    {
+      "id": "3251",
+      "empId": "3251",
+      "name": "Abdullah Mohiddin Alshahrani",
+      "displayName": "Abdullah Mohiddin Alshahrani",
+      "initials": "AA",
+      "jobTitle": "CCR Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "3262",
+      "empId": "3262",
+      "name": "Mohammed Fahad Al Mulhim",
+      "displayName": "Mohammed Mulhim",
+      "initials": "MM",
+      "jobTitle": "Field Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 7.58,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "mohammed.almulhim@nomac.com"
+    },
+    {
+      "id": "500439",
+      "empId": "500439",
+      "name": "MOHAMMAD AFNAN",
+      "displayName": "Mohammed Afnan",
+      "initials": "MA",
+      "jobTitle": "Field Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-25",
+          "endDate": "2026-06-05",
+          "dates": "25 May 2026 – 5 Jun 2026",
+          "days": 12,
+          "status": "Planned",
+          "type": "Planned"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "3511",
+      "empId": "3511",
+      "name": "Abdulaziz Alharbi",
+      "displayName": "Abdelaziz Al Harbi",
+      "initials": "AA",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "abdulaziz.a@nomac.com"
+    },
+    {
+      "id": "4091",
+      "empId": "4091",
+      "name": "Amjad Muflih AlRuwaytie",
+      "displayName": "Amjad Alruwaytie",
+      "initials": "AA",
+      "jobTitle": "Field Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "4098",
+      "empId": "4098",
+      "name": "Abdulrahman Shaiban Al Anazi",
+      "displayName": "Abderahman Al Anezie",
+      "initials": "AA",
+      "jobTitle": "Field Operator",
+      "crew": "B",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "502680",
+      "empId": "502680",
+      "name": "Alaa Abdullah Alrefaei",
+      "displayName": "Alaa Alrefae",
+      "initials": "AA",
+      "jobTitle": "Shift Supervisor",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "a.alrefaei@nomac.com"
+    },
+    {
+      "id": "2665",
+      "empId": "2665",
+      "name": "Abdullah Faleh Al hajri",
+      "displayName": "Abdullah Al Hajri",
+      "initials": "AH",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 10.41,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0.5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "abdullah.faleh@nomac.com"
+    },
+    {
+      "id": "501370",
+      "empId": "501370",
+      "name": "Yaser Althuqaib",
+      "displayName": "Yasser Althuiqeb",
+      "initials": "YA",
+      "jobTitle": "CCR Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "2283",
+      "empId": "2283",
+      "name": "Norbie Vianzon Cruz",
+      "displayName": "Norbie Cruz",
+      "initials": "NC",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-05-07",
+          "endDate": "2026-06-14",
+          "dates": "7 May 2026 – 14 Jun 2026",
+          "days": 39,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": 10.58,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 6
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "norbie.cruz@nomac.com"
+    },
+    {
+      "id": "501885",
+      "empId": "501885",
+      "name": "Khaled Khalosy",
+      "displayName": "Khalid Saleh Khalousi",
+      "initials": "KK",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "3229",
+      "empId": "3229",
+      "name": "Seed Alenizi",
+      "displayName": "Saad Al Enize",
+      "initials": "SA",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "4096",
+      "empId": "4096",
+      "name": "Abdulrahman Shabib Al Baqami",
+      "displayName": "Abderahman Al Baqmi",
+      "initials": "AB",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "abdulrahman.shabib@nomac.com"
+    },
+    {
+      "id": "4108",
+      "empId": "4108",
+      "name": "Ali Mashabab Al Qahtani",
+      "displayName": "Ali Al Qahtani",
+      "initials": "AQ",
+      "jobTitle": "Field Operator",
+      "crew": "C",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "ali.mashabab@nomac.com"
+    },
+    {
+      "id": "2941",
+      "empId": "2941",
+      "name": "Saleh Mohammed Saleh Alamri",
+      "displayName": "Saleh Mohammed Al Amri",
+      "initials": "SA",
+      "jobTitle": "CCR Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 10,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 5
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "saleh.alamri@nomac.com"
+    },
+    {
+      "id": "2512",
+      "empId": "2512",
+      "name": "Hassan Arshad",
+      "displayName": "Hassan Arshad",
+      "initials": "HA",
+      "jobTitle": "CCR Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 10.41,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 4
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "arshad.hassan@nomac.com"
+    },
+    {
+      "id": "2492",
+      "empId": "2492",
+      "name": "RAJESH MUNIASAMY",
+      "displayName": "Rajesh Muniasamy",
+      "initials": "RM",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 4.89,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "r.muniasamy@nomac.com"
+    },
+    {
+      "id": "2820",
+      "empId": "2820",
+      "name": "Mohammed Al Ghamdi",
+      "displayName": "Mohammed Al Ghamdi",
+      "initials": "MG",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": null
+    },
+    {
+      "id": "2912",
+      "empId": "2912",
+      "name": "Bader Ibrahim Abdulrahman Alsubeet",
+      "displayName": "Bader AlSubait",
+      "initials": "BA",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "b.alsubit@nomac.com"
+    },
+    {
+      "id": "4097",
+      "empId": "4097",
+      "name": "Faris Shaya Al Dawsari",
+      "displayName": "Faris Al Dawasri",
+      "initials": "FD",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "faris.shaya@nomac.com"
+    },
+    {
+      "id": "4081",
+      "empId": "4081",
+      "name": "Mohammed Hassan Hakami",
+      "displayName": "Mohamed Al Hakami",
+      "initials": "MH",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": 9.16,
+        "carryForwardDays": 0,
+        "bankLeaveDays": 0
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "mohammed.hassan@nomac.com"
+    },
+    {
+      "id": "4094",
+      "empId": "4094",
+      "name": "Saad Mohammed Al Shahrani",
+      "displayName": "Saad Al Shahrani",
+      "initials": "SS",
+      "jobTitle": "Field Operator",
+      "crew": "D",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "saad.mohammed@nomac.com"
+    },
+    {
+      "id": "3142",
+      "empId": "3142",
+      "name": "MOHAMMED ABDULLAH AL GARNI",
+      "displayName": "Mohammad Algarni",
+      "initials": "MG",
+      "jobTitle": "CCR Operator",
+      "crew": "General",
+      "location": "Qurayyah Independent Power Plant",
+      "cluster": "Central Eastern Cluster",
+      "companyCode": "NOMC-NOQY",
+      "workSchedule": "12QY3",
+      "upcomingTimeOff": [
+        {
+          "startDate": "2026-04-17",
+          "endDate": "2026-05-12",
+          "dates": "17 Apr 2026 – 12 May 2026",
+          "days": 26,
+          "status": "Approved",
+          "type": "Applied on SAP"
+        }
+      ],
+      "leaveBalances": {
+        "annualLeaveDays": null,
+        "carryForwardDays": 0,
+        "bankLeaveDays": null
+      },
+      "timesheet": {
+        "period": "Jun 2026",
+        "status": "Submitted",
+        "plannedHours": 168,
+        "recordedHours": 152
+      },
+      "email": "m.aldawsari@nomac.com"
+    }
+  ]
+}

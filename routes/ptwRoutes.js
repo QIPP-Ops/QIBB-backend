@@ -3,11 +3,13 @@ const router = express.Router();
 const ptwController = require('../controllers/ptwController');
 const ptwDashboardController = require('../controllers/ptwDashboardController');
 const qippEntityController = require('../controllers/qippEntityController');
+const crewCalendarController = require('../controllers/crewCalendarController');
 const { protect } = require('../middleware/auth');
 const { requirePtwAccess } = require('../middleware/ptwAccess');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 
 router.get('/access', protect, ptwController.getMyAccess);
+router.get('/crew', protect, crewCalendarController.getCrew);
 
 router.use(protect, requirePtwAccess);
 
