@@ -296,6 +296,11 @@ exports.login = async (req, res) => {
     const payload = buildJwtPayload(user);
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+    const { findPtwPersonForUser } = require('../middleware/ptwAccess');
+    const { resolveMaintenanceDepartment } = require('../utils/maintenanceDepartment');
+    const ptwPerson = await findPtwPersonForUser(user);
+    const maintenanceDepartment = resolveMaintenanceDepartment(user, ptwPerson);
+
     res.json({
       token,
       role: payload.role,
@@ -303,6 +308,7 @@ exports.login = async (req, res) => {
         email: payload.email,
         role: payload.role,
         displayName: payload.displayName,
+        maintenanceDepartment,
       },
     });
   } catch (error) {
@@ -544,15 +550,17 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-function buildAuthMePayload(decodedUser, dbRow) {
+function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
   const { portalRoleFromUser } = require('../utils/jwtAuth');
   const { resolveTabVisibilityForUser } = require('../utils/tabVisibility');
+  const { resolveMaintenanceDepartment } = require('../utils/maintenanceDepartment');
   const accessRole = dbRow?.accessRole || decodedUser.accessRole || 'viewer';
   const portalRole = dbRow ? portalRoleFromUser(dbRow) : decodedUser.role;
   const email = dbRow?.email || decodedUser.email;
   const tabVisibility = dbRow
     ? resolveTabVisibilityForUser({ email, tabVisibility: dbRow.tabVisibility })
     : resolveTabVisibilityForUser({ email: decodedUser.email });
+  const maintenanceDepartment = resolveMaintenanceDepartment(dbRow || decodedUser, ptwPerson);
   return {
     ok: true,
     user: {
@@ -568,6 +576,7 @@ function buildAuthMePayload(decodedUser, dbRow) {
       profilePhotoUrl: dbRow?.profilePhotoUrl || '',
       jobRole: dbRow?.role || decodedUser.jobRole,
       tabVisibility,
+      maintenanceDepartment,
     },
   };
 }
@@ -577,20 +586,22 @@ exports.me = async (req, res) => {
   const u = req.user;
   const mongoose = require('mongoose');
   if (mongoose.connection.readyState !== 1) {
-    return res.json(buildAuthMePayload(u, null));
+    return res.json(buildAuthMePayload(u, null, null));
   }
   const userId = u.userId || u.id;
   if (!userId) {
-    return res.json(buildAuthMePayload(u, null));
+    return res.json(buildAuthMePayload(u, null, null));
   }
   try {
     const row = await AdminUser.findById(userId)
-      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive tabVisibility')
+      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive tabVisibility maintenanceDepartment')
       .lean();
     if (row?.isActive === false) {
       return res.status(403).json({ message: 'Access revoked.', code: 'ACCESS_REVOKED' });
     }
-    return res.json(buildAuthMePayload(u, row));
+    const { findPtwPersonForUser } = require('../middleware/ptwAccess');
+    const ptwPerson = await findPtwPersonForUser({ ...u, ...row });
+    return res.json(buildAuthMePayload(u, row, ptwPerson));
   } catch (error) {
     return res.status(500).json({ message: 'Could not load profile.', error: error.message });
   }
