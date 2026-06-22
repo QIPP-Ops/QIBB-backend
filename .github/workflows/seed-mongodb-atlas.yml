@@ -20,12 +20,8 @@ on:
         description: "Also run seed:qipp-leave-data (balances + SAP planned leave)"
         type: boolean
         default: true
-      seed_kpi:
-        description: "Insert plant KPI rows from plant_data.json when empty"
-        type: boolean
-        default: false
       force_reset:
-        description: "DESTRUCTIVE — wipe AdminUser, AdminConfig, PlantPerformance first"
+        description: "DESTRUCTIVE — wipe AdminUser and AdminConfig first"
         type: boolean
         default: false
 
@@ -96,7 +92,6 @@ jobs:
           SEED_DEFAULT_USER_PASSWORD: ${{ secrets.SEED_DEFAULT_USER_PASSWORD }}
         run: |
           if [ -z "$MONGODB_DB_NAME" ]; then export MONGODB_DB_NAME=QIPP; fi
-          if [ "${{ inputs.seed_kpi }}" = "true" ]; then export SEED_KPI_DATA=1; fi
           if [ "${{ inputs.force_reset }}" = "true" ]; then export SEED_FORCE_RESET=1; fi
           npm run seed:mongodb
 

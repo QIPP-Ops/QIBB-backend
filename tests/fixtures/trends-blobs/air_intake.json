@@ -1,8 +1,0 @@
-[
-  {
-    "date": "2026-05-01",
-    "readings": [
-      { "gt": "GT-11", "gt_mw": 120, "p1c_mbar": 15.2, "dp_at_dcs_mbar": 8.1 }
-    ]
-  }
-]

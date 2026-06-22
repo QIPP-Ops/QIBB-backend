@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "nodemon index.js",
     "start": "node index.js",
-    "seed": "node seed.js",
     "seed:mongodb": "node scripts/seed-mongodb.js",
     "seed:super-admin": "node scripts/seed-super-admin.js",
     "seed:employees": "node scripts/seedEmployeeData.js",
@@ -19,7 +18,6 @@
     "parse:ops-org": "node scripts/parse-ops-org-chart-html.js",
     "import:ops-org": "node scripts/import-ops-org-chart.js",
     "build:crew-calendar": "node scripts/build-crew-calendar-seed.js",
-    "migrate:trend-definitions": "node scripts/migrate-trend-definitions.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",
     "seed:curriculum": "node scripts/seed-curriculum.js",

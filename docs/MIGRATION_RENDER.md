@@ -8,7 +8,6 @@ Production stack:
 | **Backend API** | Render (Frankfurt) | `https://qibb-backend.onrender.com` |
 | **Database** | MongoDB Atlas | Database `QIPP` |
 | **SMTP** | GoDaddy / Resend | Configured on Render |
-| **Trend blobs** | Bundled JSON | `data/trends-blobs/` in repo |
 
 ## 1. MongoDB Atlas
 
@@ -55,7 +54,6 @@ MONGODB_DB_NAME=QIPP
 | `SMTP_PORT` | Paid Render only | `465` (recommended) or `587` |
 | `SMTP_SECURE` | Paid Render only | `true` for port 465; `false` for port 587 STARTTLS |
 | `SMTP_FROM` | Optional | `QIPP Operations <admin@acwaops.com>` (fallback if `RESEND_FROM` unset) |
-| `TRENDS_BLOBS_DIR` | Optional | `data/trends-blobs` (bundled trend JSON) |
 
 ### Email on Render (Resend recommended on free tier)
 
@@ -143,16 +141,10 @@ Super admin login is created from **SMTP_USER + SMTP_PASS** (same mailbox used f
 2. **Actions** → **Seed MongoDB Atlas** → **Run workflow**
 3. Verify `GET https://qibb-backend.onrender.com/ready` shows `rosterVisible` ≥ 50
 
-Destructive reset (wipes users/config/KPI first):
+Destructive reset (wipes users/config first):
 
 ```bash
 SEED_FORCE_RESET=1 npm run seed:mongodb
-```
-
-Optional KPI sample data:
-
-```bash
-SEED_KPI_DATA=1 npm run seed:mongodb
 ```
 
 Follow-up (leave balances):

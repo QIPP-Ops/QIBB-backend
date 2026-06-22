@@ -15,5 +15,5 @@ Thumbs.db
 # Test / coverage
 coverage/
 
-# Local-only quiz uploads (not plant trends cache — that file is git-tracked)
+# Local-only quiz uploads
 data/quizzes/

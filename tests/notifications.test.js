@@ -1,8 +1,5 @@
 const Notification = require('../models/Notification');
 const { runShiftReportReminderSweep } = require('../services/shiftReportReminderService');
-const { classifyValue } = require('../services/chemistryAlarmService');
-const MetricLimit = require('../models/MetricLimit');
-const PlantMetricPoint = require('../models/PlantMetricPoint');
 
 describe('shift report email reminder gate', () => {
   test('notifyShiftMissing skips emails when setting disabled', async () => {
@@ -100,7 +97,6 @@ describe('notification recipient matrix', () => {
       supervisor: false,
       admin: 'super',
     });
-    expect(RECIPIENT_MATRIX.ingest_complete.admin).toBe('super');
     expect(RECIPIENT_MATRIX.leave_conflict.admin).toBe('super');
   });
 
@@ -197,24 +193,6 @@ describe('super-admin-only system notifications', () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0][0].title).toMatch(/digest/i);
     expect(create.mock.calls[0][0].recipientUserId).toBe('super1');
-  });
-});
-
-describe('metric limit classification', () => {
-  test('classifies high alarm breach', () => {
-    expect(
-      classifyValue(12, {
-        highAlarm: 10,
-        highWarning: 8,
-        lowWarning: 2,
-        lowAlarm: 1,
-        target: 5,
-      })
-    ).toBe('high_alarm');
-  });
-
-  test('returns ok when no limits configured', () => {
-    expect(classifyValue(5, null)).toBe(null);
   });
 });
 

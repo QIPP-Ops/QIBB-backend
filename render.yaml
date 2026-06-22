@@ -46,5 +46,3 @@ services:
         sync: false
       - key: SEED_IF_EMPTY
         value: "0"
-      - key: TRENDS_BLOBS_DIR
-        value: data/trends-blobs

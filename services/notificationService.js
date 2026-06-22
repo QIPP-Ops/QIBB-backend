@@ -14,20 +14,17 @@ const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
 /** Recipient matrix per notification type. */
 const RECIPIENT_MATRIX = {
   shift_missing: { member: true, supervisor: true, admin: 'digest_super' },
-  chemistry_alarm: { member: true, supervisor: true, admin: 'super' },
   quiz_assigned: { member: true, supervisor: false, admin: false },
   quiz_completed: { member: false, supervisor: false, admin: 'super' },
   quiz_prize_claimed: { member: false, supervisor: false, admin: 'super' },
   leave_conflict: { member: false, supervisor: false, admin: 'super' },
   roster_lock: { member: false, supervisor: false, admin: 'super' },
   roster_unlock: { member: false, supervisor: false, admin: 'super' },
-  ingest_complete: { member: false, supervisor: false, admin: 'super' },
 };
 
 const SYSTEM_DIGEST_NOTIFICATION_TYPES = [
   'roster_lock',
   'roster_unlock',
-  'ingest_complete',
   'leave_conflict',
 ];
 
@@ -183,57 +180,6 @@ async function notifyShiftMissing({
   }
 }
 
-async function notifyChemistryAlarm({ chemists, supervisors, admins, metricLabel, value, limitLabel, reportDate }) {
-  const type = 'chemistry_alarm';
-  const base = getFrontendBaseUrlSafe();
-  const body = `${metricLabel} = ${value} (${limitLabel}) on ${reportDate}`;
-
-  for (const u of chemists || []) {
-    await createNotification({
-      type,
-      recipientUserId: u._id,
-      title: 'Chemistry alarm',
-      body,
-      link: `${base}/chemistry`,
-      dedupeKey: `chem-alarm:${u.empId}:${metricLabel}:${reportDate}`,
-      sendEmail: true,
-    });
-  }
-  for (const u of supervisors || []) {
-    await createNotification({
-      type,
-      recipientUserId: u._id,
-      title: 'Chemistry alarm',
-      body,
-      link: `${base}/chemistry`,
-      dedupeKey: `chem-alarm:sic:${u.empId}:${metricLabel}:${reportDate}`,
-      sendEmail: true,
-    });
-  }
-
-  const superAdmin = await findSuperAdminUser();
-  if (superAdmin) {
-    await createNotification({
-      type,
-      recipientUserId: superAdmin._id,
-      title: 'Chemistry alarm',
-      body,
-      link: `${base}/chemistry`,
-      dedupeKey: `chem-alarm:admin:${superAdmin.empId}:${metricLabel}:${reportDate}`,
-      sendEmail: false,
-    });
-  }
-
-  await sendAdminBulkEmail({
-    subject: `Chemistry Alarm — ${metricLabel} out of range`,
-    bodyHtml: `
-      ${emailCallout(`<p><strong>${metricLabel}</strong> is out of range: <strong>${value}</strong> (${limitLabel}) on ${reportDate}.</p>`, 'warning')}
-      <p>Review the chemistry dashboard and confirm corrective actions if required.</p>
-      ${emailCtaButton(`${base}/chemistry`, 'Open chemistry dashboard')}
-    `,
-  });
-}
-
 async function notifyRosterLockChange(locked, actorName = 'Administrator') {
   const type = locked ? 'roster_lock' : 'roster_unlock';
   const title = locked ? 'System roster locked' : 'System roster unlocked';
@@ -265,21 +211,6 @@ async function notifyRosterLockChange(locked, actorName = 'Administrator') {
       ${emailCtaButton(`${base}/leave`, 'Open leave planner')}
     `,
     superAdminOnly: true,
-  });
-}
-
-async function notifyIngestComplete(summary) {
-  const superAdmin = await findSuperAdminUser();
-  if (!superAdmin) return;
-  const base = getFrontendBaseUrlSafe();
-  await createNotification({
-    type: 'ingest_complete',
-    recipientUserId: superAdmin._id,
-    title: 'Plant data ingest complete',
-    body: summary,
-    link: `${base}/admin-portal/trends`,
-    dedupeKey: `ingest:${new Date().toISOString().slice(0, 16)}:${superAdmin.empId}`,
-    sendEmail: false,
   });
 }
 
@@ -479,9 +410,7 @@ module.exports = {
   listAdmins,
   createNotification,
   notifyShiftMissing,
-  notifyChemistryAlarm,
   notifyRosterLockChange,
-  notifyIngestComplete,
   notifyQuizAssigned,
   notifyQuizCompleted,
   notifyQuizPrizeClaimed,

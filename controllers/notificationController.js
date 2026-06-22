@@ -43,16 +43,3 @@ exports.markAllRead = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-exports.unreadChemistryAlarm = async (req, res) => {
-  try {
-    const count = await Notification.countDocuments({
-      recipientUserId: req.user.id,
-      type: 'chemistry_alarm',
-      readAt: null,
-    });
-    res.json({ count });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
