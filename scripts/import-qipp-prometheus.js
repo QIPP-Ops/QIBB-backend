@@ -1,3 +1,8 @@
+/**
+ * Import Prometheus / QIPP HTML exports into MongoDB.
+ * npm run import:qipp sets NODE_OPTIONS=--use-system-ca for TLS (Windows/corporate CA).
+ * If mongodb+srv TXT DNS lookup fails, set MONGODB_URI to a standard mongodb:// host list.
+ */
 const path = require('path');
 
 const fs = require('fs');
