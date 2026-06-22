@@ -129,6 +129,8 @@ function initChatSocket(httpServer) {
           crew: room.crew,
         });
         io.to(roomChannel(roomId)).emit('chat:message', { roomId, message });
+        // Ensure sender sees their message even if room join is still in flight.
+        socket.emit('chat:message', { roomId, message });
         const roster = await getCrewRoster(room.crew);
         const memberIds = roster.map((r) => String(r._id));
         const author = socket.dbUser;
