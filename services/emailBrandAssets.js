@@ -31,9 +31,15 @@ function getEmailHeroImageUrl() {
   return `${getFrontendBaseUrl()}/hero-image.jpeg`;
 }
 
+/** Hosted ACWA mark — same file as QIBB-frontend/public/ptw/acwa-logo.svg */
+function getEmailLogoUrl() {
+  return `${getFrontendBaseUrl()}/ptw/acwa-logo.svg`;
+}
+
 module.exports = {
   ACWA_EMAIL_LOGO_SVG,
   EMAIL_LOGO_HTML,
   BRAND_MOTTO_HTML,
   getEmailHeroImageUrl,
+  getEmailLogoUrl,
 };

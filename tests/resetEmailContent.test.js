@@ -19,7 +19,7 @@ jest.mock('../config/emailProvider', () => ({
   getFromAddress: () => 'QIPP <test@test.com>',
 }));
 
-const { sendResetEmail } = require('../services/emailService');
+const { sendResetEmail, sendOtpEmail, sendTempPasswordEmail } = require('../services/emailService');
 
 describe('sendResetEmail content', () => {
   const originalFrontendUrl = process.env.FRONTEND_URL;
@@ -44,5 +44,33 @@ describe('sendResetEmail content', () => {
     expect(payload.subject).toMatch(/password reset/i);
     expect(payload.html).toContain('acwaops.com/qipp');
     expect(payload.html).toContain(resetUrl);
+    expect(payload.html).toContain('Acwa Operations');
+    expect(payload.html).toContain('M12.0233 49.9211');
+    expect(payload.html).not.toContain('<text');
+  });
+});
+
+describe('auth email branding', () => {
+  beforeEach(() => {
+    mockResendSend.mockClear();
+  });
+
+  test('sendOtpEmail includes ACWA Operations logo header', async () => {
+    await sendOtpEmail('user@example.com', 'Test User', '123456');
+    const payload = mockResendSend.mock.calls[0][0];
+    expect(payload.subject).toMatch(/verification code/i);
+    expect(payload.html).toContain('Acwa Operations');
+    expect(payload.html).toContain('123456');
+    expect(payload.html).not.toContain('<text');
+    expect(payload.text).toBeUndefined();
+  });
+
+  test('sendTempPasswordEmail includes ACWA Operations logo header', async () => {
+    await sendTempPasswordEmail('user@example.com', 'Test User', 'TempPass1!');
+    const payload = mockResendSend.mock.calls[0][0];
+    expect(payload.subject).toMatch(/temporary password/i);
+    expect(payload.html).toContain('Acwa Operations');
+    expect(payload.html).toContain('TempPass1!');
+    expect(payload.text).toBeUndefined();
   });
 });
