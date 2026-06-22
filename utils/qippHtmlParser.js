@@ -9,7 +9,7 @@ const {
   permitTypeCode,
 } = require('../constants/qippLifecycle');
 const { inferDepartment } = require('./qippDepartment');
-const { buildWorkPacks, buildPermitPackages } = require('./qippWorkPack');
+const { buildWorkPacks, buildPermitPackages, linkJhasToWorkOrders } = require('./qippWorkPack');
 
 function readExportFile(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -21,6 +21,111 @@ function cleanCell(text) {
 
 function deptFor(workDescription, equipmentCode, fallback = '') {
   return inferDepartment(workDescription, equipmentCode, fallback);
+}
+
+const WO_TASK_PLANNER_STATUSES = [
+  'JHAAssigned', 'RLQ4', 'APQ4', 'CLQ4', 'Raised', 'RLQ', 'APQ', 'CLQ',
+];
+
+const WO_TASK_PLANNER_DATE_TAIL = new RegExp(
+  '((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \\d{2} \\w{3} \\d{4} \\d{2}:\\d{2})'
+    + '((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \\d{2} \\w{3} \\d{4} \\d{2}:\\d{2})'
+    + '(?:(Low|Medium|High|Emergency|Shutdown))?(.+)$'
+);
+
+const WO_TASK_PLANNER_EQUIPMENT = /^(\d{2}[A-Z0-9-]{3,20}|QIPP-[A-Z0-9-]+)/;
+
+function refineTaskPlannerEquipment(equipmentCode, description) {
+  let code = equipmentCode;
+  let desc = description;
+  for (const prefix of ['RM', 'PM']) {
+    if (!code.endsWith(prefix)) continue;
+    code = code.slice(0, -prefix.length);
+    const trimmed = desc.trimStart();
+    desc = trimmed.startsWith(prefix) ? trimmed : `${prefix} ${trimmed}`;
+    break;
+  }
+  return { equipmentCode: code, description: cleanCell(desc) };
+}
+
+function parseTaskPlannerWorkOrderChunk(chunk) {
+  const row = cleanCell(chunk);
+  if (!/^\d{12}/.test(row)) return null;
+
+  const dateMatch = row.match(WO_TASK_PLANNER_DATE_TAIL);
+  if (!dateMatch) return null;
+
+  const head = row.slice(0, row.length - dateMatch[0].length);
+  const woMatch = head.match(/^(\d{12})(.*)$/);
+  if (!woMatch) return null;
+
+  let prometheusStatusCode = '';
+  let equipmentCode = '';
+  let description = '';
+  const rest = woMatch[2];
+
+  for (const status of WO_TASK_PLANNER_STATUSES) {
+    if (!rest.startsWith(status)) continue;
+    const afterStatus = rest.slice(status.length);
+    const equipMatch = afterStatus.match(WO_TASK_PLANNER_EQUIPMENT);
+    if (!equipMatch) continue;
+    prometheusStatusCode = status;
+    equipmentCode = cleanCell(equipMatch[1]);
+    description = cleanCell(afterStatus.slice(equipMatch[0].length));
+    ({ equipmentCode, description } = refineTaskPlannerEquipment(equipmentCode, description));
+    break;
+  }
+
+  if (!prometheusStatusCode || !equipmentCode) return null;
+
+  const plannedStart = cleanCell(dateMatch[1]);
+  const plannedFinish = cleanCell(dateMatch[2]);
+  const prometheusPriorityCode = cleanCell(dateMatch[3] || '');
+  const reportedBy = cleanCell(dateMatch[4] || '');
+
+  return {
+    code: woMatch[1],
+    status: mapWoStatus(prometheusStatusCode),
+    prometheusStatusCode,
+    equipmentCode,
+    description,
+    equipmentDescription: '',
+    plannedStart,
+    plannedFinish,
+    priority: mapPriority(prometheusPriorityCode || 'Low'),
+    prometheusPriorityCode: prometheusPriorityCode || '',
+    reportedBy,
+    department: deptFor(description, equipmentCode, woMatch[1]),
+  };
+}
+
+/** Parse concatenated Task Planner "List All Work" paste rows. */
+function parseTaskPlannerWorkOrders(content) {
+  const seen = new Set();
+  const rows = [];
+  const text = String(content || '');
+  const startIdx = text.indexOf('Reported By ID');
+  const body = startIdx >= 0 ? text.slice(startIdx) : text;
+  const chunks = body.split(/\[ \] /);
+
+  chunks.forEach((chunk) => {
+    const parsed = parseTaskPlannerWorkOrderChunk(chunk);
+    if (!parsed || seen.has(parsed.code)) return;
+    seen.add(parsed.code);
+    rows.push(parsed);
+  });
+
+  return rows;
+}
+
+function mergeWorkOrders(existing, incoming) {
+  const byCode = new Map();
+  existing.forEach((row) => byCode.set(row.code, row));
+  incoming.forEach((row) => {
+    const prev = byCode.get(row.code);
+    byCode.set(row.code, prev ? { ...prev, ...row } : row);
+  });
+  return [...byCode.values()];
 }
 
 function parseWorkOrders(content) {
@@ -209,6 +314,175 @@ function parseKeySafes(content) {
   return rows;
 }
 
+function stripJhaTaskPlannerFooter(content) {
+  return String(content || '')
+    .replace(/\n?•[\s\S]*$/m, '')
+    .replace(/Pageof[\s\S]*$/m, '')
+    .replace(/<\/user_query>[\s\S]*$/m, '')
+    .trim();
+}
+
+const JHA_TASK_PLANNER_LOCATIONS = [
+  /^NOMAC QIPP Plant/,
+  /^BALANCE OF PLANT BUILDING/,
+  /^COMMON ELECTRICAL AREA/,
+  /^FIRE FIGTING AREA/,
+  /^CHILLER AREA/,
+  /^CHLORINATION AREA/,
+  /^FUEL GAS AREA/,
+  /^FUEL OIL AREA/,
+  /^PLANT HVAC AREA/,
+  /^REVERSE OSMOSIS AREA/,
+  /^INSTRUMENTS AIR AREA/,
+  /^DM PLANT AREA/,
+  /^SEAWATER AREA/,
+  /^WASTE WATER AREA/,
+  /^SERVICE WATER AREA/,
+  /^POTABLE WATER AREA/,
+  /^STEAM TURBINE \d+ AREA/,
+  /^GAS TURBINE \d+ AREA/,
+  /^HRSG \d+ AREA/,
+  /^HVAC_SYS/,
+  /^WASTEWATER/,
+  /^DM_PLANT/,
+  /^STGBOP\d+/,
+  /^HRSG\d{2}/,
+  /^SAB2/,
+  /^UQK/,
+  /^UGM/,
+  /^MISC/,
+  /^ADMIN/,
+  /^BOP/,
+  /^GT\d{2}/,
+  /^ST\d{2}/,
+];
+
+function matchJhaTaskPlannerEquipment(rest) {
+  const qippDash = rest.match(/^QIPP-\d{2}[A-Z]-[A-Z]{2,4}/);
+  if (qippDash) return qippDash[0];
+
+  const qippDashLong = rest.match(/^QIPP-[\dA-Z]+-[A-Z]{2,4}/);
+  if (qippDashLong) return qippDashLong[0];
+
+  const qippPlant = rest.match(/^QIPP\d{2}(?=Plant)/);
+  if (qippPlant) return qippPlant[0];
+
+  const qippLong = rest.match(/^QIPP\d{2}[A-Z0-9]+/);
+  if (qippLong) {
+    const raw = qippLong[0];
+    for (let len = Math.min(raw.length, 22); len >= 10; len -= 1) {
+      const candidate = raw.slice(0, len);
+      const tail = rest.slice(len);
+      if (!tail) return candidate;
+      if (/[A-Z]{2,}-/.test(tail)) return candidate;
+      if (/[a-z]/.test(tail[0])) return candidate;
+      if (/^(RM |OT_ACTIVITY_|WATER |PUMP|BOX )/.test(tail)) return candidate;
+    }
+    return raw.slice(0, 18);
+  }
+
+  const digitTag = rest.match(/^\d{2}[A-Z0-9]+/);
+  if (!digitTag) return '';
+  const raw = digitTag[0];
+  for (let len = Math.min(raw.length, 18); len >= 8; len -= 1) {
+    const tail = rest.slice(len);
+    if (!tail) return raw.slice(0, len);
+    if (/[A-Z]{2,}-/.test(tail)) return raw.slice(0, len);
+    if (/[a-z]/.test(tail[0])) return raw.slice(0, len);
+    if (tail[0] === ' ' || tail[0] === '"') return raw.slice(0, len);
+  }
+  return raw.slice(0, 14);
+}
+
+function splitJhaEquipAndWork(tail) {
+  const markers = ['OT_ACTIVITY_', 'RM ', 'CBM:', 'OVERHAULING,', '1M RM', 'PM OF', 'MB '];
+  let splitAt = -1;
+  markers.forEach((marker) => {
+    const idx = tail.indexOf(marker);
+    if (idx > 0 && (splitAt < 0 || idx < splitAt)) splitAt = idx;
+  });
+  if (splitAt > 0) {
+    return {
+      equipmentDescription: cleanCell(tail.slice(0, splitAt)),
+      workDescription: cleanCell(tail.slice(splitAt)),
+    };
+  }
+  const lower = tail.search(/[a-z]/);
+  if (lower > 8) {
+    return {
+      equipmentDescription: cleanCell(tail.slice(0, lower)),
+      workDescription: cleanCell(tail.slice(lower)),
+    };
+  }
+  return { equipmentDescription: cleanCell(tail), workDescription: '' };
+}
+
+function parseJhaTaskPlannerRow(row) {
+  let rest = String(row || '').trim();
+  let code = '';
+  let status = '';
+
+  if (rest.startsWith('Not Required')) {
+    status = 'Not Required';
+    rest = rest.slice('Not Required'.length);
+  } else {
+    const withRa = rest.match(/^RA(\d{6})(Closed|Raised|Approved|Submitted|Not Required)/);
+    if (!withRa) return null;
+    code = `RA${withRa[1]}`;
+    status = withRa[2];
+    rest = rest.slice(withRa[0].length);
+  }
+
+  if (!rest.startsWith('Job Hazard Analysis')) return null;
+  rest = rest.slice('Job Hazard Analysis'.length);
+
+  let locationName = '';
+  JHA_TASK_PLANNER_LOCATIONS.some((pat) => {
+    const m = rest.match(pat);
+    if (!m) return false;
+    locationName = m[0];
+    rest = rest.slice(locationName.length);
+    return true;
+  });
+  if (!locationName) return null;
+
+  const equipmentCode = matchJhaTaskPlannerEquipment(rest);
+  if (!equipmentCode) return null;
+  rest = rest.slice(equipmentCode.length);
+
+  const { equipmentDescription, workDescription } = splitJhaEquipAndWork(rest);
+  if (!code) code = `NR-${equipmentCode}`;
+
+  const prometheusStatusCode = status;
+  return {
+    code,
+    status: mapJhaStatus(prometheusStatusCode),
+    prometheusStatusCode,
+    jhaType: 'Job Hazard Analysis',
+    locationName,
+    workOrderCode: '',
+    equipmentCode,
+    equipmentDescription,
+    workDescription,
+    department: deptFor(workDescription, equipmentCode, code),
+  };
+}
+
+/** Parse JHA Summary grid rows from Task Planner paste (concatenated columns). */
+function parseJhasFromTaskPlanner(content) {
+  const body = stripJhaTaskPlannerFooter(content);
+  const rows = body.split(/\[ \]/).map((s) => s.trim()).filter((s) => /^(?:RA\d{6}|Not Required)/.test(s));
+  const seen = new Set();
+  const parsed = [];
+  rows.forEach((row) => {
+    const item = parseJhaTaskPlannerRow(row);
+    if (!item || seen.has(item.code)) return;
+    seen.add(item.code);
+    parsed.push(item);
+  });
+  return parsed;
+}
+
 /** Parse JHA rows from list HTML when present. */
 function parseJhasFromHtml(content) {
   const pat = new RegExp(
@@ -308,30 +582,18 @@ function synthesizeJhasFromWorkOrders(workOrders) {
 
 function mergeJhas(parsedJhas, synthesized) {
   const byCode = new Map();
-  synthesized.forEach((j) => byCode.set(j.code, j));
-  parsedJhas.forEach((j) => {
-    const existing = byCode.get(j.code);
-    if (existing) {
-      byCode.set(j.code, { ...existing, ...j, workOrderCode: j.workOrderCode || existing.workOrderCode });
-    } else {
-      byCode.set(j.code, j);
-    }
-  });
-  // Also index synthesized by work order — prefer parsed when code differs
-  const byWo = new Map();
-  [...byCode.values()].forEach((j) => {
-    if (j.workOrderCode) byWo.set(j.workOrderCode, j);
-  });
+  parsedJhas.forEach((j) => byCode.set(j.code, j));
   synthesized.forEach((j) => {
-    if (!byWo.has(j.workOrderCode)) byWo.set(j.workOrderCode, j);
-  });
-  const merged = new Map(byCode);
-  byWo.forEach((j, wo) => {
-    if (![...merged.values()].some((x) => x.workOrderCode === wo)) {
-      merged.set(j.code, j);
+    if (byCode.has(j.code)) {
+      const existing = byCode.get(j.code);
+      byCode.set(j.code, { ...j, ...existing, workOrderCode: existing.workOrderCode || j.workOrderCode });
+      return;
     }
+    const linkedWo = j.workOrderCode;
+    const duplicate = linkedWo && [...byCode.values()].some((x) => x.workOrderCode === linkedWo);
+    if (!duplicate) byCode.set(j.code, j);
   });
-  return [...merged.values()];
+  return [...byCode.values()];
 }
 
 function collectFiles(exportDir, prefix) {
@@ -380,6 +642,22 @@ function parseExportDirectory(exportDir) {
     });
   });
 
+  const taskPlannerWos = [];
+  collectFiles(exportDir, 'WO-task-planner').forEach((fp) => {
+    const content = readExportFile(fp);
+    pageDataSources.push(content);
+    parseTaskPlannerWorkOrders(content).forEach((row) => taskPlannerWos.push(row));
+  });
+  if (taskPlannerWos.length) {
+    const merged = mergeWorkOrders(workOrders, taskPlannerWos);
+    workOrders.length = 0;
+    woSeen.clear();
+    merged.forEach((row) => {
+      woSeen.add(row.code);
+      workOrders.push(row);
+    });
+  }
+
   peFiles.forEach((fn) => {
     const fp = path.join(exportDir, fn);
     if (!fs.existsSync(fp)) return;
@@ -421,14 +699,35 @@ function parseExportDirectory(exportDir) {
     });
   }
 
+  let taskPlannerJhaCount = 0;
+  const jhaTpPaths = [
+    path.join(exportDir, 'JHA-task-planner.txt'),
+    ...collectFiles(exportDir, 'JHA-task-planner'),
+  ];
+  const jhaTpSeen = new Set();
+  jhaTpPaths.forEach((fp) => {
+    if (!fs.existsSync(fp) || jhaTpSeen.has(fp)) return;
+    jhaTpSeen.add(fp);
+    parseJhasFromTaskPlanner(readExportFile(fp)).forEach((row) => {
+      if (!jhaSeen.has(row.code)) {
+        jhaSeen.add(row.code);
+        parsedJhas.push(row);
+        taskPlannerJhaCount += 1;
+      }
+    });
+  });
+
   const pinboardPath = path.join(exportDir, 'safety permit page.txt');
   const pinboard = fs.existsSync(pinboardPath)
     ? parsePinboardSections(readExportFile(pinboardPath))
     : {};
 
   const jhaRefs = parseJhaReferencesFromPageData(pageDataSources);
-  const synthesized = synthesizeJhasFromWorkOrders(workOrders);
-  const jhas = mergeJhas(parsedJhas, synthesized);
+  const synthesized = taskPlannerJhaCount
+    ? []
+    : synthesizeJhasFromWorkOrders(workOrders);
+  const mergedJhas = mergeJhas(parsedJhas, synthesized);
+  const jhas = linkJhasToWorkOrders(mergedJhas, workOrders);
 
   const workPacks = buildWorkPacks(workOrders, permits, jhas);
   const permitPackages = buildPermitPackages(workOrders, permits, jhas, workPacks);
@@ -455,18 +754,23 @@ function parseExportDirectory(exportDir) {
       keySafes: keySafes.length,
       permitPackages: permitPackages.length,
       workPacks: workPacks.length,
+      taskPlannerJhas: taskPlannerJhaCount,
     },
   };
 }
 
 module.exports = {
   parseWorkOrders,
+  parseTaskPlannerWorkOrders,
+  mergeWorkOrders,
   parseSafetyPermits,
   parseIsolationPoints,
   parsePlantEquipment,
   parseLocations,
   parseKeySafes,
   parseJhasFromHtml,
+  parseJhasFromTaskPlanner,
+  parseJhaTaskPlannerRow,
   parseJhaReferencesFromPageData,
   parsePinboardSections,
   synthesizeJhasFromWorkOrders,

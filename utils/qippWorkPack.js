@@ -182,11 +182,38 @@ function buildPermitPackages(workOrders, permits, jhas, workPacks) {
   );
 }
 
+function bestWorkOrderForJha(jha, workOrders) {
+  if (!jha?.equipmentCode) return null;
+  const candidates = workOrders.filter((wo) => wo.equipmentCode === jha.equipmentCode);
+  if (!candidates.length) return null;
+  let best = null;
+  let bestScore = -1;
+  candidates.forEach((wo) => {
+    const score = workDescScore(jha.workDescription, wo.description);
+    if (score > bestScore) {
+      bestScore = score;
+      best = wo;
+    }
+  });
+  return bestScore > 0.05 ? best : candidates[0];
+}
+
+function linkJhasToWorkOrders(jhas, workOrders) {
+  return jhas.map((jha) => {
+    if (jha.workOrderCode) return jha;
+    const wo = bestWorkOrderForJha(jha, workOrders);
+    if (!wo) return jha;
+    return { ...jha, workOrderCode: wo.code };
+  });
+}
+
 module.exports = {
   normalizeWorkText,
   workDescScore,
   parsePrometheusDate,
   daysApart,
+  bestWorkOrderForJha,
+  linkJhasToWorkOrders,
   buildWorkPacks,
   buildPermitPackages,
 };

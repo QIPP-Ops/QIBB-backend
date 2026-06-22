@@ -634,11 +634,15 @@ function jhaToRow(jha) {
 
     'JHA No': jha.code,
 
-    Status: displayJhaStatus(jha.status) || jha.prometheusStatusCode,
+    Status: jha.prometheusStatusCode || displayJhaStatus(jha.status),
 
     'WO No': jha.workOrderCode,
 
+    Location: jha.locationName || '',
+
     'Equipment No': jha.equipmentCode,
+
+    'Equipment Desc': jha.equipmentDescription || '',
 
     'Work Desc': jha.workDescription,
 

@@ -4,7 +4,7 @@ const DEPARTMENTS = ['MMD', 'EMD', 'IMD'];
 
 const WORK_ORDER_STATUSES = ['raised', 'jha_assigned', 'jha_approved', 'released', 'closed'];
 
-const JHA_STATUSES = ['raised', 'submitted', 'approved', 'rejected'];
+const JHA_STATUSES = ['raised', 'submitted', 'approved', 'rejected', 'closed', 'not_required'];
 
 const SAFETY_PERMIT_STATUSES = [
   'in_preparation',
@@ -21,8 +21,11 @@ const PROMETHEUS_WO_STATUS_MAP = {
   Raised: 'raised',
   JHAAssigned: 'jha_assigned',
   APQ4: 'jha_approved',
+  APQ: 'jha_approved',
   RLQ4: 'released',
+  RLQ: 'released',
   CLQ4: 'closed',
+  CLQ: 'closed',
 };
 
 const PROMETHEUS_JHA_STATUS_MAP = {
@@ -30,6 +33,8 @@ const PROMETHEUS_JHA_STATUS_MAP = {
   Submitted: 'submitted',
   Approved: 'approved',
   Rejected: 'rejected',
+  Closed: 'closed',
+  'Not Required': 'not_required',
 };
 
 const PROMETHEUS_PERMIT_STATUS_MAP = {

@@ -9,6 +9,8 @@ const jobHazardAnalysisSchema = new mongoose.Schema({
   equipmentCode: { type: String, default: '' },
   workDescription: { type: String, default: '' },
   equipmentDescription: { type: String, default: '' },
+  locationName: { type: String, default: '' },
+  jhaType: { type: String, default: 'Job Hazard Analysis' },
   department: { type: String, enum: DEPARTMENTS, default: undefined, index: true },
   permitPackageId: { type: String, default: '', index: true },
   submittedBy: { type: String, default: '' },
