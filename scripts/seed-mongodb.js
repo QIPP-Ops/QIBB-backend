@@ -10,6 +10,8 @@
  *   SEED_DEFAULT_USER_PASSWORD  — shared temp password for roster logins (omit = roster rows still created, logins disabled)
  *   SEED_KPI_DATA=1             — insert plant KPI rows when collection is empty
  *   SEED_FORCE_RESET=1          — wipe AdminUser, AdminConfig, PlantPerformance first (destructive)
+ *
+ * Does NOT touch Quiz, Survey, or Prometheus PTW import collections.
  */
 require('dotenv').config();
 const mongoose = require('mongoose');

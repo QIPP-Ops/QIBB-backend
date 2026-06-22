@@ -12,6 +12,7 @@
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",
     "seed:ptw": "node seeders/ptwSeed.js",
+    "seed:quizzes": "node scripts/seed-quizzes.js",
     "import:qipp": "cross-env NODE_OPTIONS=--use-system-ca node scripts/import-qipp-prometheus.js",
     "import:qipp:json": "cross-env NODE_OPTIONS=--use-system-ca node scripts/import-qipp-prometheus.js --json-only",
     "parse:ptw": "node scripts/parse-ptw-excel.js",

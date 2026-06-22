@@ -28,7 +28,7 @@ async function ensurePtwPersonnelSeeded(options = {}) {
   if (!config) config = new AdminConfig();
 
   const current = config.ptwPersonnel?.length || 0;
-  if (!force && current >= EXPECTED_COUNT) {
+  if (!force && current > 0) {
     return { seeded: false, count: current, reason: 'already_populated' };
   }
 

@@ -32,14 +32,14 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
       console.warn('[ptw] startup auto-seed skipped:', ptwErr.message);
     }
 
-    const { ensureBuiltinQuizzesSeeded } = require('./services/quizAutoSeed');
+    const { migrateLocalQuizzesToMongo } = require('./services/quizStorage');
     try {
-      const quizSeed = await ensureBuiltinQuizzesSeeded();
-      if (quizSeed.seeded) {
-        console.log(`[quiz] built-in quizzes: ${quizSeed.action}`);
+      const migrated = await migrateLocalQuizzesToMongo();
+      if (migrated.migrated > 0) {
+        console.log(`[quiz] migrated ${migrated.migrated} legacy local quiz file(s) to MongoDB`);
       }
-    } catch (quizErr) {
-      console.warn('[quiz] startup auto-seed skipped:', quizErr.message);
+    } catch (migrateErr) {
+      console.warn('[quiz] local-to-mongo migration skipped:', migrateErr.message);
     }
 
     try {

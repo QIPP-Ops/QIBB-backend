@@ -1045,15 +1045,15 @@ exports.getQuizPrizeImage = async (req, res) => {
     if (!quiz?.prizeImageUrl) return res.status(404).json({ message: 'No prize image' });
 
     const buffer = await quizStorage.readPrizeImage(quiz.prizeImageUrl);
-    const ext = quiz.prizeImageUrl.split('.').pop()?.toLowerCase();
     const mime =
-      ext === 'png'
-        ? 'image/png'
-        : ext === 'webp'
-          ? 'image/webp'
-          : ext === 'gif'
-            ? 'image/gif'
-            : 'image/jpeg';
+      quiz.prizeImageMime ||
+      (() => {
+        const ext = quiz.prizeImageUrl.split('.').pop()?.toLowerCase();
+        if (ext === 'png') return 'image/png';
+        if (ext === 'webp') return 'image/webp';
+        if (ext === 'gif') return 'image/gif';
+        return 'image/jpeg';
+      })();
     res.setHeader('Content-Type', mime);
     res.setHeader('Cache-Control', 'private, max-age=3600');
     res.send(buffer);

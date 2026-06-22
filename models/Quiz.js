@@ -6,6 +6,10 @@ const QuizSchema = new mongoose.Schema(
     prizeDescription: { type: String, default: '', trim: true },
     prizeImageUrl: { type: String, default: '' },
     htmlStorageKey: { type: String, default: '' },
+    /** Uploaded quiz HTML — persisted in MongoDB (survives Render redeploys). */
+    htmlContent: { type: Buffer, default: null },
+    prizeImageData: { type: Buffer, default: null },
+    prizeImageMime: { type: String, default: '' },
     /** Frontend public path, e.g. /quizzes/NCHSESP-040-ptw-location-safety-quiz.html */
     staticHtmlUrl: { type: String, default: '' },
     catalogSlug: { type: String, default: '', trim: true, index: true },

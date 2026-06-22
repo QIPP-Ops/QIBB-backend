@@ -161,6 +161,39 @@ Follow-up (leave balances):
 npm run seed:employees
 ```
 
+Built-in PTW training quizzes (manual only — not run on deploy):
+
+```bash
+npm run seed:quizzes              # create missing built-in quizzes
+npm run seed:quizzes -- --force   # also sync metadata from repo defaults
+```
+
+## Data persistence on deploy
+
+Render web services use an **ephemeral filesystem**. Anything written under `data/` on the server is **lost on every redeploy**.
+
+| Data | Storage | Survives deploy? |
+|------|---------|------------------|
+| Quiz/survey metadata | MongoDB `quizzes`, `surveys` | Yes |
+| Uploaded quiz HTML & prize images | MongoDB (`htmlContent`, `prizeImageData`) | Yes (since fix) |
+| Built-in PTW quizzes | Frontend static `/quizzes/*.html` + MongoDB catalog row | Yes |
+| PTW Prometheus work orders | MongoDB (`import:qipp` manual) | Yes |
+| PTW authorization list | MongoDB `AdminConfig.ptwPersonnel` | Yes (no longer overwritten when partially populated) |
+| Roster / admin users | MongoDB `adminusers` | Yes |
+
+**What was resetting data**
+
+1. **Uploaded quiz HTML** was stored on the local disk (`data/quizzes/`). Deploy wiped files while MongoDB quiz rows remained — quizzes looked “reset” or failed to load.
+2. **`ensureBuiltinQuizzesSeeded` on every startup** could overwrite built-in quiz metadata (title, pass %, etc.) on each deploy.
+3. **`ptwAutoSeed` on startup** replaced the entire PTW authorization list whenever the count was below 63, clobbering admin edits.
+4. **`SEED_IF_EMPTY=1` in `render.yaml`** could re-run atlas seed on cold start if `rosterVisible < 10` (wrong DB URI or empty roster), wiping `AdminConfig` when `SEED_FORCE_RESET=1` is also set.
+
+**Current behavior**
+
+- Startup runs **no quiz seed** — use `npm run seed:quizzes` explicitly.
+- `SEED_IF_EMPTY` defaults to **off** in `render.yaml`; enable only for first-time bootstrap.
+- `import:qipp` is **manual only** and touches Prometheus collections only (work orders, permits, JHA, etc.) — never quizzes or surveys.
+
 ## 3. GitHub Pages frontend
 
 **Repo:** `QIPP-Ops/QIBB-frontend` (branch `master`)  

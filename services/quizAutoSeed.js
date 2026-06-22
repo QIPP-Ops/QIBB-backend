@@ -60,23 +60,18 @@ const BUILTIN_QUIZZES = [
 
 
 
-async function ensureBuiltinQuiz(def) {
-
+async function ensureBuiltinQuiz(def, options = {}) {
+  const force = Boolean(options.force);
   const existing = await Quiz.findOne({ catalogSlug: def.catalogSlug }).lean();
 
   if (existing) {
-
     const needsPatch =
-
-      !existing.staticHtmlUrl ||
-
-      existing.staticHtmlUrl !== def.staticHtmlUrl ||
-
-      existing.title !== def.title ||
-
-      Boolean(existing.hubAccessible) !== Boolean(def.hubAccessible) ||
-
-      (existing.passPercent ?? 80) !== def.passPercent;
+      force &&
+      (!existing.staticHtmlUrl ||
+        existing.staticHtmlUrl !== def.staticHtmlUrl ||
+        existing.title !== def.title ||
+        Boolean(existing.hubAccessible) !== Boolean(def.hubAccessible) ||
+        (existing.passPercent ?? 80) !== def.passPercent);
 
     if (needsPatch) {
 
@@ -133,19 +128,13 @@ async function ensureBuiltinQuiz(def) {
 
 
 /**
-
- * Ensure built-in training hub quizzes exist (production has no manual seed step).
-
+ * Ensure built-in training hub quizzes exist.
+ * Only run via `npm run seed:quizzes` — not on deploy/startup.
  */
-
-async function ensureBuiltinQuizzesSeeded() {
-
+async function ensureBuiltinQuizzesSeeded(options = {}) {
   const results = [];
-
   for (const def of BUILTIN_QUIZZES) {
-
-    results.push(await ensureBuiltinQuiz(def));
-
+    results.push(await ensureBuiltinQuiz(def, options));
   }
 
   const changed = results.filter((r) => r.seeded);
