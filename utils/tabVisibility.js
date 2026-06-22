@@ -5,8 +5,10 @@ const PORTAL_TAB_KEYS = [
   'admin',
   'management',
   'ptw',
+  'maintenance',
   'trainings',
   'personnel',
+  'chat',
   'settings',
 ];
 
@@ -16,7 +18,9 @@ const TAB_LABELS = {
   admin: 'Admin Control',
   management: 'Management',
   ptw: 'PTW',
+  maintenance: 'Maintenance',
   trainings: 'Training Hub',
+  chat: 'Crew Chat',
   personnel: 'Operation Team',
   settings: 'Settings & Profile',
 };
@@ -27,7 +31,10 @@ const PATH_PREFIX_TO_TAB = [
   { prefix: '/my-leaves', tab: 'leave' },
   { prefix: '/management', tab: 'management' },
   { prefix: '/ptw', tab: 'ptw' },
+  { prefix: '/maintenance', tab: 'maintenance' },
+  { prefix: '/task-planner', tab: 'maintenance' },
   { prefix: '/trainings', tab: 'trainings' },
+  { prefix: '/crew-chat', tab: 'chat' },
   { prefix: '/personnel', tab: 'personnel' },
   { prefix: '/settings', tab: 'settings' },
   { prefix: '/calendar', tab: 'leave' },

@@ -553,7 +553,7 @@ exports.updateProfile = async (req, res) => {
 function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
   const { portalRoleFromUser } = require('../utils/jwtAuth');
   const { resolveTabVisibilityForUser } = require('../utils/tabVisibility');
-  const { resolveMaintenanceDepartment } = require('../utils/maintenanceDepartment');
+  const { resolveMaintenanceDepartment, canAccessMaintenancePortal } = require('../utils/maintenanceDepartment');
   const accessRole = dbRow?.accessRole || decodedUser.accessRole || 'viewer';
   const portalRole = dbRow ? portalRoleFromUser(dbRow) : decodedUser.role;
   const email = dbRow?.email || decodedUser.email;
@@ -561,6 +561,7 @@ function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
     ? resolveTabVisibilityForUser({ email, tabVisibility: dbRow.tabVisibility })
     : resolveTabVisibilityForUser({ email: decodedUser.email });
   const maintenanceDepartment = resolveMaintenanceDepartment(dbRow || decodedUser, ptwPerson);
+  const canAccessMaintenance = canAccessMaintenancePortal(dbRow || decodedUser, ptwPerson);
   return {
     ok: true,
     user: {
@@ -577,6 +578,7 @@ function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
       jobRole: dbRow?.role || decodedUser.jobRole,
       tabVisibility,
       maintenanceDepartment,
+      canAccessMaintenance,
     },
   };
 }

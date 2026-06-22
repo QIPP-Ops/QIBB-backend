@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const ptwController = require('../controllers/ptwController');
+const ptwWorkflowController = require('../controllers/ptwWorkflowController');
 const ptwDashboardController = require('../controllers/ptwDashboardController');
 const qippEntityController = require('../controllers/qippEntityController');
 const crewCalendarController = require('../controllers/crewCalendarController');
@@ -10,6 +11,11 @@ const { requireSuperAdmin } = require('../middleware/superAdmin');
 
 router.get('/access', protect, ptwController.getMyAccess);
 router.get('/crew', protect, crewCalendarController.getCrew);
+
+router.get('/workflow', protect, ptwWorkflowController.list);
+router.post('/workflow', protect, ptwWorkflowController.raise);
+router.post('/workflow/:id/advance', protect, ptwWorkflowController.advance);
+router.patch('/workflow/:id/archive', protect, ptwWorkflowController.archive);
 
 router.use(protect, requirePtwAccess);
 
