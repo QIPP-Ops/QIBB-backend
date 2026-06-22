@@ -322,15 +322,17 @@ exports.sendOtpEmail = async (email, name, otp) => {
 };
 
 exports.sendResetEmail = async (email, name, resetUrl) => {
+  const portalUrl = getFrontendBaseUrl();
   const html = emailTemplate('Reset Your Password', `
     <p>Hello <strong>${name}</strong>,</p>
-    ${emailCallout('<p>We received a request to reset your QIPP password. Use the button below to choose a new password.</p>')}
+    ${emailCallout(`<p>We received a request to reset your QIPP password at <strong><a href="${portalUrl}">acwaops.com/qipp</a></strong>. Use the button below to choose a new password.</p>`)}
     <p>This secure link expires in <strong>1 hour</strong>.</p>
     ${emailCtaButton(resetUrl, 'Reset Password')}
     ${emailInfoList([
       'The link works only once — request another reset if it expires',
       'Your current password stays active until you complete the reset',
     ])}
+    ${emailMuted(`If the button does not work, copy this link into your browser:<br><a href="${resetUrl}">${resetUrl}</a>`)}
     ${emailMuted('If you did not request a password reset, ignore this email. Your password will not change.')}
   `);
 
@@ -342,12 +344,13 @@ exports.sendResetEmail = async (email, name, resetUrl) => {
 };
 
 exports.sendTempPasswordEmail = async (email, name, tempPassword) => {
+  const portalUrl = getFrontendBaseUrl();
   const html = emailTemplate('Your Password Has Been Reset', `
     <p>Hello <strong>${name}</strong>,</p>
-    ${emailCallout('<p>An administrator has reset your QIPP account password. Sign in with the temporary password below, then set a new password immediately.</p>', 'warning')}
+    ${emailCallout(`<p>An administrator has reset your QIPP account password. Sign in at <strong><a href="${portalUrl}">acwaops.com/qipp</a></strong> with the temporary password below, then set a new password immediately.</p>`, 'warning')}
     ${emailHighlightBox(tempPassword, 'sm')}
     ${emailInfoList([
-      'Log in at your usual QIPP URL with this temporary password',
+      `Log in at ${portalUrl} with this temporary password`,
       'Update your password from account settings right after signing in',
       'Do not share this password with anyone',
     ])}
