@@ -9,8 +9,6 @@ const {
   parseJhaTaskPlannerRow,
   parseJhasFromTaskPlanner,
   synthesizeJhasFromWorkOrders,
-  parseJhasFromTaskPlanner,
-  parseJhaTaskPlannerRow,
 } = require('../utils/qippHtmlParser');
 const { inferDepartment } = require('../utils/qippDepartment');
 const { buildWorkPacks } = require('../utils/qippWorkPack');
