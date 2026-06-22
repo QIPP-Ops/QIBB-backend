@@ -20,6 +20,7 @@
     "build:crew-calendar": "node scripts/build-crew-calendar-seed.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",
+    "backup:org-chart": "node scripts/backup-org-chart-data.js",
     "seed:curriculum": "node scripts/seed-curriculum.js",
     "migrate:auth": "node scripts/migrate-auth-fields.js",
     "set-password": "node scripts/set-user-password.js",
