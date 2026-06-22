@@ -20,6 +20,11 @@ const {
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
+const {
+  snapshotLeaveBalances,
+  buildLeaveAppliedAuditPayload,
+  buildLeaveRemovedAuditPayload,
+} = require('../utils/leaveAuditPayload');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -183,6 +188,8 @@ exports.addLeave = async (req, res) => {
         ? leaveData.totalDays
         : daysBetweenInclusive(leaveData.start, leaveData.end);
 
+    const balancesBefore = snapshotLeaveBalances(user);
+
     if (isAnnualLeaveType(leaveTypeStr)) {
       const bal = user.annualLeaveBalance ?? 0;
       if (bal < spanDays) {
@@ -243,13 +250,23 @@ exports.addLeave = async (req, res) => {
       summary: `${user.name} (${user.empId}): leave ${leaveData.type || 'Planned'} ${startStr} → ${endStr}`,
       metadata: { leave: leaveData, appliedBy: actor?.email || 'unknown' },
     });
+    const balancesAfter = snapshotLeaveBalances(user);
+    const leaveAuditPayload = buildLeaveAppliedAuditPayload({
+      user,
+      actor,
+      leaveType: leaveTypeStr,
+      dateFrom: startStr,
+      dateTo: endStr,
+      balancesBefore,
+      balancesAfter,
+    });
     await logAction({
       actor,
       action: AUDIT_ACTIONS.LEAVE_CREATED,
       targetType: 'leave',
-      targetId: user.leaves[user.leaves.length - 1]?._id?.toString(),
-      targetName: `${user.name} leave`,
-      after: leaveData,
+      targetId: user.empId,
+      targetName: user.name,
+      after: leaveAuditPayload,
       req,
     });
 
@@ -560,36 +577,57 @@ exports.removeLeave = async (req, res) => {
     }
 
     const removed = user.leaves.id(leaveId);
+    const balancesBeforeRemove = snapshotLeaveBalances(user);
+    let removedStartStr = '';
+    let removedEndStr = '';
+    let removedLeaveType = 'Planned';
     if (removed) {
-      const leaveTypeStr = String(removed.type || 'Planned');
+      removedLeaveType = normalizeLeaveType(normalizeCompensateLeaveType(removed.type || 'Planned'));
+      removedStartStr = new Date(removed.start).toISOString().slice(0, 10);
+      removedEndStr = new Date(removed.end).toISOString().slice(0, 10);
       const span =
         typeof removed.totalDays === 'number' && removed.totalDays > 0
           ? removed.totalDays
           : daysBetweenInclusive(removed.start, removed.end);
-      if (isAnnualLeaveType(leaveTypeStr)) {
+      if (isAnnualLeaveType(removedLeaveType)) {
         user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
       }
-      if (isBankLeaveType(leaveTypeStr)) {
+      if (isBankLeaveType(removedLeaveType)) {
         user.bankLeaveBalance = Math.round(((user.bankLeaveBalance ?? 0) + span) * 10000) / 10000;
       }
     }
     user.leaves = user.leaves.filter((l) => l._id.toString() !== leaveId);
     await user.save();
 
+    const balancesAfterRemove = snapshotLeaveBalances(user);
+    const removedAuditPayload = removed
+      ? buildLeaveRemovedAuditPayload({
+          user,
+          actor,
+          leaveType: removedLeaveType,
+          dateFrom: removedStartStr,
+          dateTo: removedEndStr,
+          balancesBefore: balancesBeforeRemove,
+          balancesAfter: balancesAfterRemove,
+        })
+      : null;
+
     await logRosterEvent({
       action: 'LEAVE_REMOVED',
       actor,
       target: user,
-      summary: `Leave removed for ${user.name} (${user.empId})`,
+      summary: removed
+        ? `${user.name} (${user.empId}): leave ${removedLeaveType} ${removedStartStr} → ${removedEndStr} removed`
+        : `Leave removed for ${user.name} (${user.empId})`,
       metadata: { leaveId, removed },
     });
     await logAction({
       actor,
       action: AUDIT_ACTIONS.LEAVE_DELETED,
       targetType: 'leave',
-      targetId: leaveId,
-      targetName: `${user.name} leave`,
-      before: removed?.toObject ? removed.toObject() : removed,
+      targetId: user.empId,
+      targetName: user.name,
+      after: removedAuditPayload,
       req,
     });
 
