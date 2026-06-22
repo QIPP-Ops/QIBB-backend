@@ -95,8 +95,11 @@ async function main() {
       opsGroupLabel: chart.manager.title || 'Operations',
     };
 
-    if (member.role && !user.role) patch.role = member.role;
+    if (member.role) patch.role = member.role;
     if (member.title) patch.position = member.title;
+    if (member.crew) patch.crew = member.crew;
+    if (member.email && !user.email) patch.email = member.email;
+    if (member.empId && !user.empId) patch.empId = member.empId;
 
     const dept = normalizeDepartment(member.maintenanceDepartment);
     if (dept) patch.maintenanceDepartment = dept;

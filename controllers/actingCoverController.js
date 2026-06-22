@@ -539,10 +539,17 @@ function dateInLeaveRange(dateStr, leave) {
   return start && end && d >= start && d <= end;
 }
 
+const { resolveEmployeeShift } = require('../services/shiftScheduleService');
+const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
+
 exports.getOrgOverlay = async (req, res) => {
   try {
     const dateStr = String(req.query.date || fmtDate()).slice(0, 10);
     const crew = String(req.query.crew || '').trim();
+
+    const AdminConfig = require('../models/AdminConfig');
+    const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
 
     const userFilter = crew ? { crew } : {};
     const employees = await AdminUser.find(userFilter)
@@ -551,16 +558,19 @@ exports.getOrgOverlay = async (req, res) => {
 
     const onLeave = [];
     for (const emp of employees) {
-      const activeLeave = (emp.leaves || []).find((leave) => dateInLeaveRange(dateStr, leave));
-      if (activeLeave) {
-        onLeave.push({
-          empId: emp.empId,
-          name: emp.name,
-          leaveType: activeLeave.type || 'Planned',
-          start: activeLeave.start,
-          end: activeLeave.end,
-        });
-      }
+      const shift = resolveEmployeeShift(emp, dateStr, { baseDate });
+      if (!shift.onLeave) continue;
+      const leaveType = normalizeLeaveType(shift.leaveType || 'Planned');
+      onLeave.push({
+        empId: emp.empId,
+        name: emp.name,
+        leaveType,
+        isAnnualLeave: isAnnualLeaveType(leaveType),
+        isBankLeave: leaveType === 'Bank Leave',
+        isPlannedLeave: leaveType === 'Planned',
+        start: (emp.leaves || []).find((lv) => dateInLeaveRange(dateStr, lv))?.start,
+        end: (emp.leaves || []).find((lv) => dateInLeaveRange(dateStr, lv))?.end,
+      });
     }
 
     const delegationFilter = {

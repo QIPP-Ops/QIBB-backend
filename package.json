@@ -17,6 +17,7 @@
     "parse:ptw": "node scripts/parse-ptw-excel.js",
     "parse:ops-org": "node scripts/parse-ops-org-chart-html.js",
     "import:ops-org": "node scripts/import-ops-org-chart.js",
+    "seed:ops-org-html": "node scripts/seed-ops-org-html.js",
     "build:crew-calendar": "node scripts/build-crew-calendar-seed.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",
