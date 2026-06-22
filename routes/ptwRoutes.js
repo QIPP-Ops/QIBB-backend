@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const ptwController = require('../controllers/ptwController');
 const ptwDashboardController = require('../controllers/ptwDashboardController');
+const qippEntityController = require('../controllers/qippEntityController');
 const { protect } = require('../middleware/auth');
 const { requirePtwAccess } = require('../middleware/ptwAccess');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
@@ -11,6 +12,26 @@ router.get('/access', protect, ptwController.getMyAccess);
 router.use(protect, requirePtwAccess);
 
 router.get('/dashboard', ptwDashboardController.getDashboard);
+
+// Structured QIPP entities (Phase A)
+router.get('/work-orders', qippEntityController.listWorkOrders);
+router.get('/work-orders/:code', qippEntityController.getWorkOrder);
+router.get('/jhas', qippEntityController.listJhas);
+router.get('/jhas/:code', qippEntityController.getJha);
+router.get('/safety-permits', qippEntityController.listSafetyPermits);
+router.get('/safety-permits/:code', qippEntityController.getSafetyPermit);
+router.get('/isolation-points', qippEntityController.listIsolationPoints);
+router.get('/isolation-points/:code', qippEntityController.getIsolationPoint);
+router.get('/permit-packages', qippEntityController.listPermitPackages);
+router.get('/permit-packages/:packageId', qippEntityController.getPermitPackage);
+router.get('/equipment', qippEntityController.listEquipment);
+router.get('/equipment/:code', qippEntityController.getEquipment);
+router.get('/locations', qippEntityController.listLocations);
+router.get('/locations/:code', qippEntityController.getLocation);
+router.get('/key-safes', qippEntityController.listKeySafes);
+router.get('/key-safes/:code', qippEntityController.getKeySafe);
+router.get('/next-pe-code', qippEntityController.getNextPeCode);
+
 router.get('/', ptwController.getAllPermits);
 router.get('/permits', ptwController.getAllPermits);
 router.post('/', ptwController.createPermit);

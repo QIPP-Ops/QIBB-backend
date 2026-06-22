@@ -5,6 +5,7 @@ const { findPtwPersonForUser, hasAuth } = require('../middleware/ptwAccess');
 const { isSuperAdmin } = require('../middleware/superAdmin');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
+const { nextPeSerialCode } = require('../utils/qippPeSerial');
 
 function pushHistory(permit, entry) {
   if (!permit.history) permit.history = [];
@@ -103,8 +104,17 @@ exports.createPermit = async (req, res) => {
       return res.status(400).json({ message: 'Location and description are required.' });
     }
 
+    const usePeSerial = req.body?.usePeSerial === true;
+    let permitId = workOrderNumber?.trim() || '';
+    if (!permitId && usePeSerial) {
+      permitId = await nextPeSerialCode();
+    }
+    if (!permitId) {
+      permitId = `PTW-${Date.now().toString().slice(-6)}`;
+    }
+
     const permit = new PTW({
-      permitId: workOrderNumber?.trim() || `PTW-${Date.now().toString().slice(-6)}`,
+      permitId,
       type,
       status: 'ready_to_prepare',
       location: location.trim(),

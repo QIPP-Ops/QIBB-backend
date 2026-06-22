@@ -12,6 +12,8 @@
     "seed:employees": "node scripts/seedEmployeeData.js",
     "seed:qipp-leave-data": "node scripts/seed-qipp-leave-data.js",
     "seed:ptw": "node seeders/ptwSeed.js",
+    "import:qipp": "node scripts/import-qipp-prometheus.js",
+    "import:qipp:json": "node scripts/import-qipp-prometheus.js --json-only",
     "parse:ptw": "node scripts/parse-ptw-excel.js",
     "migrate:trend-definitions": "node scripts/migrate-trend-definitions.js",
     "migrate:employee-external-ids": "node scripts/migrate-employee-external-ids.js",
