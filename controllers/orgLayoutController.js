@@ -3,7 +3,6 @@ const AdminUser = require('../models/AdminUser');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { isSuperAdmin, hasPortalAdminAccess } = require('../middleware/superAdmin');
-const { resolveCrewOpsLayoutNodes, nodesParentLinksEqual } = require('../utils/orgLayoutSanitize');
 
 const VALID_CREW_IDS = new Set(['A', 'B', 'C', 'D', 'General', 'S', 'plant']);
 
@@ -23,51 +22,20 @@ function normalizeCrewId(raw) {
   return id;
 }
 
-function sanitizeNodes(nodes) {
-  if (!Array.isArray(nodes)) return [];
-  return nodes
-    .map((node, index) => ({
-      empId: String(node?.empId || '').trim(),
-      parentEmpId: String(node?.parentEmpId || '').trim(),
-      x: Number.isFinite(Number(node?.x)) ? Number(node.x) : 0,
-      y: Number.isFinite(Number(node?.y)) ? Number(node.y) : 0,
-      order: Number.isFinite(Number(node?.order)) ? Number(node.order) : index,
-    }))
-    .filter((node) => node.empId);
-}
-
-function crewMatchQuery(crewId) {
-  if (crewId === 'General') {
-    return { $or: [{ crew: 'General' }, { crew: 'G' }, { crew: /^crew\s*general$/i }] };
+function sanitizeSlots(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const slotKey = String(key || '').trim();
+    if (!slotKey) continue;
+    if (value === null || value === undefined || value === '') {
+      out[slotKey] = null;
+    } else {
+      const empId = String(value).trim();
+      out[slotKey] = empId || null;
+    }
   }
-  if (crewId === 'plant') return {};
-  return {
-    $or: [
-      { crew: crewId },
-      { crew: `Crew ${crewId}` },
-      { crew: new RegExp(`^crew\\s*${crewId}$`, 'i') },
-    ],
-  };
-}
-
-async function memberByIdForCrew(crewId) {
-  if (!crewId || crewId === 'plant' || crewId === 'General') return new Map();
-  const rows = await AdminUser.find(crewMatchQuery(crewId))
-    .select('empId role crew name')
-    .lean();
-  const map = new Map();
-  rows.forEach((row) => {
-    const id = String(row.empId || '').trim();
-    if (id) map.set(id, row);
-  });
-  return map;
-}
-
-async function sanitizeCrewOpsNodes(crewId, nodes) {
-  if (!nodes?.length || crewId === 'General' || crewId === 'plant') return nodes;
-  const memberById = await memberByIdForCrew(crewId);
-  if (!memberById.size) return nodes;
-  return resolveCrewOpsLayoutNodes(memberById, nodes);
+  return out;
 }
 
 async function loadActor(req) {
@@ -85,22 +53,12 @@ exports.getOrgLayout = async (req, res) => {
 
     const doc = await OrgLayout.findOne({ crewId }).lean();
     if (!doc) {
-      return res.json({ crewId, manual: false, nodes: [] });
+      return res.json({ crewId, slots: {} });
     }
-    const rawNodes = doc.nodes || [];
-    const nodes = await sanitizeCrewOpsNodes(crewId, rawNodes);
-    if (
-      doc.manual &&
-      nodes?.length &&
-      rawNodes.length &&
-      !nodesParentLinksEqual(rawNodes, nodes)
-    ) {
-      await OrgLayout.updateOne({ crewId }, { $set: { nodes } });
-    }
+
     res.json({
       crewId: doc.crewId,
-      manual: Boolean(doc.manual),
-      nodes,
+      slots: sanitizeSlots(doc.slots),
       updatedAt: doc.updatedAt,
       updatedByEmail: doc.updatedByEmail || '',
       updatedByName: doc.updatedByName || '',
@@ -120,8 +78,7 @@ exports.patchOrgLayout = async (req, res) => {
     const crewId = normalizeCrewId(req.params.crewId);
     if (!crewId) return res.status(400).json({ message: 'Invalid crew id.' });
 
-    const nodes = await sanitizeCrewOpsNodes(crewId, sanitizeNodes(req.body?.nodes));
-    const manual = req.body?.manual !== false;
+    const slots = sanitizeSlots(req.body?.slots);
     const actor = await loadActor(req);
 
     const before = await OrgLayout.findOne({ crewId }).lean();
@@ -130,8 +87,7 @@ exports.patchOrgLayout = async (req, res) => {
       {
         $set: {
           crewId,
-          manual,
-          nodes,
+          slots,
           updatedByEmail: actor?.email || req.user?.email || '',
           updatedByName: actor?.name || req.user?.email || 'Super Admin',
         },
@@ -152,8 +108,7 @@ exports.patchOrgLayout = async (req, res) => {
 
     res.json({
       crewId: doc.crewId,
-      manual: Boolean(doc.manual),
-      nodes: doc.nodes || [],
+      slots: sanitizeSlots(doc.slots),
       updatedAt: doc.updatedAt,
       updatedByEmail: doc.updatedByEmail || '',
       updatedByName: doc.updatedByName || '',
@@ -188,7 +143,7 @@ exports.resetOrgLayout = async (req, res) => {
       req,
     });
 
-    res.json({ crewId, manual: false, nodes: [] });
+    res.json({ crewId, slots: {} });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

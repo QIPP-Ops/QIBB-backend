@@ -57,35 +57,10 @@ function mockActor(user = {}) {
   });
 }
 
-function mockTarget(overrides = {}) {
-  const target = {
-    empId: '100001',
-    name: 'Crew Member',
-    crew: 'A',
-    toObject: () => ({ empId: '100001', name: 'Crew Member', crew: 'A', ...overrides }),
-    ...overrides,
-  };
-  AdminUser.findOne.mockReturnValue({
-    select: jest.fn().mockResolvedValue(target),
-  });
-  AdminUser.findOneAndUpdate.mockReturnValue({
-    select: jest.fn().mockResolvedValue({ ...target, name: overrides.name || target.name }),
-  });
-  return target;
-}
-
-describe('org layout API', () => {
+describe('org layout API — slot assignments', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActor({ email: SUPER_ADMIN_EMAIL });
-    AdminUser.find.mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue([
-          { empId: '10', role: 'Shift in Charge Engineer', crew: 'A', name: 'SIC' },
-          { empId: '20', role: 'CCR Operator Group 1-2', crew: 'A', name: 'CCR' },
-        ]),
-      }),
-    });
   });
 
   test('GET /api/admin/org-layout/:crewId requires admin', async () => {
@@ -98,19 +73,22 @@ describe('org layout API', () => {
     const res = await request(app)
       .patch('/api/admin/org-layout/A')
       .set('Authorization', `Bearer ${tokenFor({ email: 'ops-admin@acwaops.com' })}`)
-      .send({ nodes: [{ empId: '1', parentEmpId: '' }] });
+      .send({ slots: { sic: '10' } });
     expect(res.status).toBe(403);
   });
 
-  test('super admin can save and fetch org layout', async () => {
+  test('super admin can save and fetch slot assignments', async () => {
+    const savedSlots = {
+      sic: '10',
+      supervisor: '11',
+      'ccr-1-2': '20',
+      'ccr-1-2-local': '21',
+    };
+
     OrgLayout.findOneAndUpdate.mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         crewId: 'A',
-        manual: true,
-        nodes: [
-          { empId: '10', parentEmpId: '', x: 10, y: 10, order: 0 },
-          { empId: '20', parentEmpId: '10', x: 40, y: 120, order: 1 },
-        ],
+        slots: savedSlots,
         updatedByEmail: SUPER_ADMIN_EMAIL,
         updatedByName: 'Super Admin',
       }),
@@ -118,67 +96,44 @@ describe('org layout API', () => {
     OrgLayout.findOne.mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         crewId: 'A',
-        manual: true,
-        nodes: [
-          { empId: '10', parentEmpId: '', x: 10, y: 10, order: 0 },
-          { empId: '20', parentEmpId: '10', x: 40, y: 120, order: 1 },
-        ],
+        slots: savedSlots,
       }),
     });
 
     const patch = await request(app)
       .patch('/api/admin/org-layout/A')
       .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
-      .send({
-        manual: true,
-        nodes: [
-          { empId: '10', parentEmpId: '', x: 10, y: 10, order: 0 },
-          { empId: '20', parentEmpId: '10', x: 40, y: 120, order: 1 },
-        ],
-      });
+      .send({ slots: savedSlots });
     expect(patch.status).toBe(200);
-    expect(patch.body.nodes).toHaveLength(2);
+    expect(patch.body.slots.sic).toBe('10');
+    expect(patch.body.slots['ccr-1-2-local']).toBe('21');
 
     const get = await request(app)
       .get('/api/admin/org-layout/A')
       .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`);
     expect(get.status).toBe(200);
-    expect(get.body.manual).toBe(true);
-    expect(get.body.nodes[1].parentEmpId).toBe('10');
-  });
-});
-
-describe('personnel inline patch', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockActor({ email: 'ops-admin@acwaops.com', crew: 'A' });
+    expect(get.body.slots.supervisor).toBe('11');
   });
 
-  test('crew admin can patch name for same crew', async () => {
-    mockTarget();
-    AdminUser.findOneAndUpdate.mockReturnValue({
-      select: jest.fn().mockResolvedValue({
-        empId: '100001',
-        name: 'Updated Name',
-        crew: 'A',
-        toObject: () => ({ empId: '100001', name: 'Updated Name', crew: 'A' }),
-      }),
+  test('reset clears slot assignments', async () => {
+    OrgLayout.deleteOne.mockResolvedValue({ deletedCount: 1 });
+
+    const res = await request(app)
+      .delete('/api/admin/org-layout/A')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`);
+    expect(res.status).toBe(200);
+    expect(res.body.slots).toEqual({});
+  });
+
+  test('GET returns empty slots when no layout saved', async () => {
+    OrgLayout.findOne.mockReturnValue({
+      lean: jest.fn().mockResolvedValue(null),
     });
 
     const res = await request(app)
-      .patch('/api/personnel/100001')
-      .set('Authorization', `Bearer ${tokenFor({ email: 'ops-admin@acwaops.com', crew: 'A' })}`)
-      .send({ name: 'Updated Name' });
+      .get('/api/admin/org-layout/B')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`);
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('Updated Name');
-  });
-
-  test('crew admin cannot patch role', async () => {
-    mockTarget();
-    const res = await request(app)
-      .patch('/api/personnel/100001')
-      .set('Authorization', `Bearer ${tokenFor({ email: 'ops-admin@acwaops.com', crew: 'A' })}`)
-      .send({ role: 'Management' });
-    expect(res.status).toBe(400);
+    expect(res.body.slots).toEqual({});
   });
 });
