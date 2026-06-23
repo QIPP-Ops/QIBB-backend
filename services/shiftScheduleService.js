@@ -62,10 +62,23 @@ function eachDateInRange(start, end, fn) {
 }
 
 function leaveOnDate(leave, dateStr) {
+  const status = leave?.status || 'approved';
+  if (status === 'rejected') return false;
   const d = parseDateOnly(dateStr);
   const s = parseDateOnly(leave.start);
   const e = parseDateOnly(leave.end);
   return d >= s && d <= e;
+}
+
+function approvedLeaveOnDate(employee, dateStr) {
+  return (employee.leaves || []).find((lv) => {
+    const status = lv.status || 'approved';
+    if (status !== 'approved') return false;
+    const d = parseDateOnly(dateStr);
+    const s = parseDateOnly(lv.start);
+    const e = parseDateOnly(lv.end);
+    return d >= s && d <= e;
+  });
 }
 
 /**
@@ -79,12 +92,14 @@ function resolveEmployeeShift(employee, dateStr, options = {}) {
   const isOverride = overrides.has(oKey);
   const shift = isOverride ? overrides.get(oKey) : rotationShift;
   const leave = (employee.leaves || []).find((lv) => leaveOnDate(lv, dateStr));
+  const leaveStatus = leave ? (leave.status || 'approved') : null;
   return {
     date: dateStr,
     shift,
     rotationShift,
     isOverride,
     onLeave: !!leave,
+    leaveStatus,
     leaveType: leave?.type || null,
     display: leave ? 'L' : shift,
     onDuty: !leave && (shift === 'D' || shift === 'N'),
@@ -146,6 +161,7 @@ function buildRosterSchedule(employees, options = {}) {
       const shift = isOverride ? overrides.get(oKey) : rotationShift;
       const leave = (emp.leaves || []).find((lv) => leaveOnDate(lv, dateStr));
       const style = leave ? leaveStyleFlags(leave.type) : {};
+      const leaveStatus = leave ? (leave.status || 'approved') : null;
       return {
         date: dateStr,
         shift,
@@ -153,6 +169,7 @@ function buildRosterSchedule(employees, options = {}) {
         isOverride,
         onLeave: !!leave,
         leaveId: leave?._id?.toString() || null,
+        leaveStatus,
         leaveType: leave ? style.leaveType || leave.type : null,
         isAnnualLeave: !!leave && style.isAnnualLeave,
         isBankLeave: !!leave && style.isBankLeave,
@@ -188,6 +205,7 @@ function buildRosterSchedule(employees, options = {}) {
     if (isGeneralCrew(row.crew)) return;
     row.cells.forEach((cell) => {
       if (!cell.onLeave || cell.shift === 'O') return;
+      if (cell.leaveStatus && cell.leaveStatus !== 'approved') return;
       const key = `${row.crew}|${cell.date}`;
       if (!byCrewDate[key]) byCrewDate[key] = [];
       byCrewDate[key].push({ empId: row.empId, name: row.name, role: row.role, color: row.color });
@@ -216,6 +234,7 @@ function buildRosterSchedule(employees, options = {}) {
     if (isGeneralCrew(row.crew)) return;
     row.cells.forEach((cell) => {
       if (!cell.onLeave) return;
+      if (cell.leaveStatus && cell.leaveStatus !== 'approved') return;
       const key = `${row.role}|${cell.date}`;
       if (!byRoleDate[key]) byRoleDate[key] = [];
       byRoleDate[key].push({ empId: row.empId, name: row.name, crew: row.crew, color: row.color });
@@ -357,6 +376,7 @@ module.exports = {
   buildRosterSchedule,
   resolveEmployeeShift,
   isEmployeeOnDuty,
+  approvedLeaveOnDate,
   leaveOnDate,
   fmtDate,
   parseDateOnly,

@@ -27,6 +27,20 @@ const {
   buildLeaveUpdatedAuditPayload,
 } = require('../utils/leaveAuditPayload');
 const { canEditLeaveForEmployee } = require('../utils/rosterLeavePermissions');
+const { isSicOrSupervisorRole } = require('../utils/attendancePermissions');
+
+function isSelfServiceLeaveRequest(req, employee) {
+  if (req.user?.empId !== employee.empId) return false;
+  if (hasPortalAdminAccess(req)) return false;
+  if (isSicOrSupervisorRole(req.user?.role || '')) return false;
+  return true;
+}
+
+function canApproveLeave(req) {
+  if (hasPortalAdminAccess(req)) return true;
+  if (req.user?.accessRole === 'management') return true;
+  return isSicOrSupervisorRole(req.user?.role || '');
+}
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -48,6 +62,16 @@ function leaveSpanDays(leave) {
     : daysBetweenInclusive(leave.start, leave.end);
 }
 
+function leaveBalanceSpanDays(leaveData) {
+  if (typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0) {
+    return leaveData.workingDays;
+  }
+  if (typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0) {
+    return leaveData.totalDays;
+  }
+  return daysBetweenInclusive(leaveData.start, leaveData.end);
+}
+
 function normalizeLeaveFields(leaveData) {
   const normalized = { ...leaveData };
   normalized.start = new Date(normalized.start);
@@ -58,9 +82,15 @@ function normalizeLeaveFields(leaveData) {
   return normalized;
 }
 
+function leaveIsBalanceDeducted(leave) {
+  const status = leave?.status || 'approved';
+  return status === 'approved';
+}
+
 function restoreLeaveBalances(user, leave) {
+  if (!leaveIsBalanceDeducted(leave)) return normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
   const leaveType = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
-  const span = leaveSpanDays(leave);
+  const span = leaveBalanceSpanDays(leave);
   if (isAnnualLeaveType(leaveType)) {
     user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
   }
@@ -80,10 +110,7 @@ function restoreLeaveBalances(user, leave) {
 }
 
 function deductLeaveBalances(user, leaveData, leaveTypeStr) {
-  const spanDays =
-    typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
-      ? leaveData.totalDays
-      : daysBetweenInclusive(leaveData.start, leaveData.end);
+  const spanDays = leaveBalanceSpanDays(leaveData);
 
   if (isAnnualLeaveType(leaveTypeStr)) {
     const bal = user.annualLeaveBalance ?? 0;
@@ -274,13 +301,25 @@ exports.addLeave = async (req, res) => {
       return res.status(400).json({ message: 'Leave start and end dates are required.' });
     }
     const leaveTypeStr = leaveData.type;
-    const spanDays = leaveSpanDays(leaveData);
+
+    const overlap = (user.leaves || []).some((lv) => {
+      if (lv.status === 'rejected') return false;
+      return leavesDateRangesOverlap(leaveData.start, leaveData.end, lv.start, lv.end);
+    });
+    if (overlap) {
+      return res.status(409).json({ message: 'Leave period overlaps with an existing booking' });
+    }
+
+    const selfService = isSelfServiceLeaveRequest(req, user);
+    leaveData.status = selfService ? 'pending' : 'approved';
 
     const balancesBefore = snapshotLeaveBalances(user);
 
-    const deductResult = deductLeaveBalances(user, leaveData, leaveTypeStr);
-    if (!deductResult.ok) {
-      return res.status(400).json({ message: deductResult.message });
+    if (!selfService) {
+      const deductResult = deductLeaveBalances(user, leaveData, leaveTypeStr);
+      if (!deductResult.ok) {
+        return res.status(400).json({ message: deductResult.message });
+      }
     }
 
     const delegateId = delegateEmpId || coverEmpId;
@@ -329,16 +368,12 @@ exports.addLeave = async (req, res) => {
     });
 
     try {
-      const { processLeaveSaved } = require('../services/leaveConflictService');
-      const ActingAssignment = require('../models/ActingAssignment');
       const { createDelegationForLeave } = require('./actingCoverController');
-      const employees = await AdminUser.find().select('-passwordHash').lean();
-      const savedLeave = user.leaves[user.leaves.length - 1];
-      const leaveStart = new Date(savedLeave.start).toISOString().slice(0, 10);
-      const leaveEnd = new Date(savedLeave.end).toISOString().slice(0, 10);
-
       const delegateId = delegateEmpId || coverEmpId;
       if (delegateId && delegateUser) {
+        const savedLeave = user.leaves[user.leaves.length - 1];
+        const leaveStart = new Date(savedLeave.start).toISOString().slice(0, 10);
+        const leaveEnd = new Date(savedLeave.end).toISOString().slice(0, 10);
         await createDelegationForLeave({
           req,
           actor,
@@ -351,7 +386,17 @@ exports.addLeave = async (req, res) => {
           notes: delegationNotes || '',
         });
       }
+    } catch (delegationErr) {
+      console.warn('[leave] delegation skipped:', delegationErr.message);
+    }
 
+    try {
+      const { processLeaveSaved } = require('../services/leaveConflictService');
+      const ActingAssignment = require('../models/ActingAssignment');
+      const employees = await AdminUser.find().select('-passwordHash').lean();
+      const savedLeave = user.leaves[user.leaves.length - 1];
+      const leaveStart = new Date(savedLeave.start).toISOString().slice(0, 10);
+      const leaveEnd = new Date(savedLeave.end).toISOString().slice(0, 10);
       const actingAssignments = await ActingAssignment.find({
         crew: user.crew,
         startDate: { $lte: leaveEnd },
@@ -369,6 +414,151 @@ exports.addLeave = async (req, res) => {
 
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+exports.approveLeave = async (req, res) => {
+  const { employeeId, leaveId } = req.params;
+  try {
+    if (!canApproveLeave(req)) {
+      return res.status(403).json({ message: 'You do not have permission to approve leave.' });
+    }
+    const actor = await loadActor(req);
+    const user = await AdminUser.findOne({ empId: employeeId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    const leave = user.leaves.id(leaveId);
+    if (!leave) return res.status(404).json({ message: 'Leave not found.' });
+    const currentStatus = leave.status || 'approved';
+    if (currentStatus === 'approved') {
+      return res.json(user);
+    }
+    if (currentStatus === 'rejected') {
+      return res.status(400).json({ message: 'Rejected leave cannot be approved.' });
+    }
+
+    const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
+    const balancesBefore = snapshotLeaveBalances(user);
+    const deductResult = deductLeaveBalances(user, leave, leaveTypeStr);
+    if (!deductResult.ok) {
+      return res.status(400).json({ message: deductResult.message });
+    }
+
+    leave.status = 'approved';
+    await user.save();
+
+    const startStr = new Date(leave.start).toISOString().slice(0, 10);
+    const endStr = new Date(leave.end).toISOString().slice(0, 10);
+    await logRosterEvent({
+      action: 'LEAVE_APPROVED',
+      actor,
+      target: user,
+      summary: `${user.name} (${user.empId}): leave ${leaveTypeStr} ${startStr} → ${endStr} approved`,
+      metadata: { leaveId, leave: leave.toObject ? leave.toObject() : leave },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_UPDATED,
+      targetType: 'leave',
+      targetId: user.empId,
+      targetName: user.name,
+      after: buildLeaveUpdatedAuditPayload({
+        user,
+        actor,
+        leaveType: leaveTypeStr,
+        dateFrom: startStr,
+        dateTo: endStr,
+        previousType: leaveTypeStr,
+        previousDateFrom: startStr,
+        previousDateTo: endStr,
+        balancesBefore,
+        balancesAfter: snapshotLeaveBalances(user),
+      }),
+      req,
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.rejectLeave = async (req, res) => {
+  const { employeeId, leaveId } = req.params;
+  try {
+    if (!canApproveLeave(req)) {
+      return res.status(403).json({ message: 'You do not have permission to reject leave.' });
+    }
+    const actor = await loadActor(req);
+    const user = await AdminUser.findOne({ empId: employeeId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    const leave = user.leaves.id(leaveId);
+    if (!leave) return res.status(404).json({ message: 'Leave not found.' });
+    const currentStatus = leave.status || 'approved';
+    if (currentStatus === 'rejected') {
+      return res.json(user);
+    }
+
+    const balancesBefore = snapshotLeaveBalances(user);
+    if (currentStatus === 'approved') {
+      restoreLeaveBalances(user, leave);
+    }
+    leave.status = 'rejected';
+    await user.save();
+
+    const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
+    const startStr = new Date(leave.start).toISOString().slice(0, 10);
+    const endStr = new Date(leave.end).toISOString().slice(0, 10);
+    await logRosterEvent({
+      action: 'LEAVE_REJECTED',
+      actor,
+      target: user,
+      summary: `${user.name} (${user.empId}): leave ${leaveTypeStr} ${startStr} → ${endStr} rejected`,
+      metadata: { leaveId, leave: leave.toObject ? leave.toObject() : leave },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_UPDATED,
+      targetType: 'leave',
+      targetId: user.empId,
+      targetName: user.name,
+      after: buildLeaveUpdatedAuditPayload({
+        user,
+        actor,
+        leaveType: leaveTypeStr,
+        dateFrom: startStr,
+        dateTo: endStr,
+        previousType: leaveTypeStr,
+        previousDateFrom: startStr,
+        previousDateTo: endStr,
+        balancesBefore,
+        balancesAfter: snapshotLeaveBalances(user),
+      }),
+      req,
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+exports.setPlantManager = async (req, res) => {
+  try {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Super admin only' });
+    }
+    const { empId } = req.params;
+    const user = await AdminUser.findOneAndUpdate(
+      { empId },
+      { $set: { isPlantManager: Boolean(req.body?.isPlantManager) } },
+      { new: true, runValidators: true }
+    ).select('-passwordHash');
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    res.json({ success: true, data: rosterRowForClient(user) });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
 };
 
 exports.updateLeave = async (req, res) => {
@@ -414,11 +604,18 @@ exports.updateLeave = async (req, res) => {
     }
 
     const balancesBefore = snapshotLeaveBalances(user);
-    restoreLeaveBalances(user, existing);
+    const wasApproved = leaveIsBalanceDeducted(existing);
+    if (wasApproved) {
+      restoreLeaveBalances(user, existing);
+    }
 
-    const deductResult = deductLeaveBalances(user, leaveData, leaveData.type);
+    const deductResult = wasApproved
+      ? deductLeaveBalances(user, leaveData, leaveData.type)
+      : { ok: true };
     if (!deductResult.ok) {
-      deductLeaveBalances(user, existing, previousType);
+      if (wasApproved) {
+        deductLeaveBalances(user, existing, previousType);
+      }
       return res.status(400).json({ message: deductResult.message });
     }
 

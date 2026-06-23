@@ -10,6 +10,7 @@ const {
 } = require('../utils/attendancePermissions');
 const { crewsMatch } = require('../services/actingCoverService');
 const { isSuperAdminUser } = require('../middleware/superAdmin');
+const { approvedLeaveOnDate } = require('../services/shiftScheduleService');
 
 function actorFromReq(req) {
   return {
@@ -25,8 +26,35 @@ function todayStr() {
 
 async function loadEmployee(empId) {
   return AdminUser.findOne({ empId: String(empId).trim() })
-    .select('empId name crew role')
+    .select('empId name crew role leaves')
     .lean();
+}
+
+function applyLeaveDerivedAttendance(employee, date, normalized, existing, req) {
+  const approvedLeave = approvedLeaveOnDate(employee, date);
+  if (!approvedLeave) return normalized;
+
+  if (
+    existing?.derivedFromLeave &&
+    normalized.status !== 'absent' &&
+    !isSuperAdminUser(req)
+  ) {
+    const err = new Error('Attendance is derived from approved leave and cannot be overridden.');
+    err.status = 409;
+    throw err;
+  }
+
+  return {
+    ...normalized,
+    status: 'absent',
+    isLate: false,
+    lateMinutes: 0,
+    isLeftEarly: false,
+    leftEarlyMinutes: 0,
+    remarks:
+      normalized.remarks ||
+      `On leave: ${approvedLeave.type || 'Leave'}`,
+  };
 }
 
 function normalizeRecordBody(body) {
@@ -125,12 +153,16 @@ exports.upsertAttendance = async (req, res) => {
     const actor = actorFromReq(req);
     const existing = await AttendanceRecord.findOne({ empId, date });
 
+    let body = applyLeaveDerivedAttendance(employee, date, normalized, existing, req);
+    const derivedFromLeave = Boolean(approvedLeaveOnDate(employee, date));
+
     let doc;
     if (existing) {
       const before = existing.toObject();
-      Object.assign(existing, normalized, {
+      Object.assign(existing, body, {
         employeeName: employee.name || '',
         crew: employee.crew || '',
+        derivedFromLeave,
       });
       applyLoggedBy(existing, actor);
       doc = await existing.save();
@@ -150,7 +182,8 @@ exports.upsertAttendance = async (req, res) => {
         date,
         employeeName: employee.name || '',
         crew: employee.crew || '',
-        ...normalized,
+        ...body,
+        derivedFromLeave,
         loggedBy: String(actor.id || actor.email || ''),
         loggedByEmail: String(actor.email || '').trim().toLowerCase(),
         loggedAt: new Date(),
@@ -212,13 +245,16 @@ exports.batchUpsertAttendance = async (req, res) => {
 
         const normalized = normalizeRecordBody(row);
         const existing = await AttendanceRecord.findOne({ empId, date });
+        const body = applyLeaveDerivedAttendance(employee, date, normalized, existing, req);
+        const derivedFromLeave = Boolean(approvedLeaveOnDate(employee, date));
         let doc;
 
         if (existing) {
           const before = existing.toObject();
-          Object.assign(existing, normalized, {
+          Object.assign(existing, body, {
             employeeName: employee.name || '',
             crew: employee.crew || '',
+            derivedFromLeave,
           });
           applyLoggedBy(existing, actor);
           doc = await existing.save();
@@ -238,7 +274,8 @@ exports.batchUpsertAttendance = async (req, res) => {
             date,
             employeeName: employee.name || '',
             crew: employee.crew || '',
-            ...normalized,
+            ...body,
+            derivedFromLeave,
             loggedBy: String(actor.id || actor.email || ''),
             loggedByEmail: String(actor.email || '').trim().toLowerCase(),
             loggedAt: new Date(),
@@ -292,7 +329,13 @@ exports.patchAttendance = async (req, res) => {
 
     const before = existing.toObject();
     const normalized = normalizeRecordBody({ ...existing.toObject(), ...req.body });
-    Object.assign(existing, normalized);
+    const body = employee
+      ? applyLeaveDerivedAttendance(employee, existing.date, normalized, existing, req)
+      : normalized;
+    const derivedFromLeave = employee
+      ? Boolean(approvedLeaveOnDate(employee, existing.date))
+      : existing.derivedFromLeave;
+    Object.assign(existing, body, { derivedFromLeave });
     if (employee) {
       existing.employeeName = employee.name || existing.employeeName;
       existing.crew = employee.crew || existing.crew;
@@ -346,5 +389,93 @@ exports.deleteAttendance = async (req, res) => {
     res.json({ success: true, message: 'Attendance record deleted.' });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message || 'Failed to delete attendance.' });
+  }
+};
+
+exports.syncAttendanceFromLeave = async (req, res) => {
+  try {
+    if (!canLogAttendance(req) && !isSuperAdminUser(req)) {
+      return res.status(403).json({ message: 'Only supervisors, shift in charge, or super admin may sync attendance.' });
+    }
+
+    const date = String(req.query.date || todayStr()).trim();
+    const actor = actorFromReq(req);
+    const employees = await AdminUser.find({ 'leaves.0': { $exists: true } })
+      .select('empId name crew leaves')
+      .lean();
+
+    let created = 0;
+    let updated = 0;
+
+    for (const employee of employees) {
+      const approvedLeave = approvedLeaveOnDate(employee, date);
+      if (!approvedLeave) continue;
+
+      if (!canEditAttendanceForEmployee(req, employee)) continue;
+
+      const existing = await AttendanceRecord.findOne({ empId: employee.empId, date });
+      const body = {
+        status: 'absent',
+        isLate: false,
+        lateMinutes: 0,
+        isLeftEarly: false,
+        leftEarlyMinutes: 0,
+        remarks: `On leave: ${approvedLeave.type || 'Leave'}`,
+      };
+
+      if (existing) {
+        if (existing.derivedFromLeave && existing.status === 'absent') continue;
+        const before = existing.toObject();
+        Object.assign(existing, body, {
+          employeeName: employee.name || '',
+          crew: employee.crew || '',
+          derivedFromLeave: true,
+        });
+        applyLoggedBy(existing, actor);
+        await existing.save();
+        await logAction({
+          actor,
+          action: AUDIT_ACTIONS.ATTENDANCE_UPDATED,
+          targetType: 'attendance',
+          targetId: existing._id,
+          targetName: `${employee.empId} ${date}`,
+          before,
+          after: existing.toObject(),
+          req,
+        });
+        updated += 1;
+      } else {
+        const doc = await AttendanceRecord.create({
+          empId: employee.empId,
+          date,
+          employeeName: employee.name || '',
+          crew: employee.crew || '',
+          ...body,
+          derivedFromLeave: true,
+          loggedBy: String(actor.id || actor.email || ''),
+          loggedByEmail: String(actor.email || '').trim().toLowerCase(),
+          loggedAt: new Date(),
+        });
+        await logAction({
+          actor,
+          action: AUDIT_ACTIONS.ATTENDANCE_RECORDED,
+          targetType: 'attendance',
+          targetId: doc._id,
+          targetName: `${employee.empId} ${date}`,
+          before: null,
+          after: doc.toObject(),
+          req,
+        });
+        created += 1;
+      }
+    }
+
+    res.json({
+      success: true,
+      data: { date, created, updated },
+      message: `Synced attendance from leave for ${date}: ${created} created, ${updated} updated.`,
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message || 'Failed to sync attendance from leave.' });
   }
 };

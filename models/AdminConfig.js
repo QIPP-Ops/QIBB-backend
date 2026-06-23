@@ -54,7 +54,7 @@ const AdminConfigSchema = new mongoose.Schema({
   editingLocked:  { type: Boolean, default: false },
   availableCrews: {
     type: [String],
-    default: ['A', 'B', 'C', 'D', 'General', 'S']
+    default: ['A', 'B', 'C', 'D', 'General']
   },
   availableRoles: {
     type: [String],
@@ -65,7 +65,6 @@ const AdminConfigSchema = new mongoose.Schema({
       'CCR Operator',
       'Local Operator',
       'Field Operator',
-      'Filed Operator',
       'Management',
       'Operations Support'
     ]

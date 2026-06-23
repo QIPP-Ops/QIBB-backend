@@ -8,6 +8,7 @@ const LeaveSchema = new mongoose.Schema({
   'open-ended': {},
   workingDays: { type: Number },
   totalDays:   { type: Number },
+  status:      { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved' },
 });
 
 const KpiGoalSchema = new mongoose.Schema({
@@ -67,6 +68,8 @@ const AdminUserSchema = new mongoose.Schema({
   annualLeaveCap: { type: Number, default: null },
   bankLeaveCap: { type: Number, default: null },
   lastLeaveAccrualDate: { type: Date, default: null },
+  /** When true, user has plant manager privileges (KPI final approval, etc.). */
+  isPlantManager:    { type: Boolean, default: false },
   isApproved:        { type: Boolean, default: false },
   /** When false, login is blocked (super-admin revoke). Defaults true for existing users. */
   isActive:          { type: Boolean, default: true },

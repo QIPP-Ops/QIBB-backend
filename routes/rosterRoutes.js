@@ -45,6 +45,8 @@ router.get('/personnel-directory', protect, admin, c.getPersonnelDirectory);
 
 router.patch('/:empId/personnel-profile', protect, admin, c.patchPersonnelProfile);
 
+router.patch('/:empId/set-plant-manager', protect, requireSuperAdmin, c.setPlantManager);
+
 router.post('/', protect, admin, c.createEmployee);
 
 router.put('/:empId', protect, c.updateEmployee);
@@ -52,6 +54,9 @@ router.put('/:empId', protect, c.updateEmployee);
 router.delete('/:empId', protect, requireSuperAdmin, c.deleteEmployee);
 
 router.post('/leave', protect, checkEditingLock, c.addLeave);
+
+router.patch('/leave/:employeeId/:leaveId/approve', protect, checkEditingLock, c.approveLeave);
+router.patch('/leave/:employeeId/:leaveId/reject', protect, checkEditingLock, c.rejectLeave);
 
 router.patch('/leave/:employeeId/:leaveId', protect, checkEditingLock, c.updateLeave);
 

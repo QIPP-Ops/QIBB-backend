@@ -19,6 +19,7 @@ const AttendanceRecordSchema = new mongoose.Schema(
     loggedBy: { type: String, default: '' },
     loggedByEmail: { type: String, default: '' },
     loggedAt: { type: Date, default: null },
+    derivedFromLeave: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
