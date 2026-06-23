@@ -115,13 +115,15 @@ describe('org layout API — slot assignments', () => {
     expect(get.body.slots.supervisor).toBe('11');
   });
 
-  test('super admin can save dynamic slot metadata', async () => {
+  test('super admin can save dynamic slot metadata with placement', async () => {
     const savedSlots = {
       sic: '10',
-      'ccr-1-2-extra-1': {
+      'dyn-1': {
         empId: '25',
         role: 'Field Operator',
         groupLabel: 'GR #1-2',
+        parentSlotKey: 'ccr-1-2-local',
+        direction: 'right',
       },
     };
 
@@ -145,10 +147,12 @@ describe('org layout API — slot assignments', () => {
       .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
       .send({ slots: savedSlots });
     expect(patch.status).toBe(200);
-    expect(patch.body.slots['ccr-1-2-extra-1']).toEqual({
+    expect(patch.body.slots['dyn-1']).toEqual({
       empId: '25',
       role: 'Field Operator',
       groupLabel: 'GR #1-2',
+      parentSlotKey: 'ccr-1-2-local',
+      direction: 'right',
     });
   });
 

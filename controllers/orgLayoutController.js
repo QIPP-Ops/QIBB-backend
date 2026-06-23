@@ -38,9 +38,17 @@ function sanitizeSlotValue(value) {
     }
     const role = value.role != null ? String(value.role).trim() : '';
     const groupLabel = value.groupLabel != null ? String(value.groupLabel).trim() : '';
+    const parentSlotKey = value.parentSlotKey != null ? String(value.parentSlotKey).trim() : '';
+    const directionRaw = value.direction != null ? String(value.direction).trim() : '';
+    const direction =
+      directionRaw === 'above' || directionRaw === 'below' || directionRaw === 'left' || directionRaw === 'right'
+        ? directionRaw
+        : '';
     const out = { empId };
     if (role) out.role = role;
     if (groupLabel) out.groupLabel = groupLabel;
+    if (parentSlotKey) out.parentSlotKey = parentSlotKey;
+    if (direction) out.direction = direction;
     return out;
   }
   return null;
