@@ -151,6 +151,7 @@ app.use('/api/kpi', personnelKpiRoutes);
 app.use('/api/kpi-goals', kpiGoalsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/portal-backgrounds', require('./routes/portalBackgroundRoutes'));
+app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
 app.use((_req, res) => {
   res.status(404).json({ message: 'Route not found.' });

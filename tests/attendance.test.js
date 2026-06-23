@@ -1,0 +1,305 @@
+jest.mock('../models/AdminUser', () => ({
+  findOne: jest.fn(),
+}));
+
+jest.mock('../models/AttendanceRecord', () => ({
+  find: jest.fn(),
+  findOne: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+}));
+
+jest.mock('../services/auditLogService', () => ({
+  logAction: jest.fn().mockResolvedValue(undefined),
+}));
+
+const jwt = require('jsonwebtoken');
+const request = require('supertest');
+const AdminUser = require('../models/AdminUser');
+const AttendanceRecord = require('../models/AttendanceRecord');
+const { logAction } = require('../services/auditLogService');
+const { buildJwtPayload } = require('../utils/jwtAuth');
+
+process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
+process.env.COSMOS_URI = 'mongodb://localhost:27017/qipp-test';
+process.env.SUPER_ADMIN_EMAIL = 'admin@acwaops.com';
+
+const app = require('../app');
+
+const crewAEmployee = {
+  _id: '507f1f77bcf86cd799439011',
+  empId: 'EMP-100',
+  name: 'Test Operator',
+  crew: 'A',
+  role: 'CCR Operator',
+};
+
+const crewBEmployee = {
+  _id: '507f1f77bcf86cd799439012',
+  empId: 'EMP-200',
+  name: 'Other Operator',
+  crew: 'B',
+  role: 'CCR Operator',
+};
+
+function tokenFor(overrides = {}) {
+  const user = {
+    _id: overrides.id || '507f1f77bcf86cd799439099',
+    email: overrides.email || 'supervisor@acwapower.com',
+    name: overrides.name || 'Supervisor User',
+    accessRole: overrides.accessRole || 'viewer',
+    crew: overrides.crew || 'A',
+    empId: overrides.empId || 'EMP-SUP',
+    role: overrides.jobRole || 'Supervisor',
+    ...overrides,
+  };
+  return jwt.sign(buildJwtPayload(user), process.env.JWT_SECRET, { expiresIn: '1h' });
+}
+
+function mockFindChain(rows = []) {
+  return {
+    sort: jest.fn().mockReturnValue({
+      lean: jest.fn().mockResolvedValue(rows),
+    }),
+  };
+}
+
+describe('attendance API', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    AttendanceRecord.find.mockImplementation(() => mockFindChain([]));
+  });
+
+  test('GET /api/attendance requires auth', async () => {
+    const res = await request(app).get('/api/attendance?date=2026-06-23&crew=A');
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /api/attendance allows supervisor to list own crew', async () => {
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .get('/api/attendance?date=2026-06-23&crew=A')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(AttendanceRecord.find).toHaveBeenCalled();
+  });
+
+  test('GET /api/attendance rejects supervisor for other crew', async () => {
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .get('/api/attendance?date=2026-06-23&crew=B')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('GET /api/attendance allows member to view own records', async () => {
+    const token = tokenFor({
+      jobRole: 'CCR Operator',
+      crew: 'A',
+      empId: 'EMP-100',
+      email: 'operator@acwapower.com',
+    });
+    const res = await request(app)
+      .get('/api/attendance?date=2026-06-23&empId=EMP-100')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+  });
+
+  test('GET /api/attendance rejects member viewing other empId', async () => {
+    const token = tokenFor({
+      jobRole: 'CCR Operator',
+      crew: 'A',
+      empId: 'EMP-100',
+      email: 'operator@acwapower.com',
+    });
+    const res = await request(app)
+      .get('/api/attendance?date=2026-06-23&empId=EMP-OTHER')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('POST /api/attendance creates record for supervisor same crew', async () => {
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(crewAEmployee),
+      }),
+    });
+    AttendanceRecord.findOne.mockResolvedValue(null);
+    AttendanceRecord.create.mockResolvedValue({
+      _id: 'att-1',
+      empId: 'EMP-100',
+      date: '2026-06-23',
+      crew: 'A',
+      status: 'present',
+      toObject: () => ({ empId: 'EMP-100', date: '2026-06-23', status: 'present' }),
+    });
+
+    const token = tokenFor({ jobRole: 'Shift in Charge', crew: 'A' });
+    const res = await request(app)
+      .post('/api/attendance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        empId: 'EMP-100',
+        date: '2026-06-23',
+        status: 'present',
+        isLate: true,
+        lateMinutes: 15,
+        remarks: 'Traffic',
+      });
+
+    expect(res.status).toBe(201);
+    expect(AttendanceRecord.create).toHaveBeenCalled();
+    expect(logAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'ATTENDANCE_RECORDED' })
+    );
+  });
+
+  test('POST /api/attendance rejects supervisor for other crew employee', async () => {
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(crewBEmployee),
+      }),
+    });
+
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .post('/api/attendance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ empId: 'EMP-200', date: '2026-06-23', status: 'absent' });
+
+    expect(res.status).toBe(403);
+  });
+
+  test('POST /api/attendance rejects regular operator', async () => {
+    const token = tokenFor({ jobRole: 'CCR Operator', crew: 'A', empId: 'EMP-100' });
+    const res = await request(app)
+      .post('/api/attendance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ empId: 'EMP-100', date: '2026-06-23', status: 'present' });
+
+    expect(res.status).toBe(403);
+  });
+
+  test('POST /api/attendance/batch saves multiple rows', async () => {
+    AdminUser.findOne.mockImplementation(({ empId }) => ({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(
+          empId === 'EMP-100' ? crewAEmployee : { ...crewAEmployee, empId: 'EMP-101', _id: 'x2' }
+        ),
+      }),
+    }));
+    AttendanceRecord.findOne.mockResolvedValue(null);
+    AttendanceRecord.create.mockImplementation((doc) =>
+      Promise.resolve({
+        ...doc,
+        _id: `att-${doc.empId}`,
+        toObject: () => doc,
+      })
+    );
+
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .post('/api/attendance/batch')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        date: '2026-06-23',
+        records: [
+          { empId: 'EMP-100', status: 'present' },
+          { empId: 'EMP-101', status: 'absent', remarks: 'Sick' },
+        ],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.saved).toHaveLength(2);
+    expect(AttendanceRecord.create).toHaveBeenCalledTimes(2);
+  });
+
+  test('PATCH /api/attendance/:id updates record', async () => {
+    const existing = {
+      _id: 'att-1',
+      empId: 'EMP-100',
+      date: '2026-06-23',
+      crew: 'A',
+      status: 'present',
+      isLate: false,
+      lateMinutes: 0,
+      isLeftEarly: false,
+      leftEarlyMinutes: 0,
+      remarks: '',
+      toObject() {
+        return {
+          _id: this._id,
+          empId: this.empId,
+          date: this.date,
+          crew: this.crew,
+          status: this.status,
+          isLate: this.isLate,
+          lateMinutes: this.lateMinutes,
+          isLeftEarly: this.isLeftEarly,
+          leftEarlyMinutes: this.leftEarlyMinutes,
+          remarks: this.remarks,
+        };
+      },
+      save: jest.fn().mockImplementation(function saveMock() {
+        return Promise.resolve(this);
+      }),
+    };
+    AttendanceRecord.findById.mockResolvedValue(existing);
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(crewAEmployee),
+      }),
+    });
+
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .patch('/api/attendance/att-1')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'partial', isLeftEarly: true, leftEarlyMinutes: 30 });
+
+    expect(res.status).toBe(200);
+    expect(existing.save).toHaveBeenCalled();
+    expect(logAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'ATTENDANCE_UPDATED' })
+    );
+  });
+
+  test('DELETE /api/attendance/:id requires super admin', async () => {
+    const existing = {
+      _id: 'att-1',
+      empId: 'EMP-100',
+      date: '2026-06-23',
+      toObject: () => ({ empId: 'EMP-100', date: '2026-06-23' }),
+      deleteOne: jest.fn().mockResolvedValue(undefined),
+    };
+    AttendanceRecord.findById.mockResolvedValue(existing);
+
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .delete('/api/attendance/att-1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('DELETE /api/attendance/:id allows super admin', async () => {
+    const existing = {
+      _id: 'att-1',
+      empId: 'EMP-100',
+      date: '2026-06-23',
+      toObject: () => ({ empId: 'EMP-100', date: '2026-06-23' }),
+      deleteOne: jest.fn().mockResolvedValue(undefined),
+    };
+    AttendanceRecord.findById.mockResolvedValue(existing);
+
+    const token = tokenFor({ email: 'admin@acwaops.com', jobRole: 'Management', crew: 'S' });
+    const res = await request(app)
+      .delete('/api/attendance/att-1')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(existing.deleteOne).toHaveBeenCalled();
+    expect(logAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'ATTENDANCE_DELETED' })
+    );
+  });
+});
