@@ -12,6 +12,7 @@ const {
 } = require('../services/emailHtmlHelpers');
 const { getFrontendBaseUrl } = require('../config/frontendUrl');
 const { isPlaceholderEmail } = require('../utils/placeholderEmail');
+const { isGeneralCrew } = require('../utils/rosterRowSort');
 const {
   ROLE_LABELS,
   crewsMatch,
@@ -656,6 +657,12 @@ exports.resolveConflictDelegation = async (req, res) => {
     ]);
     if (!absent) return res.status(404).json({ message: 'Absent employee not found.' });
     if (!cover) return res.status(404).json({ message: 'Delegate not found.' });
+
+    if (isGeneralCrew(absent.crew) || isGeneralCrew(cover.crew) || isGeneralCrew(crew)) {
+      return res.status(400).json({
+        message: 'General crew members are not included in schedule conflict rules.',
+      });
+    }
 
     if (!crewsMatch(absent.crew, crew)) {
       return res.status(400).json({ message: 'Absent employee must belong to the specified crew.' });

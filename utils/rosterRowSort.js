@@ -30,6 +30,10 @@ function groupSortKey(emp) {
   return 99;
 }
 
+function isGeneralCrew(crew) {
+  return normCrew(crew) === 'General';
+}
+
 function crewSectionIndex(crew) {
   const n = normCrew(crew);
   const idx = CREW_SECTION_ORDER.indexOf(n);
@@ -53,6 +57,7 @@ function sortRosterEmployees(employees) {
 
 module.exports = {
   normCrew,
+  isGeneralCrew,
   roleRank,
   groupSortKey,
   crewSectionIndex,

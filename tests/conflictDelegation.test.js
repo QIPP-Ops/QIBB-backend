@@ -173,6 +173,43 @@ describe('conflict delegation', () => {
     expect(res.status).toBe(403);
   });
 
+  test('rejects conflict delegation for General crew members', async () => {
+    AdminUser.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'G1',
+          name: 'General Staff',
+          crew: 'General',
+          role: 'Chemist',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'A2',
+          name: 'Cover Staff',
+          crew: 'A',
+          role: 'CCR Operator',
+        }),
+      });
+
+    const res = await request(app)
+      .post('/api/roster/delegations/resolve-conflict')
+      .set(
+        'Authorization',
+        `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL, empId: 'SA-1', crew: 'A', role: 'admin', accessRole: 'admin' })}`
+      )
+      .send({
+        absentEmpId: 'G1',
+        coverEmpId: 'A2',
+        crew: 'General',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/General crew/i);
+  });
+
   test('approved conflict delegation clears schedule conflict', () => {
     const conflicts = [
       {

@@ -96,7 +96,7 @@ function isEmployeeOnDuty(employee, dateStr, options = {}) {
 }
 
 const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
-const { sortRosterEmployees } = require('../utils/rosterRowSort');
+const { sortRosterEmployees, isGeneralCrew } = require('../utils/rosterRowSort');
 
 function leaveStyleFlags(type) {
   const t = normalizeLeaveType(type);
@@ -185,6 +185,7 @@ function buildRosterSchedule(employees, options = {}) {
   const byCrewDate = {};
 
   rows.forEach((row) => {
+    if (isGeneralCrew(row.crew)) return;
     row.cells.forEach((cell) => {
       if (!cell.onLeave || cell.shift === 'O') return;
       const key = `${row.crew}|${cell.date}`;
@@ -212,6 +213,7 @@ function buildRosterSchedule(employees, options = {}) {
   // Cross-crew: same role coverage on a day (e.g. two CCR on leave same day)
   const byRoleDate = {};
   rows.forEach((row) => {
+    if (isGeneralCrew(row.crew)) return;
     row.cells.forEach((cell) => {
       if (!cell.onLeave) return;
       const key = `${row.role}|${cell.date}`;
@@ -298,14 +300,16 @@ function buildRosterSchedule(employees, options = {}) {
     return suggestions;
   });
 
+  const actionableConflicts = filterGeneralCrewConflicts(conflicts);
+
   return {
     startDate: fmtDate(start),
     endDate: fmtDate(end),
     baseDate,
     dates,
     rows,
-    conflicts,
-    conflictCount: conflicts.length,
+    conflicts: actionableConflicts,
+    conflictCount: actionableConflicts.length,
     coverage,
     legend: {
       D: 'Day shift',
@@ -322,10 +326,28 @@ function userCanAccessOpsTools(dbUser) {
   return MANAGEMENT_JOB_ROLES.has(dbUser.role);
 }
 
+/** True when a conflict involves General crew (General / general / G). */
+function conflictInvolvesGeneralCrew(conflict) {
+  const crewField = String(conflict.crew || '');
+  if (crewField.includes('/')) {
+    if (crewField.split('/').some((c) => isGeneralCrew(c))) return true;
+  } else if (isGeneralCrew(crewField)) {
+    return true;
+  }
+  return (conflict.employees || []).some((e) => e.crew && isGeneralCrew(e.crew));
+}
+
+/** Drop conflicts that involve General crew — they are not subject to conflict rules. */
+function filterGeneralCrewConflicts(conflicts) {
+  return (conflicts || []).filter((c) => !conflictInvolvesGeneralCrew(c));
+}
+
 /** Keep conflicts on today or future dates only (past dates are no longer actionable). */
 function filterActiveConflicts(conflicts, refDate = new Date()) {
   const today = fmtDate(refDate);
-  return (conflicts || []).filter((c) => String(c.date || '').slice(0, 10) >= today);
+  return filterGeneralCrewConflicts(
+    (conflicts || []).filter((c) => String(c.date || '').slice(0, 10) >= today)
+  );
 }
 
 module.exports = {
@@ -340,5 +362,8 @@ module.exports = {
   parseDateOnly,
   userCanAccessOpsTools,
   filterActiveConflicts,
+  filterGeneralCrewConflicts,
+  conflictInvolvesGeneralCrew,
+  isGeneralCrew,
   MANAGEMENT_JOB_ROLES,
 };
