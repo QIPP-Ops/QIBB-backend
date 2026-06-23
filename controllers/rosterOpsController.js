@@ -111,6 +111,17 @@ exports.getSchedule = async (req, res) => {
       ({ start, end } = leaveTimesheetDefaultRange());
     }
 
+    if (end < start) {
+      return res.status(400).json({ message: 'End date must be on or after start date.' });
+    }
+    const spanDays = Math.floor((end - start) / 86400000) + 1;
+    const MAX_SCHEDULE_RANGE_DAYS = 580;
+    if (spanDays > MAX_SCHEDULE_RANGE_DAYS) {
+      return res.status(400).json({
+        message: `Date range is too large (${spanDays} days). Maximum is ${MAX_SCHEDULE_RANGE_DAYS} days per request.`,
+      });
+    }
+
     const schedule = await buildSchedulePayload(start, end);
     res.json({ success: true, data: scheduleForClient(schedule, req) });
   } catch (err) {
