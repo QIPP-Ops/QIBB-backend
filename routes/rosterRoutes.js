@@ -51,6 +51,8 @@ router.delete('/:empId', protect, requireSuperAdmin, c.deleteEmployee);
 
 router.post('/leave', protect, checkEditingLock, c.addLeave);
 
+router.patch('/leave/:employeeId/:leaveId', protect, checkEditingLock, c.updateLeave);
+
 router.delete('/leave/:employeeId/:leaveId', protect, checkEditingLock, c.removeLeave);
 
 router.patch('/:empId/compensate-balance', protect, c.patchCompensateBalance);

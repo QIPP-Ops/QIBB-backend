@@ -152,10 +152,12 @@ function buildRosterSchedule(employees, options = {}) {
         rotationShift,
         isOverride,
         onLeave: !!leave,
+        leaveId: leave?._id?.toString() || null,
         leaveType: leave ? style.leaveType || leave.type : null,
         isAnnualLeave: !!leave && style.isAnnualLeave,
         isBankLeave: !!leave && style.isBankLeave,
         isPlannedLeave: !!leave && style.isPlannedLeave,
+        appliedOnSap: leave ? leave.appliedOnSap === true : false,
         display: leave ? 'L' : shift,
       };
     });

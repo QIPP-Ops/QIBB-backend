@@ -24,7 +24,9 @@ const {
   snapshotLeaveBalances,
   buildLeaveAppliedAuditPayload,
   buildLeaveRemovedAuditPayload,
+  buildLeaveUpdatedAuditPayload,
 } = require('../utils/leaveAuditPayload');
+const { canEditLeaveForEmployee } = require('../utils/rosterLeavePermissions');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -38,6 +40,100 @@ function calendarDaysInclusive(start, end) {
   e.setHours(0, 0, 0, 0);
   if (e < s) return 0;
   return Math.floor((e - s) / 86400000) + 1;
+}
+
+function leaveSpanDays(leave) {
+  return typeof leave.totalDays === 'number' && leave.totalDays > 0
+    ? leave.totalDays
+    : daysBetweenInclusive(leave.start, leave.end);
+}
+
+function normalizeLeaveFields(leaveData) {
+  const normalized = { ...leaveData };
+  normalized.start = new Date(normalized.start);
+  normalized.end = new Date(normalized.end);
+  normalized.appliedOnSap = normalized.appliedOnSap === true;
+  const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(normalized.type || 'Planned'));
+  normalized.type = leaveTypeStr;
+  return normalized;
+}
+
+function restoreLeaveBalances(user, leave) {
+  const leaveType = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
+  const span = leaveSpanDays(leave);
+  if (isAnnualLeaveType(leaveType)) {
+    user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
+  }
+  if (isBankLeaveType(leaveType)) {
+    user.bankLeaveBalance = Math.round(((user.bankLeaveBalance ?? 0) + span) * 10000) / 10000;
+  }
+  if (isCompensateLeaveType(leaveType)) {
+    const compSpan =
+      typeof leave.workingDays === 'number' && leave.workingDays > 0
+        ? leave.workingDays
+        : typeof leave.totalDays === 'number' && leave.totalDays > 0
+          ? leave.totalDays
+          : calendarDaysInclusive(leave.start, leave.end);
+    user.compensateDayBalance = (user.compensateDayBalance ?? 0) + compSpan;
+  }
+  return leaveType;
+}
+
+function deductLeaveBalances(user, leaveData, leaveTypeStr) {
+  const spanDays =
+    typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
+      ? leaveData.totalDays
+      : daysBetweenInclusive(leaveData.start, leaveData.end);
+
+  if (isAnnualLeaveType(leaveTypeStr)) {
+    const bal = user.annualLeaveBalance ?? 0;
+    if (bal < spanDays) {
+      return {
+        ok: false,
+        message: `Insufficient annual leave balance (${bal} available, ${spanDays} required).`,
+      };
+    }
+    user.annualLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+  }
+  if (isBankLeaveType(leaveTypeStr)) {
+    const bal = user.bankLeaveBalance ?? 0;
+    if (bal < spanDays) {
+      return {
+        ok: false,
+        message: `Insufficient bank leave balance (${bal} available, ${spanDays} required).`,
+      };
+    }
+    user.bankLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+  }
+  if (isCompensateLeaveType(leaveTypeStr)) {
+    const span =
+      typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0
+        ? leaveData.workingDays
+        : typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
+          ? leaveData.totalDays
+          : calendarDaysInclusive(leaveData.start, leaveData.end);
+    const bal = user.compensateDayBalance ?? 0;
+    if (bal < span) {
+      return {
+        ok: false,
+        message: `Insufficient compensate-day balance (${bal} available, ${span} required).`,
+      };
+    }
+    user.compensateDayBalance = bal - span;
+  }
+  return { ok: true };
+}
+
+function leavesDateRangesOverlap(aStart, aEnd, bStart, bEnd) {
+  const s1 = new Date(aStart);
+  const e1 = new Date(aEnd);
+  const s2 = new Date(bStart);
+  const e2 = new Date(bEnd);
+  s1.setHours(0, 0, 0, 0);
+  e1.setHours(0, 0, 0, 0);
+  s2.setHours(0, 0, 0, 0);
+  e2.setHours(0, 0, 0, 0);
+  return s1 <= e2 && s2 <= e1;
 }
 
 function rosterRowForClient(doc) {
@@ -169,60 +265,22 @@ exports.addLeave = async (req, res) => {
     const user = await AdminUser.findOne({ empId: targetId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
-    const isAdmin = hasPortalAdminAccess(req);
-    if (!isAdmin && actor && actor.empId !== targetId) {
+    if (!canEditLeaveForEmployee(req, user)) {
       return res.status(403).json({ message: 'You can only apply leave for your own account.' });
     }
 
-    const leaveData = leave || { start, end, type, workingDays, totalDays, appliedOnSap };
+    const leaveData = normalizeLeaveFields(leave || { start, end, type, workingDays, totalDays, appliedOnSap });
     if (!leaveData.start || !leaveData.end) {
       return res.status(400).json({ message: 'Leave start and end dates are required.' });
     }
-    leaveData.start = new Date(leaveData.start);
-    leaveData.end = new Date(leaveData.end);
-    leaveData.appliedOnSap = leaveData.appliedOnSap === true;
-    const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(leaveData.type || 'Planned'));
-    leaveData.type = leaveTypeStr;
-    const spanDays =
-      typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
-        ? leaveData.totalDays
-        : daysBetweenInclusive(leaveData.start, leaveData.end);
+    const leaveTypeStr = leaveData.type;
+    const spanDays = leaveSpanDays(leaveData);
 
     const balancesBefore = snapshotLeaveBalances(user);
 
-    if (isAnnualLeaveType(leaveTypeStr)) {
-      const bal = user.annualLeaveBalance ?? 0;
-      if (bal < spanDays) {
-        return res.status(400).json({
-          message: `Insufficient annual leave balance (${bal} available, ${spanDays} required).`,
-        });
-      }
-      user.annualLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
-    }
-    if (isBankLeaveType(leaveTypeStr)) {
-      const bal = user.bankLeaveBalance ?? 0;
-      if (bal < spanDays) {
-        return res.status(400).json({
-          message: `Insufficient bank leave balance (${bal} available, ${spanDays} required).`,
-        });
-      }
-      user.bankLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
-    }
-
-    if (isCompensateLeaveType(leaveTypeStr)) {
-      const span =
-        typeof leaveData.workingDays === 'number' && leaveData.workingDays > 0
-          ? leaveData.workingDays
-          : typeof leaveData.totalDays === 'number' && leaveData.totalDays > 0
-            ? leaveData.totalDays
-            : calendarDaysInclusive(leaveData.start, leaveData.end);
-      const bal = user.compensateDayBalance ?? 0;
-      if (bal < span) {
-        return res.status(400).json({
-          message: `Insufficient compensate-day balance (${bal} available, ${span} required).`,
-        });
-      }
-      user.compensateDayBalance = bal - span;
+    const deductResult = deductLeaveBalances(user, leaveData, leaveTypeStr);
+    if (!deductResult.ok) {
+      return res.status(400).json({ message: deductResult.message });
     }
 
     const delegateId = delegateEmpId || coverEmpId;
@@ -310,6 +368,127 @@ exports.addLeave = async (req, res) => {
     }
 
     res.status(201).json(user);
+  } catch (error) { res.status(400).json({ message: error.message }); }
+};
+
+exports.updateLeave = async (req, res) => {
+  const { employeeId, leaveId } = req.params;
+  const { start, end, type, workingDays, totalDays, appliedOnSap } = req.body;
+  try {
+    const actor = await loadActor(req);
+    const user = await AdminUser.findOne({ empId: employeeId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+
+    if (!canEditLeaveForEmployee(req, user)) {
+      return res.status(403).json({ message: 'You do not have permission to edit leave for this employee.' });
+    }
+
+    const existing = user.leaves.id(leaveId);
+    if (!existing) return res.status(404).json({ message: 'Leave not found.' });
+
+    const previousType = normalizeLeaveType(normalizeCompensateLeaveType(existing.type || 'Planned'));
+    const previousStartStr = new Date(existing.start).toISOString().slice(0, 10);
+    const previousEndStr = new Date(existing.end).toISOString().slice(0, 10);
+
+    const leaveData = normalizeLeaveFields({
+      start: start ?? existing.start,
+      end: end ?? existing.end,
+      type: type ?? existing.type,
+      workingDays: workingDays ?? existing.workingDays,
+      totalDays: totalDays ?? existing.totalDays,
+      appliedOnSap: appliedOnSap ?? existing.appliedOnSap,
+    });
+    if (!leaveData.start || !leaveData.end) {
+      return res.status(400).json({ message: 'Leave start and end dates are required.' });
+    }
+    if (leaveData.end < leaveData.start) {
+      return res.status(400).json({ message: 'Leave end date must be on or after start date.' });
+    }
+
+    const overlap = (user.leaves || []).some((lv) => {
+      if (lv._id.toString() === leaveId) return false;
+      return leavesDateRangesOverlap(leaveData.start, leaveData.end, lv.start, lv.end);
+    });
+    if (overlap) {
+      return res.status(400).json({ message: 'Updated leave dates overlap another leave entry.' });
+    }
+
+    const balancesBefore = snapshotLeaveBalances(user);
+    restoreLeaveBalances(user, existing);
+
+    const deductResult = deductLeaveBalances(user, leaveData, leaveData.type);
+    if (!deductResult.ok) {
+      deductLeaveBalances(user, existing, previousType);
+      return res.status(400).json({ message: deductResult.message });
+    }
+
+    existing.start = leaveData.start;
+    existing.end = leaveData.end;
+    existing.type = leaveData.type;
+    existing.appliedOnSap = leaveData.appliedOnSap;
+    if (workingDays !== undefined) existing.workingDays = workingDays;
+    if (totalDays !== undefined) existing.totalDays = totalDays;
+
+    await user.save();
+
+    const startStr = new Date(leaveData.start).toISOString().slice(0, 10);
+    const endStr = new Date(leaveData.end).toISOString().slice(0, 10);
+    const balancesAfter = snapshotLeaveBalances(user);
+
+    await logRosterEvent({
+      action: 'LEAVE_UPDATED',
+      actor,
+      target: user,
+      summary: `${user.name} (${user.empId}): leave ${leaveData.type} ${startStr} → ${endStr} updated`,
+      metadata: {
+        leaveId,
+        previous: { type: previousType, start: previousStartStr, end: previousEndStr },
+        updated: { type: leaveData.type, start: startStr, end: endStr },
+      },
+    });
+    await logAction({
+      actor,
+      action: AUDIT_ACTIONS.LEAVE_UPDATED,
+      targetType: 'leave',
+      targetId: user.empId,
+      targetName: user.name,
+      after: buildLeaveUpdatedAuditPayload({
+        user,
+        actor,
+        leaveType: leaveData.type,
+        dateFrom: startStr,
+        dateTo: endStr,
+        previousType,
+        previousDateFrom: previousStartStr,
+        previousDateTo: previousEndStr,
+        balancesBefore,
+        balancesAfter,
+      }),
+      req,
+    });
+
+    try {
+      const { processLeaveSaved } = require('../services/leaveConflictService');
+      const ActingAssignment = require('../models/ActingAssignment');
+      const employees = await AdminUser.find().select('-passwordHash').lean();
+      const leaveStart = startStr;
+      const leaveEnd = endStr;
+      const actingAssignments = await ActingAssignment.find({
+        crew: user.crew,
+        startDate: { $lte: leaveEnd },
+        endDate: { $gte: leaveStart },
+      }).lean();
+      await processLeaveSaved(
+        user.toObject ? user.toObject() : user,
+        existing,
+        employees,
+        actingAssignments
+      );
+    } catch (conflictErr) {
+      console.warn('[leave] conflict notify skipped:', conflictErr.message);
+    }
+
+    res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
@@ -572,8 +751,7 @@ exports.removeLeave = async (req, res) => {
     const user = await AdminUser.findOne({ empId: employeeId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
-    const isAdmin = hasPortalAdminAccess(req);
-    if (!isAdmin && actor && actor.empId !== employeeId) {
+    if (!canEditLeaveForEmployee(req, user)) {
       return res.status(403).json({ message: 'You can only remove your own leave requests.' });
     }
 
@@ -583,19 +761,9 @@ exports.removeLeave = async (req, res) => {
     let removedEndStr = '';
     let removedLeaveType = 'Planned';
     if (removed) {
-      removedLeaveType = normalizeLeaveType(normalizeCompensateLeaveType(removed.type || 'Planned'));
+      removedLeaveType = restoreLeaveBalances(user, removed);
       removedStartStr = new Date(removed.start).toISOString().slice(0, 10);
       removedEndStr = new Date(removed.end).toISOString().slice(0, 10);
-      const span =
-        typeof removed.totalDays === 'number' && removed.totalDays > 0
-          ? removed.totalDays
-          : daysBetweenInclusive(removed.start, removed.end);
-      if (isAnnualLeaveType(removedLeaveType)) {
-        user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
-      }
-      if (isBankLeaveType(removedLeaveType)) {
-        user.bankLeaveBalance = Math.round(((user.bankLeaveBalance ?? 0) + span) * 10000) / 10000;
-      }
     }
     user.leaves = user.leaves.filter((l) => l._id.toString() !== leaveId);
     await user.save();

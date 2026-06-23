@@ -50,8 +50,37 @@ function buildLeaveRemovedAuditPayload({
   };
 }
 
+function buildLeaveUpdatedAuditPayload({
+  user,
+  actor,
+  leaveType,
+  dateFrom,
+  dateTo,
+  previousType,
+  previousDateFrom,
+  previousDateTo,
+  balancesBefore,
+  balancesAfter,
+}) {
+  return {
+    kind: 'leave_updated',
+    leaveType,
+    dateFrom,
+    dateTo,
+    previousType,
+    previousDateFrom,
+    previousDateTo,
+    employeeEmpId: user.empId,
+    employeeName: user.name,
+    updatedBy: actor?.name || actor?.email || 'System',
+    balancesBefore,
+    balancesAfter,
+  };
+}
+
 module.exports = {
   snapshotLeaveBalances,
   buildLeaveAppliedAuditPayload,
   buildLeaveRemovedAuditPayload,
+  buildLeaveUpdatedAuditPayload,
 };

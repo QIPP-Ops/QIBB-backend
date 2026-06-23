@@ -1,5 +1,7 @@
 const { isSuperAdmin } = require('../middleware/superAdmin');
 const { isPlantManagerUser } = require('../services/plantManagerService');
+const { crewsMatch } = require('../services/actingCoverService');
+const { isSicOrSupervisorRole } = require('./attendancePermissions');
 
 /** Whether the user may view or interact with leave / shift report rows for this employee. */
 function canEditLeaveRow(user, row) {
@@ -18,7 +20,24 @@ function canEditLeaveRow(user, row) {
     return user.empId === row.empId;
   }
 
+  const jobRole = user.jobRole || user.role || '';
+  if (isSicOrSupervisorRole(jobRole)) {
+    if (user.crew && row.crew) {
+      return crewsMatch(user.crew, row.crew);
+    }
+    return user.empId === row.empId;
+  }
+
   return user.empId === row.empId;
+}
+
+/** Whether the requester may add/edit/remove leave for this employee. */
+function canEditLeaveForEmployee(req, employee) {
+  if (!req?.user?.empId || !employee?.empId) return false;
+  return canEditLeaveRow(req.user, {
+    empId: employee.empId,
+    crew: employee.crew || '',
+  });
 }
 
 function canAccessShiftReport(req, employee) {
@@ -49,6 +68,7 @@ function canEditShiftReport(req, employee, duty) {
 
 module.exports = {
   canEditLeaveRow,
+  canEditLeaveForEmployee,
   canAccessShiftReport,
   canEditShiftReport,
 };

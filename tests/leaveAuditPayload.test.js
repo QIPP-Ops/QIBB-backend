@@ -2,6 +2,7 @@ const {
   snapshotLeaveBalances,
   buildLeaveAppliedAuditPayload,
   buildLeaveRemovedAuditPayload,
+  buildLeaveUpdatedAuditPayload,
 } = require('../utils/leaveAuditPayload');
 
 describe('leaveAuditPayload', () => {
@@ -61,5 +62,24 @@ describe('leaveAuditPayload', () => {
     expect(payload.kind).toBe('leave_removed');
     expect(payload.removedBy).toBe('admin@example.com');
     expect(payload.balancesAfter.bank).toBe(4);
+  });
+
+  test('buildLeaveUpdatedAuditPayload includes previous and new values', () => {
+    const payload = buildLeaveUpdatedAuditPayload({
+      user,
+      actor: { name: 'Admin' },
+      leaveType: 'Annual Leave',
+      dateFrom: '2026-07-01',
+      dateTo: '2026-07-05',
+      previousType: 'Planned',
+      previousDateFrom: '2026-06-12',
+      previousDateTo: '2026-06-18',
+      balancesBefore: { annual: 10, bank: 2, compensate: 0 },
+      balancesAfter: { annual: 8, bank: 2, compensate: 0 },
+    });
+
+    expect(payload.kind).toBe('leave_updated');
+    expect(payload.previousType).toBe('Planned');
+    expect(payload.updatedBy).toBe('Admin');
   });
 });
