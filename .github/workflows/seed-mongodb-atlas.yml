@@ -1,4 +1,5 @@
 # Manual seed for MongoDB Atlas (roster, super admin, PTW auth list) — no Render Shell required.
+# MANUAL ONLY: triggered via workflow_dispatch — never runs on deploy or push.
 #
 # Required repository secrets:
 #   MONGODB_URI          — Atlas connection string (MUST match Render MONGODB_URI exactly)
