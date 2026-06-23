@@ -8,6 +8,7 @@ const {
   overrideMapFromDocs,
   filterActiveConflicts,
 } = require('../services/shiftScheduleService');
+const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
 const { enrichScheduleRows, filterConflictsByDelegations } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
@@ -70,8 +71,13 @@ async function buildSchedulePayload(start, end) {
   schedule.rows = enrichScheduleRows(schedule.rows, actingAssignments, employeeById);
   schedule.actingAssignments = actingAssignments;
   schedule.delegations = actingAssignments;
-  schedule.conflicts = filterActiveConflicts(
+  const dailyConflicts = filterActiveConflicts(
     filterConflictsByDelegations(schedule.conflicts, actingAssignments)
+  );
+  schedule.conflicts = groupConflictsByCycle(
+    dailyConflicts,
+    schedule.dates,
+    schedule.baseDate
   );
   schedule.conflictCount = schedule.conflicts.length;
   return schedule;
