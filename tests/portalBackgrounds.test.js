@@ -57,4 +57,110 @@ describe('portalBackgroundService', () => {
     await clearPortalBackground('training-hub');
     expect(setSetting).toHaveBeenLastCalledWith('portalBackgrounds', {});
   });
+
+  test('tracks uploaded images separately from plant gallery', async () => {
+    const setSetting = jest.fn().mockResolvedValue({});
+    const getSetting = jest.fn().mockImplementation((key) => {
+      if (key === 'portalBackgroundUploads') {
+        return Promise.resolve([
+          {
+            id: 'abc123',
+            url: 'data:image/jpeg;base64,abc',
+            fileName: 'hero.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 1200,
+            storage: 'base64',
+            uploadedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'bad',
+            url: '/images/plant/plant-01.jpg',
+            fileName: 'plant.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 100,
+            storage: 'base64',
+          },
+        ]);
+      }
+      return Promise.resolve({});
+    });
+    jest.doMock('../services/systemSettingsService', () => ({ getSetting, setSetting }));
+
+    const {
+      getPortalBackgroundUploads,
+      uploadPortalBackgroundImage,
+      deletePortalBackgroundUpload,
+    } = require('../services/portalBackgroundService');
+
+    const uploads = await getPortalBackgroundUploads();
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]).toMatchObject({
+      id: 'abc123',
+      url: 'data:image/jpeg;base64,abc',
+      fileName: 'hero.jpg',
+      storage: 'base64',
+    });
+
+    const file = {
+      buffer: Buffer.from('fake-image'),
+      size: 500,
+      mimetype: 'image/jpeg',
+      originalname: 'new-bg.jpg',
+    };
+    const uploaded = await uploadPortalBackgroundImage({ userId: 'user-1', file });
+    expect(uploaded.fileName).toBe('new-bg.jpg');
+    expect(uploaded.url).toMatch(/^data:image\/jpeg;base64,/);
+    expect(setSetting).toHaveBeenCalledWith(
+      'portalBackgroundUploads',
+      expect.arrayContaining([
+        expect.objectContaining({ fileName: 'new-bg.jpg', uploadedBy: 'user-1' }),
+        expect.objectContaining({ id: 'abc123' }),
+      ])
+    );
+
+    getSetting.mockImplementation((key) => {
+      if (key === 'portalBackgroundUploads') {
+        return Promise.resolve([
+          uploaded,
+          {
+            id: 'abc123',
+            url: 'data:image/jpeg;base64,abc',
+            fileName: 'hero.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 1200,
+            storage: 'base64',
+          },
+        ]);
+      }
+      if (key === 'portalBackgrounds') {
+        return Promise.resolve({ 'training-hub': uploaded.url });
+      }
+      return Promise.resolve({});
+    });
+
+    const deleted = await deletePortalBackgroundUpload(uploaded.id);
+    expect(deleted).toMatchObject({
+      deleted: true,
+      uploadId: uploaded.id,
+      url: uploaded.url,
+      clearedSections: ['training-hub'],
+    });
+    expect(setSetting).toHaveBeenCalledWith('portalBackgroundUploads', [
+      expect.objectContaining({ id: 'abc123' }),
+    ]);
+    expect(setSetting).toHaveBeenCalledWith('portalBackgrounds', {});
+  });
+
+  test('deletePortalBackgroundUpload returns 404 for unknown id', async () => {
+    const setSetting = jest.fn().mockResolvedValue({});
+    const getSetting = jest.fn().mockResolvedValue([]);
+    jest.doMock('../services/systemSettingsService', () => ({ getSetting, setSetting }));
+
+    const { deletePortalBackgroundUpload } = require('../services/portalBackgroundService');
+
+    await expect(deletePortalBackgroundUpload('missing')).rejects.toMatchObject({
+      message: 'Upload not found.',
+      status: 404,
+    });
+  });
 });

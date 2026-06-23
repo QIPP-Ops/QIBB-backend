@@ -5,18 +5,24 @@ const {
 } = require('../constants/portalBackgroundSections');
 const {
   getPortalBackgroundsMap,
+  getPortalBackgroundUploads,
   setPortalBackground,
   clearPortalBackground,
   uploadPortalBackgroundImage,
+  deletePortalBackgroundUpload,
 } = require('../services/portalBackgroundService');
 const { logAction } = require('../services/auditLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 
 exports.getPortalBackgrounds = async (req, res) => {
   try {
-    const backgrounds = await getPortalBackgroundsMap();
+    const [backgrounds, uploadedImages] = await Promise.all([
+      getPortalBackgroundsMap(),
+      getPortalBackgroundUploads(),
+    ]);
     res.json({
       backgrounds,
+      uploadedImages,
       sections: PORTAL_BACKGROUND_SECTION_KEYS.map((key) => ({
         key,
         label: PORTAL_BACKGROUND_SECTION_LABELS[key] || key,
@@ -94,6 +100,29 @@ exports.uploadPortalBackground = async (req, res) => {
     const status = err.status || 500;
     res.status(status).json({
       message: status === 500 ? 'Error uploading image' : err.message,
+      error: err.message,
+    });
+  }
+};
+
+exports.deletePortalBackgroundUpload = async (req, res) => {
+  try {
+    const uploadId = String(req.params.uploadId || '').trim();
+    const result = await deletePortalBackgroundUpload(uploadId);
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.PORTAL_BACKGROUND_CHANGED,
+      targetType: 'settings',
+      targetId: `portalBackgroundUpload:${uploadId}`,
+      targetName: 'Portal background upload',
+      after: result,
+      req,
+    });
+    res.json(result);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({
+      message: status === 500 ? 'Error deleting upload' : err.message,
       error: err.message,
     });
   }

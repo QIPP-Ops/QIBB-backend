@@ -5,9 +5,11 @@ const { getR2Config, isR2Configured } = require('../config/r2');
 const {
   isValidPortalBackgroundSectionKey,
   isAllowedBackgroundImageUrl,
+  isAllowedPlantImagePath,
 } = require('../constants/portalBackgroundSections');
 
 const PORTAL_BACKGROUNDS_KEY = 'portalBackgrounds';
+const PORTAL_BG_UPLOADS_KEY = 'portalBackgroundUploads';
 const PORTAL_BG_MAX_MB = parseInt(process.env.PORTAL_BG_MAX_FILE_MB || '3', 10);
 const PORTAL_BG_MAX_BYTES = Math.max(1, PORTAL_BG_MAX_MB) * 1024 * 1024;
 
@@ -17,10 +19,15 @@ let s3Client = null;
 
 function loadAwsSdk() {
   // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-  const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+  const {
+    S3Client,
+    PutObjectCommand,
+    GetObjectCommand,
+    DeleteObjectCommand,
+  } = require('@aws-sdk/client-s3');
   // eslint-disable-next-line global-require, import/no-extraneous-dependencies
   const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-  return { S3Client, PutObjectCommand, GetObjectCommand, getSignedUrl };
+  return { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, getSignedUrl };
 }
 
 function getClient() {
@@ -99,6 +106,93 @@ async function clearPortalBackground(sectionKey) {
   return { sectionKey, cleared: true };
 }
 
+function normalizeUploadEntry(item) {
+  if (!item || typeof item !== 'object') return null;
+  const id = String(item.id || '').trim();
+  const url = String(item.url || '').trim();
+  if (!id || !url || !isAllowedBackgroundImageUrl(url)) return null;
+  if (isAllowedPlantImagePath(url)) return null;
+  return {
+    id,
+    url,
+    fileName: String(item.fileName || 'upload').trim() || 'upload',
+    mimeType: String(item.mimeType || 'image/jpeg').trim() || 'image/jpeg',
+    sizeBytes: Number(item.sizeBytes) || 0,
+    storage: item.storage === 'r2' ? 'r2' : 'base64',
+    r2Key: item.r2Key ? String(item.r2Key).trim() : undefined,
+    uploadedAt: item.uploadedAt || null,
+    uploadedBy: item.uploadedBy ? String(item.uploadedBy) : undefined,
+  };
+}
+
+async function getPortalBackgroundUploads() {
+  const value = await getSetting(PORTAL_BG_UPLOADS_KEY, []);
+  if (!Array.isArray(value)) return [];
+  return value.map(normalizeUploadEntry).filter(Boolean);
+}
+
+async function addPortalBackgroundUpload(entry) {
+  const normalized = normalizeUploadEntry(entry);
+  if (!normalized) {
+    throw Object.assign(new Error('Invalid upload entry.'), { status: 400 });
+  }
+  const list = await getPortalBackgroundUploads();
+  list.unshift(normalized);
+  await setSetting(PORTAL_BG_UPLOADS_KEY, list);
+  return normalized;
+}
+
+async function clearSectionsUsingImageUrl(imageUrl) {
+  const target = String(imageUrl || '').trim();
+  if (!target) return [];
+  const map = await getPortalBackgroundsMap();
+  const clearedSections = [];
+  for (const [key, url] of Object.entries(map)) {
+    if (url === target) {
+      delete map[key];
+      clearedSections.push(key);
+    }
+  }
+  if (clearedSections.length) {
+    await setSetting(PORTAL_BACKGROUNDS_KEY, map);
+  }
+  return clearedSections;
+}
+
+async function deletePortalBackgroundUpload(uploadId) {
+  const id = String(uploadId || '').trim();
+  if (!id) {
+    throw Object.assign(new Error('Upload id is required.'), { status: 400 });
+  }
+  const list = await getPortalBackgroundUploads();
+  const index = list.findIndex((item) => item.id === id);
+  if (index === -1) {
+    throw Object.assign(new Error('Upload not found.'), { status: 404 });
+  }
+  const [removed] = list.splice(index, 1);
+
+  if (removed.storage === 'r2' && removed.r2Key && isR2Configured()) {
+    const cfg = getR2Config();
+    const { DeleteObjectCommand } = loadAwsSdk();
+    await getClient().send(
+      new DeleteObjectCommand({
+        Bucket: cfg.bucketName,
+        Key: removed.r2Key,
+      })
+    );
+  }
+
+  await setSetting(PORTAL_BG_UPLOADS_KEY, list);
+  const clearedSections = await clearSectionsUsingImageUrl(removed.url);
+
+  return {
+    deleted: true,
+    uploadId: id,
+    url: removed.url,
+    clearedSections,
+  };
+}
+
 async function uploadPortalBackgroundImage({ userId, file }) {
   if (!file || !file.buffer) {
     throw Object.assign(new Error('No file provided.'), { status: 400 });
@@ -112,6 +206,8 @@ async function uploadPortalBackgroundImage({ userId, file }) {
 
   const fileName = sanitizeFileName(file.originalname);
   const mimeType = file.mimetype || 'image/jpeg';
+  const uploadId = crypto.randomBytes(8).toString('hex');
+  const uploadedAt = new Date().toISOString();
 
   if (isR2Configured()) {
     const cfg = getR2Config();
@@ -136,24 +232,40 @@ async function uploadPortalBackgroundImage({ userId, file }) {
         { expiresIn: 3600 * 24 * 365 }
       );
     }
-    return { url, fileName, mimeType, sizeBytes: file.size, storage: 'r2' };
+    return addPortalBackgroundUpload({
+      id: uploadId,
+      url,
+      fileName,
+      mimeType,
+      sizeBytes: file.size,
+      storage: 'r2',
+      r2Key: key,
+      uploadedAt,
+      uploadedBy: userId,
+    });
   }
 
-  return {
+  return addPortalBackgroundUpload({
+    id: uploadId,
     url: fileToBase64DataUrl(file),
     fileName,
     mimeType,
     sizeBytes: file.size,
     storage: 'base64',
-  };
+    uploadedAt,
+    uploadedBy: userId,
+  });
 }
 
 module.exports = {
   PORTAL_BACKGROUNDS_KEY,
+  PORTAL_BG_UPLOADS_KEY,
   PORTAL_BG_MAX_BYTES,
   PORTAL_BG_MAX_MB,
   getPortalBackgroundsMap,
+  getPortalBackgroundUploads,
   setPortalBackground,
   clearPortalBackground,
   uploadPortalBackgroundImage,
+  deletePortalBackgroundUpload,
 };

@@ -12,8 +12,14 @@ const upload = multer({
 });
 
 router.get('/', protect, portalBackground.getPortalBackgrounds);
+router.post('/upload', protect, requireSuperAdmin, upload.single('file'), portalBackground.uploadPortalBackground);
+router.delete(
+  '/uploads/:uploadId',
+  protect,
+  requireSuperAdmin,
+  portalBackground.deletePortalBackgroundUpload
+);
 router.patch('/:sectionKey', protect, requireSuperAdmin, portalBackground.patchPortalBackground);
 router.delete('/:sectionKey', protect, requireSuperAdmin, portalBackground.deletePortalBackground);
-router.post('/upload', protect, requireSuperAdmin, upload.single('file'), portalBackground.uploadPortalBackground);
 
 module.exports = router;
