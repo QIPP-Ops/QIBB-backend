@@ -22,18 +22,37 @@ function normalizeCrewId(raw) {
   return id;
 }
 
+function sanitizeSlotValue(value) {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const empId = String(value).trim();
+    return empId || null;
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const empIdRaw = value.empId;
+    let empId = null;
+    if (empIdRaw !== null && empIdRaw !== undefined && empIdRaw !== '') {
+      empId = String(empIdRaw).trim() || null;
+    }
+    const role = value.role != null ? String(value.role).trim() : '';
+    const groupLabel = value.groupLabel != null ? String(value.groupLabel).trim() : '';
+    const out = { empId };
+    if (role) out.role = role;
+    if (groupLabel) out.groupLabel = groupLabel;
+    return out;
+  }
+  return null;
+}
+
 function sanitizeSlots(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
   const out = {};
   for (const [key, value] of Object.entries(raw)) {
     const slotKey = String(key || '').trim();
     if (!slotKey) continue;
-    if (value === null || value === undefined || value === '') {
-      out[slotKey] = null;
-    } else {
-      const empId = String(value).trim();
-      out[slotKey] = empId || null;
-    }
+    out[slotKey] = sanitizeSlotValue(value);
   }
   return out;
 }

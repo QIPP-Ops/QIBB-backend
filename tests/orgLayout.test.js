@@ -115,6 +115,43 @@ describe('org layout API — slot assignments', () => {
     expect(get.body.slots.supervisor).toBe('11');
   });
 
+  test('super admin can save dynamic slot metadata', async () => {
+    const savedSlots = {
+      sic: '10',
+      'ccr-1-2-extra-1': {
+        empId: '25',
+        role: 'Field Operator',
+        groupLabel: 'GR #1-2',
+      },
+    };
+
+    OrgLayout.findOneAndUpdate.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        crewId: 'A',
+        slots: savedSlots,
+        updatedByEmail: SUPER_ADMIN_EMAIL,
+        updatedByName: 'Super Admin',
+      }),
+    });
+    OrgLayout.findOne.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        crewId: 'A',
+        slots: savedSlots,
+      }),
+    });
+
+    const patch = await request(app)
+      .patch('/api/admin/org-layout/A')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
+      .send({ slots: savedSlots });
+    expect(patch.status).toBe(200);
+    expect(patch.body.slots['ccr-1-2-extra-1']).toEqual({
+      empId: '25',
+      role: 'Field Operator',
+      groupLabel: 'GR #1-2',
+    });
+  });
+
   test('reset clears slot assignments', async () => {
     OrgLayout.deleteOne.mockResolvedValue({ deletedCount: 1 });
 
