@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const DELEGATION_STATUSES = ['pending', 'approved', 'declined', 'cancelled'];
+const DELEGATION_SOURCES = ['leave_request', 'conflict_resolution'];
 
 const ActingAssignmentSchema = new mongoose.Schema({
   absentEmpId: { type: String, required: true, index: true },
@@ -9,10 +10,20 @@ const ActingAssignmentSchema = new mongoose.Schema({
   role: { type: String, required: true },
   /** Absent person's job role label at time of request */
   roleAtTime: { type: String, default: '' },
+  /** Crew being covered (absent person's crew) */
   crew: { type: String, required: true, index: true },
+  /** Delegate's home crew when covering cross-crew (optional) */
+  coverFromCrew: { type: String, default: '' },
   startDate: { type: String, required: true }, // YYYY-MM-DD
   endDate: { type: String, required: true }, // YYYY-MM-DD
   leaveId: { type: String, default: null, index: true },
+  /** Cycle/conflict group key when resolved via admin conflict delegation */
+  conflictKey: { type: String, default: '', index: true },
+  source: {
+    type: String,
+    enum: DELEGATION_SOURCES,
+    default: 'leave_request',
+  },
   status: {
     type: String,
     enum: DELEGATION_STATUSES,
@@ -31,3 +42,4 @@ ActingAssignmentSchema.index({ coverEmpId: 1, status: 1 });
 
 module.exports = mongoose.model('ActingAssignment', ActingAssignmentSchema);
 module.exports.DELEGATION_STATUSES = DELEGATION_STATUSES;
+module.exports.DELEGATION_SOURCES = DELEGATION_SOURCES;

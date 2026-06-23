@@ -532,6 +532,160 @@ exports.deleteActingCover = exports.cancelDelegation = async (req, res) => {
 
 exports.assignmentsForRange = assignmentsForRange;
 
+async function createApprovedConflictDelegation({
+  req,
+  actor,
+  absent,
+  cover,
+  crew,
+  startDate,
+  endDate,
+  conflictKey,
+  notes,
+}) {
+  const roleAtTime = String(absent.role || '').trim();
+  const roleKey = resolveAbsentRole(roleAtTime) || roleSlugFromLabel(roleAtTime);
+  const coverFromCrew = String(cover.crew || '').trim();
+
+  const overlapFilter = {
+    absentEmpId: absent.empId,
+    status: { $in: ['pending', 'approved'] },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
+  };
+  const overlap = await ActingAssignment.findOne(overlapFilter);
+  if (overlap) {
+    overlap.status = 'cancelled';
+    overlap.respondedAt = new Date();
+    await overlap.save();
+  }
+
+  const now = new Date();
+  const doc = await ActingAssignment.create({
+    absentEmpId: absent.empId,
+    coverEmpId: cover.empId,
+    role: roleKey,
+    roleAtTime,
+    crew: String(crew).trim(),
+    coverFromCrew,
+    startDate,
+    endDate,
+    leaveId: null,
+    conflictKey: String(conflictKey || '').trim(),
+    source: 'conflict_resolution',
+    status: 'approved',
+    requestedBy: req.user?.id || null,
+    requestedAt: now,
+    respondedAt: now,
+    createdBy: req.user?.id || null,
+    notes: String(notes || '').trim(),
+  });
+
+  const crossCrewNote = crewsMatch(coverFromCrew, crew)
+    ? ''
+    : ` (cross-crew from ${coverFromCrew})`;
+
+  await logRosterEvent({
+    action: 'CONFLICT_DELEGATION_RESOLVED',
+    actor,
+    target: absent,
+    summary: `${actor?.name || 'Admin'} assigned ${cover.name} to cover ${absent.name} for crew ${crew} ${startDate} – ${endDate}${crossCrewNote}`,
+    metadata: {
+      absentEmpId: absent.empId,
+      coverEmpId: cover.empId,
+      crew,
+      coverFromCrew,
+      startDate,
+      endDate,
+      conflictKey: conflictKey || '',
+      delegationId: String(doc._id),
+    },
+  });
+  await logAction({
+    actor,
+    action: AUDIT_ACTIONS.CONFLICT_DELEGATION_RESOLVED,
+    targetType: 'employee',
+    targetId: absent.empId,
+    targetName: absent.name,
+    after: doc.toObject ? doc.toObject() : doc,
+    req,
+  });
+
+  return doc;
+}
+
+exports.resolveConflictDelegation = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req)) {
+      return res.status(403).json({
+        message: 'Only portal administrators may resolve schedule conflicts by delegation.',
+      });
+    }
+
+    const actor = await loadActor(req);
+    const {
+      absentEmpId,
+      coverEmpId,
+      delegateEmpId,
+      crew,
+      startDate,
+      endDate,
+      conflictKey,
+      notes,
+    } = req.body || {};
+    const delegateId = coverEmpId || delegateEmpId;
+
+    if (!absentEmpId || !delegateId || !crew || !startDate || !endDate) {
+      return res.status(400).json({
+        message: 'absentEmpId, coverEmpId, crew, startDate, and endDate are required.',
+      });
+    }
+
+    const start = parseDateOnly(startDate);
+    const end = parseDateOnly(endDate);
+    if (!start || !end || end < start) {
+      return res.status(400).json({ message: 'Invalid startDate or endDate.' });
+    }
+
+    const accessErr = assertCrewAccess(req, actor, crew);
+    if (accessErr) return res.status(403).json({ message: accessErr });
+
+    const [absent, cover] = await Promise.all([
+      AdminUser.findOne({ empId: absentEmpId }).select('-passwordHash'),
+      AdminUser.findOne({ empId: delegateId }).select('-passwordHash'),
+    ]);
+    if (!absent) return res.status(404).json({ message: 'Absent employee not found.' });
+    if (!cover) return res.status(404).json({ message: 'Delegate not found.' });
+
+    if (!crewsMatch(absent.crew, crew)) {
+      return res.status(400).json({ message: 'Absent employee must belong to the specified crew.' });
+    }
+    if (absentEmpId === delegateId) {
+      return res.status(400).json({ message: 'Delegate cannot be the same as the absent employee.' });
+    }
+
+    const doc = await createApprovedConflictDelegation({
+      req,
+      actor,
+      absent,
+      cover,
+      crew,
+      startDate: fmtDate(start),
+      endDate: fmtDate(end),
+      conflictKey,
+      notes,
+    });
+
+    const populated = await populateDelegation(
+      doc.toObject(),
+      await loadEmployeeMap([absentEmpId, delegateId])
+    );
+    res.status(201).json({ success: true, data: populated });
+  } catch (err) {
+    res.status(err.status || 400).json({ message: err.message });
+  }
+};
+
 function dateInLeaveRange(dateStr, leave) {
   const d = String(dateStr).slice(0, 10);
   const start = leave?.start ? fmtDate(leave.start) : '';

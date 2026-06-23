@@ -170,6 +170,7 @@ function enrichScheduleRows(rows, assignments, employeeById) {
 
   const actingByCover = new Map();
   const coverByAbsent = new Map();
+  const temporaryCoverByCover = new Map();
 
   (assignments || []).forEach((a) => {
     if (!isApprovedDelegation(a)) return;
@@ -185,10 +186,17 @@ function enrichScheduleRows(rows, assignments, employeeById) {
       absentName: absent?.name || a.absentEmpId,
       coverEmpId: a.coverEmpId,
       coverName: cover.name,
+      crew: a.crew,
+      coverFromCrew: a.coverFromCrew || cover.crew || '',
       startDate: a.startDate,
       endDate: a.endDate,
       notes: a.notes || '',
       status: delegationStatus(a),
+      source: a.source || 'leave_request',
+      conflictKey: a.conflictKey || '',
+      isCrossCrew: Boolean(
+        a.coverFromCrew && !crewsMatch(a.coverFromCrew, a.crew)
+      ),
     };
 
     if (!actingByCover.has(a.coverEmpId)) actingByCover.set(a.coverEmpId, []);
@@ -196,31 +204,53 @@ function enrichScheduleRows(rows, assignments, employeeById) {
 
     if (!coverByAbsent.has(a.absentEmpId)) coverByAbsent.set(a.absentEmpId, []);
     coverByAbsent.get(a.absentEmpId).push(entry);
+
+    if (!temporaryCoverByCover.has(a.coverEmpId)) temporaryCoverByCover.set(a.coverEmpId, []);
+    temporaryCoverByCover.get(a.coverEmpId).push(entry);
   });
 
-  return rows.map((row) => ({
-    ...row,
-    actingAssignments: actingByCover.get(row.empId) || [],
-    actingCoverFor: coverByAbsent.get(row.empId) || [],
-    pendingDelegations: (assignments || [])
-      .filter(
-        (a) =>
-          isPendingDelegation(a) &&
-          (a.coverEmpId === row.empId || a.absentEmpId === row.empId)
-      )
-      .map((a) => ({
-        id: String(a._id || ''),
-        status: delegationStatus(a),
-        roleLabel: assignmentRoleLabel(a),
-        absentEmpId: a.absentEmpId,
-        absentName: employeeById.get(a.absentEmpId)?.name || a.absentEmpId,
-        coverEmpId: a.coverEmpId,
-        coverName: employeeById.get(a.coverEmpId)?.name || a.coverEmpId,
-        startDate: a.startDate,
-        endDate: a.endDate,
-        notes: a.notes || '',
-      })),
-  }));
+  return rows.map((row) => {
+    const tempCovers = temporaryCoverByCover.get(row.empId) || [];
+    const cells = (row.cells || []).map((cell) => {
+      const activeTemp = tempCovers.filter((t) => assignmentActiveOnDate(t, cell.date));
+      if (!activeTemp.length) return cell;
+      return {
+        ...cell,
+        temporaryCover: activeTemp.map((t) => ({
+          crew: t.crew,
+          absentName: t.absentName,
+          roleLabel: t.roleLabel,
+          isCrossCrew: t.isCrossCrew,
+        })),
+      };
+    });
+
+    return {
+      ...row,
+      cells,
+      actingAssignments: actingByCover.get(row.empId) || [],
+      actingCoverFor: coverByAbsent.get(row.empId) || [],
+      temporaryCoverAssignments: tempCovers,
+      pendingDelegations: (assignments || [])
+        .filter(
+          (a) =>
+            isPendingDelegation(a) &&
+            (a.coverEmpId === row.empId || a.absentEmpId === row.empId)
+        )
+        .map((a) => ({
+          id: String(a._id || ''),
+          status: delegationStatus(a),
+          roleLabel: assignmentRoleLabel(a),
+          absentEmpId: a.absentEmpId,
+          absentName: employeeById.get(a.absentEmpId)?.name || a.absentEmpId,
+          coverEmpId: a.coverEmpId,
+          coverName: employeeById.get(a.coverEmpId)?.name || a.coverEmpId,
+          startDate: a.startDate,
+          endDate: a.endDate,
+          notes: a.notes || '',
+        })),
+    };
+  });
 }
 
 module.exports = {

@@ -29,6 +29,8 @@ router.get('/org-overlay', protect, actingCover.getOrgOverlay);
 
 router.post('/delegations', protect, actingCover.createDelegation);
 
+router.post('/delegations/resolve-conflict', protect, actingCover.resolveConflictDelegation);
+
 router.post('/delegations/:id/approve', protect, actingCover.approveDelegation);
 
 router.post('/delegations/:id/decline', protect, actingCover.declineDelegation);
