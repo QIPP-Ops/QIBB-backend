@@ -11,7 +11,7 @@ const upload = multer({
   limits: { fileSize: 3 * 1024 * 1024 },
 });
 
-router.get('/', protect, portalBackground.getPortalBackgrounds);
+router.get('/', portalBackground.getPortalBackgrounds);
 router.post('/upload', protect, requireSuperAdmin, upload.single('file'), portalBackground.uploadPortalBackground);
 router.delete(
   '/uploads/:uploadId',

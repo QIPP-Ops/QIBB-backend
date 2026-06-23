@@ -1,7 +1,6 @@
 const {
   PORTAL_BACKGROUND_SECTION_KEYS,
   PORTAL_BACKGROUND_SECTION_LABELS,
-  PLANT_IMAGE_PATHS,
 } = require('../constants/portalBackgroundSections');
 const {
   getPortalBackgroundsMap,
@@ -27,7 +26,6 @@ exports.getPortalBackgrounds = async (req, res) => {
         key,
         label: PORTAL_BACKGROUND_SECTION_LABELS[key] || key,
       })),
-      plantImages: PLANT_IMAGE_PATHS,
     });
   } catch (err) {
     res.status(500).json({ message: 'Error reading portal backgrounds', error: err.message });
@@ -42,7 +40,13 @@ exports.patchPortalBackground = async (req, res) => {
       return res.status(400).json({ message: 'imageUrl is required.' });
     }
 
-    const updated = await setPortalBackground(sectionKey, imageUrl);
+    const updated = await setPortalBackground(sectionKey, {
+      imageUrl,
+      objectFit: req.body?.objectFit,
+      objectPosition: req.body?.objectPosition,
+      backgroundSize: req.body?.backgroundSize,
+      backgroundPosition: req.body?.backgroundPosition,
+    });
     await logAction({
       actor: req.user,
       action: AUDIT_ACTIONS.PORTAL_BACKGROUND_CHANGED,
