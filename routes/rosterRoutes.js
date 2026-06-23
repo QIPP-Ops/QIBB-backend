@@ -7,6 +7,7 @@ const c = require('../controllers/rosterController');
 const actingCover = require('../controllers/actingCoverController');
 
 const { protect, admin } = require('../middleware/auth');
+const { requireSuperAdmin } = require('../middleware/superAdmin');
 
 const { checkEditingLock } = require('../middleware/lock');
 
@@ -46,7 +47,7 @@ router.post('/', protect, admin, c.createEmployee);
 
 router.put('/:empId', protect, c.updateEmployee);
 
-router.delete('/:empId', protect, admin, c.deleteEmployee);
+router.delete('/:empId', protect, requireSuperAdmin, c.deleteEmployee);
 
 router.post('/leave', protect, checkEditingLock, c.addLeave);
 

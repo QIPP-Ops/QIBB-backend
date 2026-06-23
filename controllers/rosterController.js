@@ -533,8 +533,9 @@ exports.updateEmployee = async (req, res) => {
 
 exports.deleteEmployee = async (req, res) => {
   try {
-    if (!hasPortalAdminAccess(req)) {
-      return res.status(403).json({ message: 'Only administrators can remove personnel.' });
+    const { isSuperAdmin } = require('../middleware/superAdmin');
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only the designated super administrator may remove personnel.' });
     }
     const actor = await loadActor(req);
     const user = await AdminUser.findOne({ empId: req.params.empId });
@@ -915,6 +916,18 @@ exports.patchPersonnelInline = async (req, res) => {
       patch.email = trimmed;
     }
 
+    if (patch.empId !== undefined && superAdmin) {
+      const newEmpId = String(patch.empId || '').trim();
+      if (!newEmpId) {
+        return res.status(400).json({ message: 'Employee ID is required.' });
+      }
+      if (newEmpId !== empId) {
+        const dup = await AdminUser.findOne({ empId: newEmpId });
+        if (dup) return res.status(409).json({ message: 'Employee ID already in use.' });
+      }
+      patch.empId = newEmpId;
+    }
+
     const user = await AdminUser.findOneAndUpdate(
       { empId },
       { $set: patch },
@@ -940,6 +953,26 @@ exports.patchPersonnelInline = async (req, res) => {
       after: user?.toObject ? user.toObject() : user,
       req,
     });
+    if (patch.crew !== undefined || patch.role !== undefined || patch.empId !== undefined) {
+      await logAction({
+        actor,
+        action: AUDIT_ACTIONS.ROLE_CHANGED,
+        targetType: 'employee',
+        targetId: user.empId,
+        targetName: user.name,
+        before: {
+          empId: existing?.empId,
+          role: existing?.role,
+          crew: existing?.crew,
+        },
+        after: {
+          empId: user?.empId,
+          role: user?.role,
+          crew: user?.crew,
+        },
+        req,
+      });
+    }
 
     const notifyUser = req.body?.notifyUser === true;
     if (notifyUser) {
