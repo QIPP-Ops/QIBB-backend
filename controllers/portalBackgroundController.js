@@ -102,6 +102,9 @@ exports.uploadPortalBackground = async (req, res) => {
     res.json(uploaded);
   } catch (err) {
     const status = err.status || 500;
+    if (status === 500) {
+      console.error('Portal background upload failed:', err);
+    }
     res.status(status).json({
       message: status === 500 ? 'Error uploading image' : err.message,
       error: err.message,
