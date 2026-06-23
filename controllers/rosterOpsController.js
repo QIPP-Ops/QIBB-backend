@@ -3,7 +3,11 @@ const AdminConfig = require('../models/AdminConfig');
 const ShiftOverride = require('../models/ShiftOverride');
 const ActingAssignment = require('../models/ActingAssignment');
 const RosterAuditLog = require('../models/RosterAuditLog');
-const { buildRosterSchedule, overrideMapFromDocs } = require('../services/shiftScheduleService');
+const {
+  buildRosterSchedule,
+  overrideMapFromDocs,
+  filterActiveConflicts,
+} = require('../services/shiftScheduleService');
 const { enrichScheduleRows, filterConflictsByDelegations } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
@@ -66,7 +70,9 @@ async function buildSchedulePayload(start, end) {
   schedule.rows = enrichScheduleRows(schedule.rows, actingAssignments, employeeById);
   schedule.actingAssignments = actingAssignments;
   schedule.delegations = actingAssignments;
-  schedule.conflicts = filterConflictsByDelegations(schedule.conflicts, actingAssignments);
+  schedule.conflicts = filterActiveConflicts(
+    filterConflictsByDelegations(schedule.conflicts, actingAssignments)
+  );
   schedule.conflictCount = schedule.conflicts.length;
   return schedule;
 }

@@ -320,6 +320,12 @@ function userCanAccessOpsTools(dbUser) {
   return MANAGEMENT_JOB_ROLES.has(dbUser.role);
 }
 
+/** Keep conflicts on today or future dates only (past dates are no longer actionable). */
+function filterActiveConflicts(conflicts, refDate = new Date()) {
+  const today = fmtDate(refDate);
+  return (conflicts || []).filter((c) => String(c.date || '').slice(0, 10) >= today);
+}
+
 module.exports = {
   SHIFT_CYCLES,
   getShiftForDate,
@@ -331,5 +337,6 @@ module.exports = {
   fmtDate,
   parseDateOnly,
   userCanAccessOpsTools,
+  filterActiveConflicts,
   MANAGEMENT_JOB_ROLES,
 };
