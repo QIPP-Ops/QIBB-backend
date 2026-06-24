@@ -42,6 +42,20 @@ function parseDateOnly(str) {
   return d;
 }
 
+/** Saudi weekend: Friday and Saturday. */
+function isSaudiWeekend(dateStr) {
+  const day = parseDateOnly(dateStr).getDay();
+  return day === 5 || day === 6;
+}
+
+function formatShiftDisplay(crew, shift, dateStr, onLeave) {
+  if (onLeave) return 'L';
+  if (isGeneralCrew(crew) && shift === 'O' && !isSaudiWeekend(dateStr)) {
+    return 'Day';
+  }
+  return shift;
+}
+
 function getShiftForDate(crew, date, baseDate) {
   const crewKey = normCrew(crew);
   const cycle = SHIFT_CYCLES[crewKey] || SHIFT_CYCLES.General;
@@ -102,7 +116,7 @@ function resolveEmployeeShift(employee, dateStr, options = {}) {
     onLeave: !!leave,
     leaveStatus,
     leaveType: leave?.type || null,
-    display: leave ? 'L' : shift,
+    display: formatShiftDisplay(employee.crew, shift, dateStr, !!leave),
     onDuty: !leave && (shift === 'D' || shift === 'N'),
   };
 }
@@ -122,6 +136,24 @@ function leaveStyleFlags(type) {
     isAnnualLeave: isAnnualLeaveType(t),
     isBankLeave: t === 'Bank Leave',
     isPlannedLeave: t === 'Planned' || /^applied on sap$/i.test(String(type || '')),
+  };
+}
+
+function getLeaveOverlayForDate(employee, dateStr) {
+  const leave = (employee?.leaves || []).find((lv) => leaveOnDate(lv, dateStr));
+  if (!leave) {
+    return { onLeave: false };
+  }
+  const style = leaveStyleFlags(leave.type);
+  const leaveStatus = leave.status || 'approved';
+  return {
+    onLeave: true,
+    leaveType: style.leaveType || leave.type || 'Planned',
+    leaveStatus,
+    isAnnualLeave: style.isAnnualLeave,
+    isBankLeave: style.isBankLeave,
+    isPlannedLeave: style.isPlannedLeave,
+    derivedFromLeave: leaveStatus === 'approved',
   };
 }
 
@@ -218,7 +250,7 @@ function buildRosterSchedule(employees, options = {}) {
       ...Object.keys(SHIFT_CYCLES),
       ...rows.map((r) => r.crew).filter(Boolean),
     ]),
-  ];
+  ].filter((c) => !isGeneralCrew(c));
 
   const coverage = dates.flatMap((dateStr) => {
     const suggestions = [];
@@ -339,6 +371,8 @@ module.exports = {
   isEmployeeOnDuty,
   approvedLeaveOnDate,
   leaveOnDate,
+  getLeaveOverlayForDate,
+  eachDateInRange,
   fmtDate,
   parseDateOnly,
   userCanAccessOpsTools,
@@ -346,5 +380,7 @@ module.exports = {
   filterGeneralCrewConflicts,
   conflictInvolvesGeneralCrew,
   isGeneralCrew,
+  isSaudiWeekend,
+  formatShiftDisplay,
   MANAGEMENT_JOB_ROLES,
 };

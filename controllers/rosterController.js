@@ -49,6 +49,28 @@ async function loadActor(req) {
   return AdminUser.findById(req.user.id).select('-passwordHash');
 }
 
+async function syncAttendanceAfterLeaveChange(user, startStr, endStr, req) {
+  if (!startStr || !endStr) return;
+  try {
+    const actor = await loadActor(req);
+    const { reconcileLeaveAttendanceRange } = require('../services/attendanceLeaveSyncService');
+    const employee = user.toObject ? user.toObject() : user;
+    await reconcileLeaveAttendanceRange(
+      employee,
+      startStr,
+      endStr,
+      {
+        id: actor?._id?.toString() || req.user?.id || req.user?.userId,
+        email: actor?.email || req.user?.email,
+        name: actor?.name || req.user?.name || req.user?.displayName,
+      },
+      req
+    );
+  } catch (err) {
+    console.warn('[leave] attendance sync skipped:', err.message);
+  }
+}
+
 function calendarDaysInclusive(start, end) {
   const s = new Date(start);
   const e = new Date(end);
@@ -368,6 +390,11 @@ exports.checkStaffingImpact = async (req, res) => {
       return res.status(403).json({ message: 'You can only check staffing impact for your own account.' });
     }
 
+    const { isGeneralCrew } = require('../utils/rosterRowSort');
+    if (isGeneralCrew(user.crew)) {
+      return res.json({ breached: false, requiresCover: false, alerts: [] });
+    }
+
     const { willBreachStaffingRules } = require('../services/leaveConflictService');
     const result = await willBreachStaffingRules(empId, startDate, endDate, leaveId);
     res.json({
@@ -419,6 +446,22 @@ exports.addLeave = async (req, res) => {
     });
     if (overlap) {
       return res.status(409).json({ message: 'Leave period overlaps with an existing booking' });
+    }
+
+    const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
+    const { validateCycleLeaveOffDays } = require('../services/leaveCycleValidationService');
+    const cycleCheck = validateCycleLeaveOffDays({
+      crew: user.crew,
+      startDate: leaveData.start,
+      endDate: leaveData.end,
+      baseDate,
+    });
+    if (!cycleCheck.ok) {
+      return res.status(400).json({
+        message: cycleCheck.message,
+        requiredEndDate: cycleCheck.requiredEndDate,
+      });
     }
 
     const selfService = isSelfServiceLeaveRequest(req, user);
@@ -555,6 +598,10 @@ exports.addLeave = async (req, res) => {
       console.warn('[leave] conflict notify skipped:', conflictErr.message);
     }
 
+    if (leaveData.status === 'approved') {
+      await syncAttendanceAfterLeaveChange(user, startStr, endStr, req);
+    }
+
     res.status(201).json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
@@ -658,6 +705,8 @@ exports.approveLeave = async (req, res) => {
       console.warn('[leave] approve notification failed:', notifyErr.message);
     }
 
+    await syncAttendanceAfterLeaveChange(user, startStr, endStr, req);
+
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -734,6 +783,8 @@ exports.rejectLeave = async (req, res) => {
       console.warn('[leave] reject notification failed:', notifyErr.message);
     }
 
+    await syncAttendanceAfterLeaveChange(user, startStr, endStr, req);
+
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -798,6 +849,22 @@ exports.updateLeave = async (req, res) => {
     });
     if (overlap) {
       return res.status(400).json({ message: 'Updated leave dates overlap another leave entry.' });
+    }
+
+    const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
+    const { validateCycleLeaveOffDays } = require('../services/leaveCycleValidationService');
+    const cycleCheck = validateCycleLeaveOffDays({
+      crew: user.crew,
+      startDate: leaveData.start,
+      endDate: leaveData.end,
+      baseDate,
+    });
+    if (!cycleCheck.ok) {
+      return res.status(400).json({
+        message: cycleCheck.message,
+        requiredEndDate: cycleCheck.requiredEndDate,
+      });
     }
 
     const balancesBefore = snapshotLeaveBalances(user);
@@ -893,6 +960,10 @@ exports.updateLeave = async (req, res) => {
     } catch (conflictErr) {
       console.warn('[leave] conflict notify skipped:', conflictErr.message);
     }
+
+    const rangeStart = previousStartStr < startStr ? previousStartStr : startStr;
+    const rangeEnd = previousEndStr > endStr ? previousEndStr : endStr;
+    await syncAttendanceAfterLeaveChange(user, rangeStart, rangeEnd, req);
 
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }
@@ -1209,6 +1280,10 @@ exports.removeLeave = async (req, res) => {
       after: removedAuditPayload,
       req,
     });
+
+    if (removed) {
+      await syncAttendanceAfterLeaveChange(user, removedStartStr, removedEndStr, req);
+    }
 
     res.json(user);
   } catch (error) { res.status(400).json({ message: error.message }); }

@@ -14,6 +14,10 @@ function isLeaderRole(role) {
   return isSicRole(role) || isSupervisorRole(role);
 }
 
+function isCcrOperatorRole(role) {
+  return /ccr operator/i.test(String(role || ''));
+}
+
 function normalizeRoleKey(role) {
   return String(role || '').trim().toLowerCase();
 }
@@ -35,18 +39,20 @@ function roleCoverBucket(role) {
 /**
  * Cover/delegation role compatibility:
  * - SIC and Supervisor are interchangeable (leader group)
+ * - SIC/Supervisor may delegate leader cover to any CCR Operator
  * - Otherwise same staffing role bucket (e.g. CCR Operator ↔ CCR Operator)
  */
 function rolesMatchForCover(absentRole, coverRole) {
   if (!absentRole || !coverRole) return false;
   if (isLeaderRole(absentRole) && isLeaderRole(coverRole)) return true;
+  if (isLeaderRole(absentRole) && isCcrOperatorRole(coverRole)) return true;
   return roleCoverBucket(absentRole) === roleCoverBucket(coverRole);
 }
 
 function assertRolesMatchForCover(absentRole, coverRole) {
   if (!rolesMatchForCover(absentRole, coverRole)) {
     const err = new Error(
-      'Cover delegate must have a matching role. Shift in Charge and Supervisor may cover each other; otherwise the same role is required.'
+      'Cover delegate must have a matching role. Shift in Charge and Supervisor may cover each other or delegate to a CCR Operator; otherwise the same role is required.'
     );
     err.status = 400;
     throw err;
@@ -57,6 +63,7 @@ module.exports = {
   isSicRole,
   isSupervisorRole,
   isLeaderRole,
+  isCcrOperatorRole,
   rolesMatchForCover,
   assertRolesMatchForCover,
   staffingRuleLabelForRole,

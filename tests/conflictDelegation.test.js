@@ -267,6 +267,70 @@ describe('conflict delegation', () => {
     expect(ActingAssignment.create).toHaveBeenCalled();
   });
 
+  test('allows SIC to delegate leader cover to CCR Operator', async () => {
+    AdminUser.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'SIC1',
+          name: 'SIC Alice',
+          crew: 'A',
+          role: 'Shift in Charge Engineer',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'CCR-B1',
+          name: 'CCR Bob',
+          crew: 'B',
+          role: 'CCR Operator Group 1-2',
+        }),
+      });
+    ActingAssignment.findOne.mockResolvedValue(null);
+    ActingAssignment.create.mockResolvedValue({
+      _id: '507f1f77bcf86cd799439087',
+      absentEmpId: 'SIC1',
+      coverEmpId: 'CCR-B1',
+      role: 'shift_in_charge',
+      roleAtTime: 'Shift in Charge Engineer',
+      crew: 'A',
+      coverFromCrew: 'B',
+      startDate: '2026-06-01',
+      endDate: '2026-06-04',
+      status: 'approved',
+      source: 'conflict_resolution',
+      toObject() {
+        return { ...this };
+      },
+    });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { empId: 'SIC1', name: 'SIC Alice', crew: 'A' },
+          { empId: 'CCR-B1', name: 'CCR Bob', crew: 'B' },
+        ]),
+      }),
+    });
+
+    const res = await request(app)
+      .post('/api/roster/delegations/resolve-conflict')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
+      .send({
+        absentEmpId: 'SIC1',
+        coverEmpId: 'CCR-B1',
+        crew: 'A',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      });
+
+    expect(res.status).toBe(201);
+    expect(ActingAssignment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        coverEmpId: 'CCR-B1',
+        coverFromCrew: 'B',
+      })
+    );
+  });
+
   test('rejects conflict delegation for General crew members', async () => {
     AdminUser.findOne
       .mockReturnValueOnce({

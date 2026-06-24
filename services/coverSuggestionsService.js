@@ -90,11 +90,7 @@ function compareCandidates(a, b) {
   return a.name.localeCompare(b.name);
 }
 
-function employeeMatchesRoleParam(employee, roleParam, staffingRule) {
-  if (!staffingRule) {
-    return rolesMatchForCover(roleParam, employee.role);
-  }
-  if (!staffingRule.match(employee.role)) return false;
+function employeeMatchesRoleParam(employee, roleParam) {
   return rolesMatchForCover(roleParam, employee.role);
 }
 
@@ -132,7 +128,7 @@ function buildCoverSuggestions(employees, options = {}) {
   const pool = (employees || []).filter((e) => {
     if (!e?.empId) return false;
     // General crew is a standby pool — eligible when on off rotation (not in conflict rules).
-    if (!employeeMatchesRoleParam(e, roleParam, staffingRule)) return false;
+    if (!employeeMatchesRoleParam(e, roleParam)) return false;
     if (employeeOnApprovedLeave(e, dateStr)) return false;
     if (isWorkingOwnShift(e, dateStr, baseDate)) return false;
     const offInfo = getOffBlockInfo(e.crew, dateStr, baseDate);

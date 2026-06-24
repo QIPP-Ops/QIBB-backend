@@ -21,6 +21,7 @@ const {
   calendarDatesInclusive,
   isBelowMinimum,
 } = require('./staffingRulesService');
+const { isGeneralCrew } = require('../utils/rosterRowSort');
 
 function leaveRangesOverlap(aStart, aEnd, bStart, bEnd) {
   const s1 = parseDateOnly(aStart);
@@ -40,6 +41,8 @@ function findSameCrewRoleOverlaps(employees, subjectEmployee, newLeave, actingAs
 }
 
 function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssignments = []) {
+  if (isGeneralCrew(subjectEmployee.crew)) return [];
+
   const crew = subjectEmployee.crew;
   const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
   const alerts = [];
@@ -73,6 +76,8 @@ async function emailStaffingBelowMinimum(crew, date, below) {
 }
 
 function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave, actingAssignments = []) {
+  if (isGeneralCrew(subjectEmployee.crew)) return [];
+
   const crew = subjectEmployee.crew;
   const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
   const alerts = [];
@@ -94,6 +99,7 @@ function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave
 async function willBreachStaffingRules(empId, startDate, endDate, leaveId = null) {
   const subject = await AdminUser.findOne({ empId: String(empId).trim() }).lean();
   if (!subject) return { breached: false, alerts: [] };
+  if (isGeneralCrew(subject.crew)) return { breached: false, alerts: [] };
 
   const { loadStaffingRosterEmployees } = require('../utils/rosterEmployeeLoad');
   const employees = await loadStaffingRosterEmployees();

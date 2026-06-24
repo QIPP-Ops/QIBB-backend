@@ -10,6 +10,12 @@ describe('rolesMatchForCover', () => {
     expect(rolesMatchForCover('Supervisor', 'Shift in Charge')).toBe(true);
   });
 
+  test('leaders may delegate cover to CCR Operators', () => {
+    expect(rolesMatchForCover('Shift in Charge Engineer', 'CCR Operator Group 1-2')).toBe(true);
+    expect(rolesMatchForCover('Supervisor', 'CCR Operator Group 3-4')).toBe(true);
+    expect(rolesMatchForCover('CCR Operator', 'Supervisor')).toBe(false);
+  });
+
   test('same operational role bucket matches', () => {
     expect(rolesMatchForCover('CCR Operator Group 1-2', 'CCR Operator Group 3-4')).toBe(true);
     expect(rolesMatchForCover('Local Operator Group 1-2', 'Local Operator Group 5-6')).toBe(true);
@@ -19,7 +25,7 @@ describe('rolesMatchForCover', () => {
   test('different roles do not match', () => {
     expect(rolesMatchForCover('CCR Operator', 'Local Operator')).toBe(false);
     expect(rolesMatchForCover('CCR Operator', 'Chemist')).toBe(false);
-    expect(rolesMatchForCover('Supervisor', 'CCR Operator')).toBe(false);
+    expect(rolesMatchForCover('Local Operator', 'CCR Operator')).toBe(false);
   });
 });
 
@@ -180,6 +186,30 @@ describe('buildCoverSuggestions', () => {
       baseDate,
     });
     expect(candidates.some((c) => c.empId === 'CCR-G1')).toBe(true);
+  });
+
+  test('includes CCR operators when seeking leader cover', () => {
+    const withLeaders = [
+      ...employees,
+      {
+        empId: 'SIC-B1',
+        name: 'Bob SIC',
+        crew: 'B',
+        role: 'Shift in Charge Engineer',
+        color: 'crew-red',
+        leaves: [],
+      },
+    ];
+    const { candidates } = buildCoverSuggestions(withLeaders, {
+      date: '2026-01-06',
+      crew: 'A',
+      role: 'Shift in Charge Engineer',
+      shift: 'D',
+      baseDate,
+    });
+    expect(candidates.some((c) => c.empId === 'CCR-B1')).toBe(true);
+    expect(candidates.some((c) => c.empId === 'SIC-B1')).toBe(true);
+    expect(candidates.some((c) => c.empId === 'LOC-B1')).toBe(false);
   });
 
   test('stillUnderstaffedAfterBestCover is zero when crew is exactly at CCR minimum', () => {

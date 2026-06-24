@@ -91,6 +91,35 @@ describe('leaveConflictService', () => {
     expect(ccrShort).toBe(true);
   });
 
+  test('findStaffingShortfalls skips General crew entirely', () => {
+    const subject = {
+      empId: 'GEN1',
+      name: 'Mohammad Abdullah AlGarni',
+      crew: 'General',
+      role: 'CCR Operator',
+      leaves: [],
+    };
+    const employees = [
+      subject,
+      { empId: 'GEN2', crew: 'General', role: 'CCR Operator', leaves: [] },
+    ];
+    const alerts = findStaffingShortfalls(employees, subject, {
+      start: new Date('2026-06-11'),
+      end: new Date('2026-06-11'),
+    });
+    expect(alerts).toEqual([]);
+  });
+
+  test('staffingCountsForDate returns empty for General crew', () => {
+    const { staffingCountsForDate } = require('../services/staffingRulesService');
+    const employees = [
+      { empId: 'GEN1', crew: 'General', role: 'CCR Operator', leaves: [] },
+      { empId: 'GEN2', crew: 'General', role: 'CCR Operator', leaves: [] },
+    ];
+    const counts = staffingCountsForDate(employees, 'General', '2026-06-11', []);
+    expect(counts).toEqual([]);
+  });
+
   test('approved delegation skips overlap when absent employee is covered', () => {
     const subject = {
       empId: 'E2',

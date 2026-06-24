@@ -3,6 +3,8 @@ const {
   filterGeneralCrewConflicts,
   buildRosterSchedule,
   conflictInvolvesGeneralCrew,
+  resolveEmployeeShift,
+  formatShiftDisplay,
 } = require('../services/shiftScheduleService');
 const { isGeneralCrew } = require('../utils/rosterRowSort');
 
@@ -357,5 +359,23 @@ describe('shiftScheduleService General crew exclusion', () => {
     const flaggedEmpIds = staffing.flatMap((c) => c.employees.map((e) => e.empId));
     expect(flaggedEmpIds).toContain('LOC0');
     expect(flaggedEmpIds).not.toContain('CCR0');
+  });
+});
+
+describe('shiftScheduleService General crew weekday display', () => {
+  const generalEmployee = { empId: 'G1', name: 'General Staff', crew: 'General', role: 'Chemist', leaves: [] };
+
+  test('formatShiftDisplay shows Day on Saudi weekdays', () => {
+    expect(formatShiftDisplay('General', 'O', '2026-06-24', false)).toBe('Day'); // Wednesday
+    expect(formatShiftDisplay('General', 'O', '2026-06-26', false)).toBe('O'); // Friday (weekend)
+  });
+
+  test('resolveEmployeeShift uses Day display for General crew on weekdays', () => {
+    const weekday = resolveEmployeeShift(generalEmployee, '2026-06-24'); // Wednesday
+    expect(weekday.display).toBe('Day');
+    expect(weekday.shift).toBe('O');
+
+    const friday = resolveEmployeeShift(generalEmployee, '2026-06-26'); // Friday
+    expect(friday.display).toBe('O');
   });
 });

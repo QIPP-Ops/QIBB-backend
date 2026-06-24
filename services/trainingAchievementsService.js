@@ -4,6 +4,7 @@ const CourseAssignment = require('../models/CourseAssignment');
 const Quiz = require('../models/Quiz');
 const QuizAssignment = require('../models/QuizAssignment');
 const QuizAttempt = require('../models/QuizAttempt');
+const SurveyAssignment = require('../models/SurveyAssignment');
 
 function normalizeName(name) {
   return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -76,6 +77,29 @@ async function loadQuizAssignmentCompletions() {
     }));
 }
 
+async function loadSurveyAuditCompletions() {
+  const rows = await SurveyAssignment.find({ completedAt: { $ne: null } })
+    .sort({ completedAt: -1 })
+    .populate('surveyId', 'title surveyType')
+    .populate('userId', 'name empId crew')
+    .lean();
+  return rows
+    .filter((r) => r.surveyId)
+    .map((r) => ({
+      type: 'audit',
+      userId: r.userId?._id,
+      empId: r.userId?.empId || '',
+      employeeName: r.userId?.name || 'Member',
+      title: r.surveyId.title,
+      surveyType: r.surveyId.surveyType || 'custom',
+      completedAt: r.completedAt ? new Date(r.completedAt) : null,
+      score: null,
+      source: 'survey_assignment',
+      assignmentId: r._id,
+      surveyId: r.surveyId._id,
+    }));
+}
+
 async function loadPassedQuizAttempts() {
   const rows = await QuizAttempt.find({ passed: true })
     .sort({ completedAt: -1 })
@@ -125,14 +149,16 @@ function dedupeAndSort(items, limit = 20) {
 }
 
 async function getRecentAchievements({ limit = 20 } = {}) {
-  const [configCourses, assignmentCourses, quizAssignments, quizAttempts] = await Promise.all([
-    loadCourseCompletionsFromConfig(),
-    loadCourseAssignmentCompletions(),
-    loadQuizAssignmentCompletions(),
-    loadPassedQuizAttempts(),
-  ]);
+  const [configCourses, assignmentCourses, quizAssignments, quizAttempts, surveyAudits] =
+    await Promise.all([
+      loadCourseCompletionsFromConfig(),
+      loadCourseAssignmentCompletions(),
+      loadQuizAssignmentCompletions(),
+      loadPassedQuizAttempts(),
+      loadSurveyAuditCompletions(),
+    ]);
   return dedupeAndSort(
-    [...configCourses, ...assignmentCourses, ...quizAssignments, ...quizAttempts],
+    [...configCourses, ...assignmentCourses, ...quizAssignments, ...quizAttempts, ...surveyAudits],
     limit
   );
 }
@@ -164,4 +190,5 @@ module.exports = {
   getRecentAchievements,
   getUserCertificates,
   matchesUser,
+  loadSurveyAuditCompletions,
 };

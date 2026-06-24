@@ -263,4 +263,64 @@ describe('willBreachStaffingRules', () => {
     const result = await willBreachStaffingRules('LOC0', '2026-01-03', '2026-01-03');
     expect(result.breached).toBe(false);
   });
+
+  test('returns not breached for General crew CCR single-day leave (standby pool)', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'GEN1',
+          name: 'Mohammad Abdullah AlGarni',
+          crew: 'General',
+          role: 'CCR Operator',
+          leaves: [],
+        }),
+    });
+    mockStaffingFind([
+      {
+        empId: 'GEN1',
+        crew: 'General',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+      {
+        empId: 'GEN2',
+        crew: 'General',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+    ]);
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('GEN1', '2026-06-11', '2026-06-11');
+    expect(result.breached).toBe(false);
+    expect(result.alerts).toEqual([]);
+  });
+
+  test('A/B/C/D crew still requires cover when CCR below minimum', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'E3',
+          crew: 'A',
+          role: 'CCR Operator',
+          leaves: [],
+        }),
+    });
+    mockStaffingFind([
+      { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ]);
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('E3', '2026-06-05', '2026-06-05');
+    expect(result.breached).toBe(true);
+    expect(result.alerts[0].below.some((b) => b.label === 'CCR Operator')).toBe(true);
+  });
 });

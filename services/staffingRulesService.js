@@ -1,4 +1,4 @@
-const { normCrew } = require('../utils/rosterRowSort');
+const { normCrew, isGeneralCrew } = require('../utils/rosterRowSort');
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -68,6 +68,8 @@ function employeeOnAnyLeave(employee, dateStr) {
 }
 
 function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [], options = {}) {
+  if (isGeneralCrew(crew)) return [];
+
   const { actingCoverCountForRole, approvedAssignmentsForRange } = require('./actingCoverService');
   const { approvedLeaveOnly = false } = options;
   const onLeave = approvedLeaveOnly ? employeeOnApprovedLeave : employeeOnAnyLeave;
