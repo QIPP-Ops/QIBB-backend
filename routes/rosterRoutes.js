@@ -27,6 +27,10 @@ router.get('/delegations/inbox', protect, actingCover.getDelegationInbox);
 
 router.get('/org-overlay', protect, actingCover.getOrgOverlay);
 
+router.get('/cover-suggestions', protect, requireSuperAdmin, actingCover.getCoverSuggestions);
+
+router.post('/cover-suggestions/batch', protect, requireSuperAdmin, actingCover.postCoverSuggestionsBatch);
+
 router.post('/delegations', protect, actingCover.createDelegation);
 
 router.post('/delegations/resolve-conflict', protect, actingCover.resolveConflictDelegation);

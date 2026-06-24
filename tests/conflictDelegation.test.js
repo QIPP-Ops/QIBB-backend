@@ -173,6 +173,100 @@ describe('conflict delegation', () => {
     expect(res.status).toBe(403);
   });
 
+  test('rejects conflict delegation when cover role does not match', async () => {
+    AdminUser.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'E1',
+          name: 'Alice',
+          crew: 'A',
+          role: 'CCR Operator',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'E2',
+          name: 'Bob',
+          crew: 'B',
+          role: 'Local Operator',
+        }),
+      });
+
+    const res = await request(app)
+      .post('/api/roster/delegations/resolve-conflict')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
+      .send({
+        absentEmpId: 'E1',
+        coverEmpId: 'E2',
+        crew: 'A',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/matching role/i);
+    expect(ActingAssignment.create).not.toHaveBeenCalled();
+  });
+
+  test('allows SIC to cover for Supervisor', async () => {
+    AdminUser.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'SIC1',
+          name: 'SIC Alice',
+          crew: 'A',
+          role: 'Shift in Charge Engineer',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'SUP1',
+          name: 'Super Bob',
+          crew: 'B',
+          role: 'Supervisor',
+        }),
+      });
+    ActingAssignment.findOne.mockResolvedValue(null);
+    ActingAssignment.create.mockResolvedValue({
+      _id: '507f1f77bcf86cd799439088',
+      absentEmpId: 'SIC1',
+      coverEmpId: 'SUP1',
+      role: 'shift_in_charge',
+      roleAtTime: 'Shift in Charge Engineer',
+      crew: 'A',
+      coverFromCrew: 'B',
+      startDate: '2026-06-01',
+      endDate: '2026-06-04',
+      status: 'approved',
+      source: 'conflict_resolution',
+      toObject() {
+        return { ...this };
+      },
+    });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { empId: 'SIC1', name: 'SIC Alice', crew: 'A' },
+          { empId: 'SUP1', name: 'Super Bob', crew: 'B' },
+        ]),
+      }),
+    });
+
+    const res = await request(app)
+      .post('/api/roster/delegations/resolve-conflict')
+      .set('Authorization', `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL })}`)
+      .send({
+        absentEmpId: 'SIC1',
+        coverEmpId: 'SUP1',
+        crew: 'A',
+        startDate: '2026-06-01',
+        endDate: '2026-06-04',
+      });
+
+    expect(res.status).toBe(201);
+    expect(ActingAssignment.create).toHaveBeenCalled();
+  });
+
   test('rejects conflict delegation for General crew members', async () => {
     AdminUser.findOne
       .mockReturnValueOnce({

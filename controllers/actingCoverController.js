@@ -24,6 +24,8 @@ const {
   delegationStatus,
   isApprovedDelegation,
 } = require('../services/actingCoverService');
+const { assertRolesMatchForCover } = require('../utils/roleCoverMatch');
+const { buildCoverSuggestions } = require('../services/coverSuggestionsService');
 
 async function loadActor(req) {
   if (!req.user?.id) return null;
@@ -277,6 +279,12 @@ exports.createDelegation = exports.createActingCover = async (req, res) => {
     }
     if (absentEmpId === delegateId) {
       return res.status(400).json({ message: 'Delegate cannot be the same as the absent employee.' });
+    }
+
+    try {
+      assertRolesMatchForCover(absent.role, cover.role);
+    } catch (roleErr) {
+      return res.status(roleErr.status || 400).json({ message: roleErr.message });
     }
 
     const doc = await createDelegationRecord({
@@ -703,6 +711,12 @@ exports.resolveConflictDelegation = async (req, res) => {
       return res.status(400).json({ message: 'Delegate cannot be the same as the absent employee.' });
     }
 
+    try {
+      assertRolesMatchForCover(absent.role, cover.role);
+    } catch (roleErr) {
+      return res.status(roleErr.status || 400).json({ message: roleErr.message });
+    }
+
     const doc = await createApprovedConflictDelegation({
       req,
       actor,
@@ -734,6 +748,110 @@ function dateInLeaveRange(dateStr, leave) {
 
 const { resolveEmployeeShift } = require('../services/shiftScheduleService');
 const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
+
+exports.getCoverSuggestions = async (req, res) => {
+  try {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only the designated super administrator may view cover suggestions.',
+      });
+    }
+
+    const dateStr = String(req.query.date || '').slice(0, 10);
+    const crew = String(req.query.crew || '').trim();
+    const role = String(req.query.role || '').trim();
+    const shift = req.query.shift ? String(req.query.shift).trim().toUpperCase() : undefined;
+
+    if (!dateStr || !crew || !role) {
+      return res.status(400).json({ message: 'date, crew, and role query parameters are required.' });
+    }
+
+    const AdminConfig = require('../models/AdminConfig');
+    const ActingAssignment = require('../models/ActingAssignment');
+    const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
+
+    const employees = await AdminUser.find({})
+      .select('empId name crew role color seniority leaves')
+      .lean();
+
+    const actingAssignments = await ActingAssignment.find({
+      status: 'approved',
+      startDate: { $lte: dateStr },
+      endDate: { $gte: dateStr },
+    }).lean();
+
+    const { candidates, meta } = buildCoverSuggestions(employees, {
+      date: dateStr,
+      crew,
+      role,
+      shift,
+      baseDate,
+      actingAssignments,
+    });
+
+    if (meta?.error) {
+      return res.status(400).json({ message: meta.error });
+    }
+
+    res.json({ success: true, data: candidates, meta });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.postCoverSuggestionsBatch = async (req, res) => {
+  try {
+    if (!isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only the designated super administrator may view cover suggestions.',
+      });
+    }
+
+    const queries = Array.isArray(req.body?.queries) ? req.body.queries : [];
+    if (!queries.length) {
+      return res.status(400).json({ message: 'queries array is required.' });
+    }
+
+    const AdminConfig = require('../models/AdminConfig');
+    const ActingAssignment = require('../models/ActingAssignment');
+    const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
+
+    const employees = await AdminUser.find({})
+      .select('empId name crew role color seniority leaves')
+      .lean();
+
+    const results = [];
+    for (const q of queries.slice(0, 20)) {
+      const dateStr = String(q.date || '').slice(0, 10);
+      const crew = String(q.crew || '').trim();
+      const role = String(q.role || '').trim();
+      const shift = q.shift ? String(q.shift).trim().toUpperCase() : undefined;
+
+      const actingAssignments = await ActingAssignment.find({
+        status: 'approved',
+        startDate: { $lte: dateStr },
+        endDate: { $gte: dateStr },
+      }).lean();
+
+      const { candidates, meta } = buildCoverSuggestions(employees, {
+        date: dateStr,
+        crew,
+        role,
+        shift,
+        baseDate,
+        actingAssignments,
+      });
+
+      results.push({ query: { date: dateStr, crew, role, shift }, candidates, meta });
+    }
+
+    res.json({ success: true, data: results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 exports.getOrgOverlay = async (req, res) => {
   try {
