@@ -73,7 +73,7 @@ async function buildSchedulePayload(start, end) {
   schedule.actingAssignments = actingAssignments;
   schedule.delegations = actingAssignments;
   const dailyConflicts = filterActiveConflicts(
-    filterConflictsByDelegations(schedule.conflicts, actingAssignments)
+    filterConflictsByDelegations(schedule.conflicts, actingAssignments, employees)
   );
   schedule.conflicts = groupConflictsByCycle(
     dailyConflicts,

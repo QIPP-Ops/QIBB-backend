@@ -336,6 +336,28 @@ describe('conflict delegation', () => {
   test('approved conflict delegation clears staffing conflict and drops conflictCount', () => {
     const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
 
+    const employees = [
+      {
+        empId: 'E1',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [
+          { start: '2026-07-01', end: '2026-07-02', status: 'approved' },
+        ],
+      },
+      {
+        empId: 'E2',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [
+          { start: '2026-07-01', end: '2026-07-02', status: 'approved' },
+        ],
+      },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E5', crew: 'B', role: 'CCR Operator', leaves: [] },
+    ];
+
     const dailyConflicts = [
       {
         date: '2026-07-01',
@@ -366,7 +388,9 @@ describe('conflict delegation', () => {
       {
         _id: '1',
         absentEmpId: 'E1',
-        coverEmpId: 'E3',
+        coverEmpId: 'E5',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
         crew: 'A',
         coverFromCrew: 'B',
         startDate: '2026-07-01',
@@ -377,8 +401,8 @@ describe('conflict delegation', () => {
     ];
 
     const cycleDates = ['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04'];
-    const beforeDaily = filterConflictsByDelegations(dailyConflicts, []);
-    const afterDaily = filterConflictsByDelegations(dailyConflicts, assignments);
+    const beforeDaily = filterConflictsByDelegations(dailyConflicts, [], employees);
+    const afterDaily = filterConflictsByDelegations(dailyConflicts, assignments, employees);
     const beforeGrouped = groupConflictsByCycle(beforeDaily, cycleDates);
     const afterGrouped = groupConflictsByCycle(afterDaily, cycleDates);
 

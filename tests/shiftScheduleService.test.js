@@ -114,6 +114,57 @@ describe('shiftScheduleService General crew exclusion', () => {
     expect(schedule.conflicts[0].conflictType).toBe('staffing');
   });
 
+  test('buildRosterSchedule does not conflict when exactly at CCR minimum (3/3)', () => {
+    const employees = [
+      {
+        empId: 'A1',
+        name: 'Alpha One',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [leave('2026-06-05', '2026-06-05')],
+      },
+      ...Array.from({ length: 3 }, (_, i) => ({
+        empId: `A-CCR-${i}`,
+        name: `CCR ${i}`,
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      })),
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-06-01',
+      endDate: '2026-06-10',
+    });
+    const onConflictDay = schedule.conflicts.filter((c) => c.date === '2026-06-05');
+    expect(onConflictDay).toEqual([]);
+    expect(schedule.conflictCount).toBe(0);
+  });
+
+  test('buildRosterSchedule does not conflict when exactly at local operator minimum (4/4)', () => {
+    const employees = [
+      {
+        empId: 'A-LOC-0',
+        name: 'Local Zero',
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [leave('2026-06-05', '2026-06-05')],
+      },
+      ...Array.from({ length: 4 }, (_, i) => ({
+        empId: `A-LOC-${i + 1}`,
+        name: `Local ${i + 1}`,
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [],
+      })),
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-06-01',
+      endDate: '2026-06-10',
+    });
+    const onConflictDay = schedule.conflicts.filter((c) => c.date === '2026-06-05');
+    expect(onConflictDay).toEqual([]);
+  });
+
   test('buildRosterSchedule does not conflict when different roles on leave and minimums met', () => {
     const employees = [
       {

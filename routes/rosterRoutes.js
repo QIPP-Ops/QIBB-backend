@@ -59,6 +59,8 @@ router.delete('/:empId', protect, requireSuperAdmin, c.deleteEmployee);
 
 router.post('/leave', protect, checkEditingLock, c.addLeave);
 
+router.get('/leave/staffing-check', protect, c.checkStaffingImpact);
+
 router.patch('/leave/:employeeId/:leaveId/approve', protect, checkEditingLock, c.approveLeave);
 router.patch('/leave/:employeeId/:leaveId/reject', protect, checkEditingLock, c.rejectLeave);
 

@@ -68,7 +68,61 @@ describe('actingCoverService conflict cover', () => {
     expect(filterConflictsByDelegations(conflicts, [])).toHaveLength(1);
   });
 
+  test('filterConflictsByDelegations keeps staffing conflict when one on leave drops below minimum', () => {
+    const employees = [
+      { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [{ start: '2026-06-05', end: '2026-06-05', status: 'approved' }] },
+      { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ];
+    const conflicts = [
+      {
+        date: '2026-06-05',
+        crew: 'A',
+        conflictType: 'staffing',
+        employees: [{ empId: 'E1', name: 'Alice' }],
+        below: [{ label: 'CCR Operator', shortfall: 1, available: 2, min: 3 }],
+      },
+    ];
+    expect(filterConflictsByDelegations(conflicts, [], employees)).toHaveLength(1);
+  });
+
+  test('filterConflictsByDelegations clears staffing conflict at minimum (3/3 CCR)', () => {
+    const employees = [
+      { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [{ start: '2026-06-05', end: '2026-06-05', status: 'approved' }] },
+      { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ];
+    const conflicts = [
+      {
+        date: '2026-06-05',
+        crew: 'A',
+        conflictType: 'staffing',
+        employees: [{ empId: 'E1', name: 'Alice' }],
+        below: [{ label: 'CCR Operator', shortfall: 0, available: 3, min: 3 }],
+      },
+    ];
+    expect(filterConflictsByDelegations(conflicts, [], employees)).toHaveLength(0);
+  });
+
   test('filterConflictsByDelegations clears staffing conflict when one of two on leave is covered', () => {
+    const employees = [
+      {
+        empId: 'E1',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [{ start: '2026-06-05', end: '2026-06-05', status: 'approved' }],
+      },
+      {
+        empId: 'E2',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [{ start: '2026-06-05', end: '2026-06-05', status: 'approved' }],
+      },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E5', crew: 'B', role: 'CCR Operator', leaves: [] },
+    ];
     const conflicts = [
       {
         date: '2026-06-05',
@@ -84,7 +138,9 @@ describe('actingCoverService conflict cover', () => {
       {
         _id: 'd1',
         absentEmpId: 'E1',
-        coverEmpId: 'E3',
+        coverEmpId: 'E5',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
         crew: 'A',
         coverFromCrew: 'B',
         startDate: '2026-06-01',
@@ -93,7 +149,7 @@ describe('actingCoverService conflict cover', () => {
         source: 'conflict_resolution',
       },
     ];
-    expect(filterConflictsByDelegations(conflicts, assignments)).toHaveLength(0);
+    expect(filterConflictsByDelegations(conflicts, assignments, employees)).toHaveLength(0);
   });
 
   test('actingCoverCountForRole counts cross-crew same-role cover', () => {

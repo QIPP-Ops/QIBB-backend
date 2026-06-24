@@ -161,15 +161,31 @@ function enrichConflictEmployees(conflict, assignments) {
   return { ...conflict, employees, uncoveredCount: uncovered.length };
 }
 
-function filterConflictsByDelegations(conflicts, assignments) {
+function primaryCrewFromConflict(conflict) {
+  return String(conflict?.crew || '').split('/')[0] || conflict?.crew;
+}
+
+function staffingConflictStillActive(conflict, assignments, employees) {
+  if (!conflict?.date || !employees?.length) {
+    return (conflict?.below || []).some((row) => (row?.shortfall ?? 0) > 0);
+  }
+  const { staffingCountsForDate, hasStaffingShortfall } = require('./staffingRulesService');
+  const crew = primaryCrewFromConflict(conflict);
+  const approved = approvedAssignmentsForRange(assignments, conflict.date, conflict.date);
+  const counts = staffingCountsForDate(employees, crew, conflict.date, approved, {
+    approvedLeaveOnly: true,
+  });
+  return hasStaffingShortfall(counts);
+}
+
+function filterConflictsByDelegations(conflicts, assignments, employees = null) {
   return (conflicts || [])
     .map((c) => enrichConflictEmployees(c, assignments))
     .filter((c) => {
-      if (c.uncoveredCount < 2) return false;
       if (c.conflictType === 'staffing') {
-        return (c.below || []).some((row) => row.shortfall > 0);
+        return staffingConflictStillActive(c, assignments, employees);
       }
-      return true;
+      return c.uncoveredCount >= 2;
     });
 }
 
@@ -280,6 +296,7 @@ module.exports = {
   employeeOnLeave,
   hasApprovedCoverOnDate,
   findDelegationForEmpDate,
+  staffingConflictStillActive,
   filterConflictsByDelegations,
   enrichScheduleRows,
 };

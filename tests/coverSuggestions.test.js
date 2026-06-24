@@ -158,4 +158,22 @@ describe('buildCoverSuggestions', () => {
     });
     expect(candidates.some((c) => c.empId === 'CCR-C1')).toBe(true);
   });
+
+  test('stillUnderstaffedAfterBestCover is zero when crew is exactly at CCR minimum', () => {
+    const atMinimum = [
+      { empId: 'CCR-A1', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR-A2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR-A3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR-B1', crew: 'B', role: 'CCR Operator Group 1-2', color: 'crew-red', leaves: [] },
+    ];
+    const { meta } = buildCoverSuggestions(atMinimum, {
+      date: '2026-01-06',
+      crew: 'A',
+      role: 'CCR Operator',
+      shift: 'D',
+      baseDate,
+    });
+    expect(meta.shortfallBefore).toBe(0);
+    expect(meta.stillUnderstaffedAfterBestCover).toBe(0);
+  });
 });

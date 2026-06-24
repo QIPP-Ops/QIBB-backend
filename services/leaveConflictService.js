@@ -19,6 +19,7 @@ const {
   employeeOnApprovedLeave,
   staffingCountsForDate,
   calendarDatesInclusive,
+  isBelowMinimum,
 } = require('./staffingRulesService');
 
 function leaveRangesOverlap(aStart, aEnd, bStart, bEnd) {
@@ -47,7 +48,7 @@ function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssi
     const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, {
       approvedLeaveOnly: false,
     });
-    const below = counts.filter((c) => c.shortfall > 0);
+    const below = counts.filter(isBelowMinimum);
     if (!below.length) continue;
     alerts.push({ crew, date: dateStr, below });
   }
@@ -80,7 +81,7 @@ function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave
     const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, {
       approvedLeaveOnly: true,
     });
-    const below = counts.filter((c) => c.shortfall > 0);
+    const below = counts.filter(isBelowMinimum);
     if (!below.length) continue;
     alerts.push({ crew, date: dateStr, below });
   }

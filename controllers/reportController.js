@@ -252,7 +252,7 @@ exports.getStaffingConflicts = async (req, res) => {
     });
 
     let conflicts = filterActiveConflicts(
-      filterConflictsByDelegations(schedule.conflicts, actingAssignments)
+      filterConflictsByDelegations(schedule.conflicts, actingAssignments, employees)
     );
 
     const coverByKey = new Map();

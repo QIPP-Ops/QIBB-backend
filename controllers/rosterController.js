@@ -350,6 +350,36 @@ exports.patchPersonnelProfile = async (req, res) => {
   }
 };
 
+/** GET /api/roster/leave/staffing-check — preview whether leave would breach minimum staffing. */
+exports.checkStaffingImpact = async (req, res) => {
+  try {
+    const empId = String(req.query.empId || req.query.employeeId || '').trim();
+    const startDate = String(req.query.start || req.query.startDate || '').trim();
+    const endDate = String(req.query.end || req.query.endDate || startDate).trim();
+    const leaveId = req.query.leaveId ? String(req.query.leaveId) : null;
+
+    if (!empId || !startDate) {
+      return res.status(400).json({ message: 'empId and start date are required.' });
+    }
+
+    const user = await AdminUser.findOne({ empId }).select('empId crew role').lean();
+    if (!user) return res.status(404).json({ message: 'Personnel not found.' });
+    if (!canEditLeaveForEmployee(req, user)) {
+      return res.status(403).json({ message: 'You can only check staffing impact for your own account.' });
+    }
+
+    const { willBreachStaffingRules } = require('../services/leaveConflictService');
+    const result = await willBreachStaffingRules(empId, startDate, endDate, leaveId);
+    res.json({
+      breached: result.breached,
+      requiresCover: result.breached,
+      alerts: result.alerts,
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 exports.addLeave = async (req, res) => {
   const {
     employeeId,
@@ -418,11 +448,27 @@ exports.addLeave = async (req, res) => {
       }
     }
 
-    user.leaves.push(leaveData);
-    await user.save();
-
     const startStr = new Date(leaveData.start).toISOString().slice(0, 10);
     const endStr = new Date(leaveData.end).toISOString().slice(0, 10);
+    const forceApply = req.query.force === 'true';
+    const { willBreachStaffingRules } = require('../services/leaveConflictService');
+    const staffingCheck = await willBreachStaffingRules(targetId, startStr, endStr);
+    if (staffingCheck.breached && !delegateId && !forceApply) {
+      return res.status(422).json({
+        message:
+          'This leave would drop staffing below minimum. Assign a cover delegate for the period before applying.',
+        staffingAlerts: staffingCheck.alerts,
+        requiresCover: true,
+      });
+    }
+    if (staffingCheck.breached && forceApply && !isSuperAdmin(req)) {
+      return res.status(403).json({
+        message: 'Only super administrators may apply leave without cover when staffing rules would be breached.',
+      });
+    }
+
+    user.leaves.push(leaveData);
+    await user.save();
 
     await logRosterEvent({
       action: 'LEAVE_APPLIED',
@@ -540,10 +586,20 @@ exports.approveLeave = async (req, res) => {
     const { willBreachStaffingRules } = require('../services/leaveConflictService');
     const staffingCheck = await willBreachStaffingRules(employeeId, startStr, endStr, leaveId);
     if (staffingCheck.breached && !forceApprove) {
-      return res.status(422).json({
-        message: 'Approving this leave would breach minimum staffing rules.',
-        staffingAlerts: staffingCheck.alerts,
-      });
+      const ActingAssignment = require('../models/ActingAssignment');
+      const hasCoverDelegation = await ActingAssignment.findOne({
+        absentEmpId: employeeId,
+        leaveId: String(leaveId),
+        startDate: { $lte: endStr },
+        endDate: { $gte: startStr },
+      }).lean();
+      if (!hasCoverDelegation) {
+        return res.status(422).json({
+          message: 'Approving this leave would breach minimum staffing rules. Assign cover before approving.',
+          staffingAlerts: staffingCheck.alerts,
+          requiresCover: true,
+        });
+      }
     }
     if (staffingCheck.breached && forceApprove && !isSuperAdmin(req)) {
       return res.status(403).json({ message: 'Only super administrators may force-approve staffing breaches.' });

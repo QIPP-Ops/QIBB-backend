@@ -1,8 +1,3 @@
-const {
-  actingCoverCountForRole,
-  approvedAssignmentsForRange,
-} = require('./actingCoverService');
-
 function pad(n) {
   return String(n).padStart(2, '0');
 }
@@ -57,6 +52,7 @@ function employeeOnAnyLeave(employee, dateStr) {
 }
 
 function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [], options = {}) {
+  const { actingCoverCountForRole, approvedAssignmentsForRange } = require('./actingCoverService');
   const { approvedLeaveOnly = false } = options;
   const onLeave = approvedLeaveOnly ? employeeOnApprovedLeave : employeeOnAnyLeave;
   const approved = approvedAssignmentsForRange(actingAssignments, dateStr, dateStr);
@@ -84,6 +80,15 @@ function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [],
   });
 
   return counts.filter((c) => c.rosterSize > 0);
+}
+
+/** True when available headcount is strictly below the role minimum (at minimum is OK). */
+function isBelowMinimum(count) {
+  return (count?.shortfall ?? 0) > 0;
+}
+
+function hasStaffingShortfall(counts) {
+  return (counts || []).some(isBelowMinimum);
 }
 
 function calendarDatesInclusive(start, end) {
@@ -125,7 +130,7 @@ function buildStaffingShortfallConflicts(employees, options = {}) {
       const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, {
         approvedLeaveOnly,
       });
-      const below = counts.filter((c) => c.shortfall > 0);
+      const below = counts.filter(isBelowMinimum);
       if (!below.length) continue;
 
       const onLeavePeople = employees
@@ -163,6 +168,8 @@ module.exports = {
   employeeOnApprovedLeave,
   employeeOnAnyLeave,
   staffingCountsForDate,
+  isBelowMinimum,
+  hasStaffingShortfall,
   calendarDatesInclusive,
   buildStaffingShortfallConflicts,
   fmtDate,
