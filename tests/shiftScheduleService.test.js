@@ -220,4 +220,142 @@ describe('shiftScheduleService General crew exclusion', () => {
       { crew: 'A', employees: [{ crew: 'A' }] },
     ]);
   });
+
+  test('buildRosterSchedule does not conflict when 4 CCR with mixed crew labels and 1 on leave (3/3)', () => {
+    const employees = [
+      {
+        empId: 'CCR0',
+        name: 'Somanathan',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [leave('2026-01-05', '2026-01-05')],
+      },
+      {
+        empId: 'CCR1',
+        name: 'Faisal',
+        crew: 'Crew A',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+      {
+        empId: 'CCR2',
+        name: 'Sami',
+        crew: 'crew a',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+      {
+        empId: 'CCR3',
+        name: 'Shaheer',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-01-05',
+      endDate: '2026-01-05',
+    });
+    expect(schedule.conflicts).toEqual([]);
+    expect(schedule.conflictCount).toBe(0);
+  });
+
+  test('buildRosterSchedule conflicts when 3 CCR with 1 on leave leaves 2 on duty (2/3)', () => {
+    const employees = [
+      {
+        empId: 'CCR0',
+        name: 'On Leave',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [leave('2026-01-05', '2026-01-05')],
+      },
+      {
+        empId: 'CCR1',
+        name: 'CCR One',
+        crew: 'Crew A',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+      {
+        empId: 'CCR2',
+        name: 'CCR Two',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-01-05',
+      endDate: '2026-01-05',
+    });
+    expect(schedule.conflicts.length).toBeGreaterThan(0);
+    expect(schedule.conflicts[0].conflictType).toBe('staffing');
+    expect(schedule.conflicts[0].below?.some((b) => b.label === 'CCR Operator')).toBe(true);
+  });
+
+  test('buildRosterSchedule does not conflict when 5 locals with 1 on leave (4/4)', () => {
+    const employees = [
+      {
+        empId: 'LOC0',
+        name: 'Abdulwahab',
+        crew: 'B',
+        role: 'Local Operator',
+        leaves: [leave('2026-01-03', '2026-01-03')],
+      },
+      ...Array.from({ length: 4 }, (_, i) => ({
+        empId: `LOC-${i + 1}`,
+        name: `Local ${i + 1}`,
+        crew: i % 2 === 0 ? 'B' : 'Crew B',
+        role: 'Local Operator',
+        leaves: [],
+      })),
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-01-03',
+      endDate: '2026-01-03',
+    });
+    expect(schedule.conflicts).toEqual([]);
+  });
+
+  test('buildRosterSchedule does not flag CCR on leave when only another role bucket is short', () => {
+    const employees = [
+      {
+        empId: 'CCR0',
+        name: 'Somanathan',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [leave('2026-01-05', '2026-01-05')],
+      },
+      ...Array.from({ length: 3 }, (_, i) => ({
+        empId: `CCR-${i + 1}`,
+        name: `CCR ${i + 1}`,
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      })),
+      {
+        empId: 'LOC0',
+        name: 'Short Local',
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [leave('2026-01-05', '2026-01-05')],
+      },
+      ...Array.from({ length: 2 }, (_, i) => ({
+        empId: `LOC-${i + 1}`,
+        name: `Local ${i + 1}`,
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [],
+      })),
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-01-05',
+      endDate: '2026-01-05',
+    });
+    const staffing = schedule.conflicts.filter((c) => c.conflictType === 'staffing');
+    expect(staffing.length).toBeGreaterThan(0);
+    const flaggedEmpIds = staffing.flatMap((c) => c.employees.map((e) => e.empId));
+    expect(flaggedEmpIds).toContain('LOC0');
+    expect(flaggedEmpIds).not.toContain('CCR0');
+  });
 });

@@ -1,5 +1,21 @@
+const { normCrew } = require('../utils/rosterRowSort');
+
 function pad(n) {
   return String(n).padStart(2, '0');
+}
+
+function crewsMatch(a, b) {
+  return normCrew(a) === normCrew(b);
+}
+
+function normalizedCrewKeys(employees, isGeneralCrew) {
+  return [
+    ...new Set(
+      (employees || [])
+        .map((e) => normCrew(e.crew))
+        .filter((c) => c && c !== 'General' && c !== 'S' && !isGeneralCrew(c))
+    ),
+  ];
 }
 
 function fmtDate(d) {
@@ -58,7 +74,7 @@ function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [],
   const approved = approvedAssignmentsForRange(actingAssignments, dateStr, dateStr);
 
   const counts = STAFFING_RULES.map((rule) => {
-    const roster = employees.filter((e) => e.crew === crew && rule.match(e.role));
+    const roster = employees.filter((e) => crewsMatch(e.crew, crew) && rule.match(e.role));
     const available = roster.filter((e) => !onLeave(e, dateStr));
     const actingBoost = actingCoverCountForRole(
       employees,
@@ -91,6 +107,33 @@ function hasStaffingShortfall(counts) {
   return (counts || []).some(isBelowMinimum);
 }
 
+/** Available headcount for one staffing rule bucket (approved leave excluded by default). */
+function countAvailableOnDuty(
+  employees,
+  crew,
+  dateStr,
+  ruleLabel,
+  actingAssignments = [],
+  options = {}
+) {
+  const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, options);
+  const row = counts.find((c) => c.label === ruleLabel);
+  return row?.available ?? 0;
+}
+
+function shortfallRuleMatchers(below) {
+  return (below || [])
+    .map((b) => STAFFING_RULES.find((r) => r.label === b.label))
+    .filter(Boolean)
+    .map((r) => r.match);
+}
+
+function employeeInShortfallRole(employee, below) {
+  const matchers = shortfallRuleMatchers(below);
+  if (!matchers.length) return false;
+  return matchers.some((match) => match(employee.role));
+}
+
 function calendarDatesInclusive(start, end) {
   const dates = [];
   const cur = parseDateOnly(start);
@@ -117,9 +160,7 @@ function buildStaffingShortfallConflicts(employees, options = {}) {
 
   if (!getShiftForDate || !isGeneralCrew) return [];
 
-  const crewsToCheck = [
-    ...new Set(employees.map((e) => e.crew).filter((c) => c && !isGeneralCrew(c))),
-  ];
+  const crewsToCheck = normalizedCrewKeys(employees, isGeneralCrew);
 
   const conflicts = [];
   for (const dateStr of dates) {
@@ -134,14 +175,16 @@ function buildStaffingShortfallConflicts(employees, options = {}) {
       if (!below.length) continue;
 
       const onLeavePeople = employees
-        .filter((e) => e.crew === crew)
+        .filter((e) => crewsMatch(e.crew, crew))
         .filter((e) =>
           approvedLeaveOnly ? employeeOnApprovedLeave(e, dateStr) : employeeOnAnyLeave(e, dateStr)
         )
+        .filter((e) => employeeInShortfallRole(e, below))
         .map((e) => ({
           empId: e.empId,
           name: e.name,
           role: e.role,
+          crew: normCrew(e.crew),
           color: e.color || e.seniority || 'crew-grey',
         }));
 
@@ -167,9 +210,13 @@ module.exports = {
   approvedLeavesOnly,
   employeeOnApprovedLeave,
   employeeOnAnyLeave,
+  crewsMatch,
+  normalizedCrewKeys,
   staffingCountsForDate,
+  countAvailableOnDuty,
   isBelowMinimum,
   hasStaffingShortfall,
+  employeeInShortfallRole,
   calendarDatesInclusive,
   buildStaffingShortfallConflicts,
   fmtDate,

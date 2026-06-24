@@ -180,4 +180,94 @@ describe('willBreachStaffingRules', () => {
     const leader = STAFFING_RULES.find((r) => r.label === 'Leader');
     expect(leader?.min).toBe(1);
   });
+
+  test('returns not breached when 4 CCR with mixed crew labels and 1 on leave (3/3)', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'CCR0',
+          crew: 'A',
+          role: 'CCR Operator',
+          leaves: [],
+        }),
+    });
+    AdminUser.find.mockReturnValue({
+      lean: () =>
+        Promise.resolve([
+          {
+            empId: 'CCR0',
+            crew: 'A',
+            role: 'CCR Operator',
+            leaves: [],
+          },
+          { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
+          { empId: 'CCR2', crew: 'crew a', role: 'CCR Operator', leaves: [] },
+          { empId: 'CCR3', crew: 'A', role: 'CCR Operator', leaves: [] },
+        ]),
+    });
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('CCR0', '2026-01-05', '2026-01-05');
+    expect(result.breached).toBe(false);
+  });
+
+  test('returns breached when 3 CCR with 1 on leave leaves 2 on duty (2/3)', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'CCR0',
+          crew: 'A',
+          role: 'CCR Operator',
+          leaves: [],
+        }),
+    });
+    AdminUser.find.mockReturnValue({
+      lean: () =>
+        Promise.resolve([
+          { empId: 'CCR0', crew: 'A', role: 'CCR Operator', leaves: [] },
+          { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
+          { empId: 'CCR2', crew: 'A', role: 'CCR Operator', leaves: [] },
+        ]),
+    });
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('CCR0', '2026-01-05', '2026-01-05');
+    expect(result.breached).toBe(true);
+    expect(result.alerts[0].below.some((b) => b.label === 'CCR Operator')).toBe(true);
+  });
+
+  test('returns not breached when 5 locals with 1 on leave (4/4)', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'LOC0',
+          crew: 'B',
+          role: 'Local Operator',
+          leaves: [],
+        }),
+    });
+    AdminUser.find.mockReturnValue({
+      lean: () =>
+        Promise.resolve([
+          { empId: 'LOC0', crew: 'B', role: 'Local Operator', leaves: [] },
+          { empId: 'LOC1', crew: 'Crew B', role: 'Local Operator', leaves: [] },
+          { empId: 'LOC2', crew: 'B', role: 'Local Operator', leaves: [] },
+          { empId: 'LOC3', crew: 'crew b', role: 'Local Operator', leaves: [] },
+          { empId: 'LOC4', crew: 'B', role: 'Local Operator', leaves: [] },
+        ]),
+    });
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('LOC0', '2026-01-03', '2026-01-03');
+    expect(result.breached).toBe(false);
+  });
 });
