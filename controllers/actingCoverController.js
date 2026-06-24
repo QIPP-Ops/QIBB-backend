@@ -876,12 +876,11 @@ exports.getCoverSuggestions = async (req, res) => {
 
     const AdminConfig = require('../models/AdminConfig');
     const ActingAssignment = require('../models/ActingAssignment');
+    const { loadStaffingRosterEmployees } = require('../utils/rosterEmployeeLoad');
     const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
     const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
 
-    const employees = await AdminUser.find({})
-      .select('empId name crew role color seniority leaves')
-      .lean();
+    const employees = await loadStaffingRosterEmployees();
 
     const actingAssignments = await ActingAssignment.find({
       status: 'approved',
@@ -923,12 +922,11 @@ exports.postCoverSuggestionsBatch = async (req, res) => {
 
     const AdminConfig = require('../models/AdminConfig');
     const ActingAssignment = require('../models/ActingAssignment');
+    const { loadStaffingRosterEmployees } = require('../utils/rosterEmployeeLoad');
     const config = await AdminConfig.findOne().select('shiftCycleBaseDate').lean();
     const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
 
-    const employees = await AdminUser.find({})
-      .select('empId name crew role color seniority leaves')
-      .lean();
+    const employees = await loadStaffingRosterEmployees();
 
     const results = [];
     for (const q of queries.slice(0, 20)) {

@@ -235,12 +235,12 @@ exports.getStaffingConflicts = async (req, res) => {
     const hasCoverFilter = req.query.hasCover;
 
     const config = await AdminConfig.findOne().lean();
-    const allEmployees = filterProtectedAccounts(
-      await AdminUser.find({ hiddenFromLeaveTimesheet: { $ne: true } })
-        .select('-passwordHash')
-        .lean()
-    );
-    const employees = sortRosterEmployees(allEmployees);
+    const {
+      loadStaffingRosterEmployees,
+      visibleRosterEmployees,
+    } = require('../utils/rosterEmployeeLoad');
+    const staffingEmployees = await loadStaffingRosterEmployees();
+    const employees = visibleRosterEmployees(staffingEmployees);
     const overrideMap = await loadOverrideMap(from, to);
     const actingAssignments = await loadActingForRange(from, to);
     const schedule = buildRosterSchedule(employees, {
@@ -249,10 +249,11 @@ exports.getStaffingConflicts = async (req, res) => {
       baseDate: config?.shiftCycleBaseDate || '2026-01-01',
       overrideMap,
       actingAssignments,
+      staffingEmployees,
     });
 
     let conflicts = filterActiveConflicts(
-      filterConflictsByDelegations(schedule.conflicts, actingAssignments, employees)
+      filterConflictsByDelegations(schedule.conflicts, actingAssignments, staffingEmployees)
     );
 
     const coverByKey = new Map();

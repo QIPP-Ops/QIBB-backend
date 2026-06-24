@@ -11,7 +11,6 @@ const {
 const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
 const { enrichScheduleRows, filterConflictsByDelegations } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
-const { filterProtectedAccounts } = require('../utils/protectedAccounts');
 const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
 
 function fmtDate(d) {
@@ -52,13 +51,12 @@ async function loadActingAssignmentsForRange(start, end) {
 
 async function buildSchedulePayload(start, end) {
   const config = await AdminConfig.findOne();
-    const { sortRosterEmployees } = require('../utils/rosterRowSort');
-    const allEmployees = filterProtectedAccounts(
-      await AdminUser.find({ hiddenFromLeaveTimesheet: { $ne: true } })
-        .select('-passwordHash')
-        .lean()
-    );
-    const employees = sortRosterEmployees(allEmployees);
+  const {
+    loadStaffingRosterEmployees,
+    visibleRosterEmployees,
+  } = require('../utils/rosterEmployeeLoad');
+  const staffingEmployees = await loadStaffingRosterEmployees();
+  const employees = visibleRosterEmployees(staffingEmployees);
   const overrideMap = await loadOverridesForRange(start, end);
   const actingAssignments = await loadActingAssignmentsForRange(start, end);
   const schedule = buildRosterSchedule(employees, {
@@ -67,13 +65,14 @@ async function buildSchedulePayload(start, end) {
     baseDate: config?.shiftCycleBaseDate || '2026-01-01',
     overrideMap,
     actingAssignments,
+    staffingEmployees,
   });
-  const employeeById = new Map(employees.map((e) => [e.empId, e]));
+  const employeeById = new Map(staffingEmployees.map((e) => [e.empId, e]));
   schedule.rows = enrichScheduleRows(schedule.rows, actingAssignments, employeeById);
   schedule.actingAssignments = actingAssignments;
   schedule.delegations = actingAssignments;
   const dailyConflicts = filterActiveConflicts(
-    filterConflictsByDelegations(schedule.conflicts, actingAssignments, employees)
+    filterConflictsByDelegations(schedule.conflicts, actingAssignments, staffingEmployees)
   );
   schedule.conflicts = groupConflictsByCycle(
     dailyConflicts,

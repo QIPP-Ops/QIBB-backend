@@ -12,6 +12,15 @@ const {
   willBreachStaffingRules,
 } = require('../services/leaveConflictService');
 
+function mockStaffingFind(employees) {
+  const AdminUser = require('../models/AdminUser');
+  AdminUser.find.mockReturnValue({
+    select: () => ({
+      lean: () => Promise.resolve(employees),
+    }),
+  });
+}
+
 describe('willBreachStaffingRules', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -57,7 +66,7 @@ describe('willBreachStaffingRules', () => {
           leaves: [{ _id: 'leave1', start: new Date('2026-06-05'), end: new Date('2026-06-05'), status: 'pending' }],
         }),
     });
-    AdminUser.find.mockReturnValue({ lean: () => Promise.resolve(crewEmployees) });
+    mockStaffingFind(crewEmployees);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('E3', '2026-06-05', '2026-06-05', 'leave1');
@@ -79,15 +88,12 @@ describe('willBreachStaffingRules', () => {
           leaves: [{ _id: 'leave1', start: new Date('2026-06-10'), end: new Date('2026-06-10'), status: 'pending' }],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [] },
-          { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
-          { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
-          { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('E3', '2026-06-10', '2026-06-10', 'leave1');
@@ -107,16 +113,13 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'L1', crew: 'A', role: 'Local Operator', leaves: [] },
-          { empId: 'L2', crew: 'A', role: 'Local Operator', leaves: [] },
-          { empId: 'L3', crew: 'A', role: 'Local Operator', leaves: [] },
-          { empId: 'L4', crew: 'A', role: 'Local Operator', leaves: [] },
-          { empId: 'L5', crew: 'A', role: 'Local Operator', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'L1', crew: 'A', role: 'Local Operator', leaves: [] },
+      { empId: 'L2', crew: 'A', role: 'Local Operator', leaves: [] },
+      { empId: 'L3', crew: 'A', role: 'Local Operator', leaves: [] },
+      { empId: 'L4', crew: 'A', role: 'Local Operator', leaves: [] },
+      { empId: 'L5', crew: 'A', role: 'Local Operator', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('L5', '2026-06-12', '2026-06-12');
@@ -136,13 +139,15 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'SIC1', crew: 'A', role: 'Shift in Charge', leaves: [] },
-          { empId: 'SUP1', crew: 'A', role: 'Supervisor', leaves: [{ start: new Date('2026-06-15'), end: new Date('2026-06-15'), status: 'approved' }] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'SIC1', crew: 'A', role: 'Shift in Charge', leaves: [] },
+      {
+        empId: 'SUP1',
+        crew: 'A',
+        role: 'Supervisor',
+        leaves: [{ start: new Date('2026-06-15'), end: new Date('2026-06-15'), status: 'approved' }],
+      },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('SIC1', '2026-06-15', '2026-06-15');
@@ -163,13 +168,10 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'SIC1', crew: 'A', role: 'Shift in Charge', leaves: [] },
-          { empId: 'SUP1', crew: 'A', role: 'Supervisor', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'SIC1', crew: 'A', role: 'Shift in Charge', leaves: [] },
+      { empId: 'SUP1', crew: 'A', role: 'Supervisor', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('SUP1', '2026-06-16', '2026-06-16');
@@ -194,20 +196,17 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          {
-            empId: 'CCR0',
-            crew: 'A',
-            role: 'CCR Operator',
-            leaves: [],
-          },
-          { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
-          { empId: 'CCR2', crew: 'crew a', role: 'CCR Operator', leaves: [] },
-          { empId: 'CCR3', crew: 'A', role: 'CCR Operator', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      {
+        empId: 'CCR0',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+      { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR2', crew: 'crew a', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR3', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('CCR0', '2026-01-05', '2026-01-05');
@@ -227,14 +226,11 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'CCR0', crew: 'A', role: 'CCR Operator', leaves: [] },
-          { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
-          { empId: 'CCR2', crew: 'A', role: 'CCR Operator', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'CCR0', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR1', crew: 'Crew A', role: 'CCR Operator', leaves: [] },
+      { empId: 'CCR2', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('CCR0', '2026-01-05', '2026-01-05');
@@ -255,16 +251,13 @@ describe('willBreachStaffingRules', () => {
           leaves: [],
         }),
     });
-    AdminUser.find.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { empId: 'LOC0', crew: 'B', role: 'Local Operator', leaves: [] },
-          { empId: 'LOC1', crew: 'Crew B', role: 'Local Operator', leaves: [] },
-          { empId: 'LOC2', crew: 'B', role: 'Local Operator', leaves: [] },
-          { empId: 'LOC3', crew: 'crew b', role: 'Local Operator', leaves: [] },
-          { empId: 'LOC4', crew: 'B', role: 'Local Operator', leaves: [] },
-        ]),
-    });
+    mockStaffingFind([
+      { empId: 'LOC0', crew: 'B', role: 'Local Operator', leaves: [] },
+      { empId: 'LOC1', crew: 'Crew B', role: 'Local Operator', leaves: [] },
+      { empId: 'LOC2', crew: 'B', role: 'Local Operator', leaves: [] },
+      { empId: 'LOC3', crew: 'crew b', role: 'Local Operator', leaves: [] },
+      { empId: 'LOC4', crew: 'B', role: 'Local Operator', leaves: [] },
+    ]);
     ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
 
     const result = await willBreachStaffingRules('LOC0', '2026-01-03', '2026-01-03');

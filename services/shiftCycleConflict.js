@@ -18,8 +18,11 @@ function parseDateOnly(str) {
   return d;
 }
 
+const { normCrew } = require('../utils/rosterRowSort');
+
 function getShiftForDate(crew, date, baseDate) {
-  const cycle = SHIFT_CYCLES[crew] || SHIFT_CYCLES.General;
+  const crewKey = normCrew(crew);
+  const cycle = SHIFT_CYCLES[crewKey] || SHIFT_CYCLES.General;
   const base = parseDateOnly(baseDate);
   const day = parseDateOnly(date);
   const diff = Math.floor((day - base) / 86400000);
@@ -100,6 +103,17 @@ function mergeEmployees(existing, incoming) {
   return [...byId.values()];
 }
 
+function mergeBelow(existing, incoming) {
+  const byLabel = new Map((existing || []).map((row) => [row.label, { ...row }]));
+  (incoming || []).forEach((row) => {
+    const prev = byLabel.get(row.label);
+    if (!prev || (row.shortfall ?? 0) > (prev.shortfall ?? 0)) {
+      byLabel.set(row.label, { ...row });
+    }
+  });
+  return [...byLabel.values()];
+}
+
 function formatCycleLabel(dates) {
   if (!dates?.length) return '';
   const sorted = [...dates].sort();
@@ -134,6 +148,7 @@ function groupConflictsByCycle(conflicts, dates, baseDate = '2026-01-01') {
       const g = groups.get(key);
       if (!g.dates.includes(c.date)) g.dates.push(c.date);
       g.employees = mergeEmployees(g.employees, c.employees);
+      g.below = mergeBelow(g.below, c.below);
     }
   }
 

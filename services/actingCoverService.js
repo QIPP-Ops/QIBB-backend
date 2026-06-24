@@ -1,19 +1,10 @@
 const { MANAGEMENT_JOB_ROLES } = require('./shiftScheduleService');
+const { normCrew } = require('../utils/rosterRowSort');
 
 const ROLE_LABELS = {
   shift_in_charge: 'Shift in Charge',
   supervisor: 'Supervisor',
 };
-
-function normCrew(crew) {
-  const c = String(crew || '').trim().toUpperCase();
-  if (!c) return '';
-  if (c === 'GENERAL' || c === 'G') return 'GENERAL';
-  if (/^[A-F]$/.test(c)) return c;
-  const letter = c.replace(/^CREW\s*/i, '').trim();
-  if (/^[A-F]$/.test(letter)) return letter;
-  return c;
-}
 
 function crewsMatch(a, b) {
   return normCrew(a) === normCrew(b);
@@ -162,12 +153,24 @@ function enrichConflictEmployees(conflict, assignments) {
 }
 
 function primaryCrewFromConflict(conflict) {
-  return String(conflict?.crew || '').split('/')[0] || conflict?.crew;
+  const raw = String(conflict?.crew || '').split('/')[0] || conflict?.crew;
+  return normCrew(raw);
+}
+
+function refreshStaffingBelow(conflict, assignments, employees) {
+  const { staffingCountsForDate, isBelowMinimum } = require('./staffingRulesService');
+  const crew = primaryCrewFromConflict(conflict);
+  const approved = approvedAssignmentsForRange(assignments, conflict.date, conflict.date);
+  const counts = staffingCountsForDate(employees, crew, conflict.date, approved, {
+    approvedLeaveOnly: true,
+  });
+  const below = counts.filter(isBelowMinimum);
+  return { ...conflict, below };
 }
 
 function staffingConflictStillActive(conflict, assignments, employees) {
   if (!conflict?.date || !employees?.length) {
-    return (conflict?.below || []).some((row) => (row?.shortfall ?? 0) > 0);
+    return false;
   }
   const { staffingCountsForDate, hasStaffingShortfall } = require('./staffingRulesService');
   const crew = primaryCrewFromConflict(conflict);
@@ -186,6 +189,12 @@ function filterConflictsByDelegations(conflicts, assignments, employees = null) 
         return staffingConflictStillActive(c, assignments, employees);
       }
       return c.uncoveredCount >= 2;
+    })
+    .map((c) => {
+      if (c.conflictType === 'staffing' && employees?.length) {
+        return refreshStaffingBelow(c, assignments, employees);
+      }
+      return c;
     });
 }
 

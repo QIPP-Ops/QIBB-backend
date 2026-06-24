@@ -6,7 +6,11 @@ function normCrew(crew) {
   const u = c.toUpperCase();
   if (u === 'GENERAL' || u === 'G') return 'General';
   if (/^[A-F]$/.test(u)) return u;
-  if (u.startsWith('CREW ')) return u.replace(/^CREW\s+/i, '').trim() || 'General';
+  if (/^CREW\s*/i.test(c)) {
+    const letter = u.replace(/^CREW\s*/i, '').trim();
+    if (/^[A-F]$/.test(letter)) return letter;
+    if (letter === 'GENERAL' || letter === 'G') return 'General';
+  }
   return c;
 }
 

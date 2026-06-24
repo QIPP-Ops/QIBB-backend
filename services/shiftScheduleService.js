@@ -43,7 +43,8 @@ function parseDateOnly(str) {
 }
 
 function getShiftForDate(crew, date, baseDate) {
-  const cycle = SHIFT_CYCLES[crew] || SHIFT_CYCLES.General;
+  const crewKey = normCrew(crew);
+  const cycle = SHIFT_CYCLES[crewKey] || SHIFT_CYCLES.General;
   const base = parseDateOnly(baseDate);
   const day = parseDateOnly(date);
   const diff = Math.floor((day - base) / 86400000);
@@ -111,7 +112,7 @@ function isEmployeeOnDuty(employee, dateStr, options = {}) {
 }
 
 const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
-const { sortRosterEmployees, isGeneralCrew } = require('../utils/rosterRowSort');
+const { sortRosterEmployees, isGeneralCrew, normCrew } = require('../utils/rosterRowSort');
 const { buildStaffingShortfallConflicts } = require('./staffingRulesService');
 
 function leaveStyleFlags(type) {
@@ -139,6 +140,7 @@ function buildRosterSchedule(employees, options = {}) {
     endDate,
     baseDate = '2026-01-01',
     overrideMap = null,
+    staffingEmployees = null,
   } = options;
 
   const overrides = overrideMap instanceof Map ? overrideMap : overrideMapFromDocs(overrideMap);
@@ -153,6 +155,7 @@ function buildRosterSchedule(employees, options = {}) {
   }
 
   const sortedEmployees = sortRosterEmployees(employees);
+  const sortedStaffingEmployees = sortRosterEmployees(staffingEmployees || employees);
 
   const rows = sortedEmployees.map((emp) => {
     const cells = dates.map((dateStr) => {
@@ -201,7 +204,7 @@ function buildRosterSchedule(employees, options = {}) {
 
   const { actingAssignments = [] } = options;
 
-  const conflicts = buildStaffingShortfallConflicts(sortedEmployees, {
+  const conflicts = buildStaffingShortfallConflicts(sortedStaffingEmployees, {
     dates,
     baseDate,
     actingAssignments,

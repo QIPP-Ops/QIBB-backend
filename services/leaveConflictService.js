@@ -95,7 +95,8 @@ async function willBreachStaffingRules(empId, startDate, endDate, leaveId = null
   const subject = await AdminUser.findOne({ empId: String(empId).trim() }).lean();
   if (!subject) return { breached: false, alerts: [] };
 
-  const employees = await AdminUser.find({ isApproved: true }).lean();
+  const { loadStaffingRosterEmployees } = require('../utils/rosterEmployeeLoad');
+  const employees = await loadStaffingRosterEmployees();
   const simulatedLeave = {
     start: startDate,
     end: endDate,
