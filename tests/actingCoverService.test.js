@@ -67,4 +67,72 @@ describe('actingCoverService conflict cover', () => {
     ];
     expect(filterConflictsByDelegations(conflicts, [])).toHaveLength(1);
   });
+
+  test('filterConflictsByDelegations clears staffing conflict when one of two on leave is covered', () => {
+    const conflicts = [
+      {
+        date: '2026-06-05',
+        crew: 'A',
+        severity: 'high',
+        conflictType: 'staffing',
+        message: 'Understaffed (A): CCR Operator 2/3',
+        employees: [{ empId: 'E1', name: 'Alice' }, { empId: 'E2', name: 'Bob' }],
+        below: [{ label: 'CCR Operator', shortfall: 1, available: 2, min: 3 }],
+      },
+    ];
+    const assignments = [
+      {
+        _id: 'd1',
+        absentEmpId: 'E1',
+        coverEmpId: 'E3',
+        crew: 'A',
+        coverFromCrew: 'B',
+        startDate: '2026-06-01',
+        endDate: '2026-06-10',
+        status: 'approved',
+        source: 'conflict_resolution',
+      },
+    ];
+    expect(filterConflictsByDelegations(conflicts, assignments)).toHaveLength(0);
+  });
+
+  test('actingCoverCountForRole counts cross-crew same-role cover', () => {
+    const { actingCoverCountForRole } = require('../services/actingCoverService');
+    const employees = [
+      {
+        empId: 'E1',
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [{ start: '2026-06-05', end: '2026-06-05' }],
+      },
+      {
+        empId: 'E3',
+        crew: 'B',
+        role: 'CCR Operator',
+        leaves: [],
+      },
+    ];
+    const assignments = [
+      {
+        absentEmpId: 'E1',
+        coverEmpId: 'E3',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
+        crew: 'A',
+        coverFromCrew: 'B',
+        startDate: '2026-06-05',
+        endDate: '2026-06-05',
+        status: 'approved',
+      },
+    ];
+    const count = actingCoverCountForRole(
+      employees,
+      assignments,
+      'A',
+      '2026-06-05',
+      null,
+      (role) => /ccr operator/i.test(role || '')
+    );
+    expect(count).toBe(1);
+  });
 });

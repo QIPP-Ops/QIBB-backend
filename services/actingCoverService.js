@@ -125,8 +125,8 @@ function actingCoverCountForRole(employees, assignments, crew, dateStr, roleKey,
     if (roleKey && !ruleMatchFn && a.role !== roleKey) continue;
     if (ruleMatchFn && !roleMatchesStaffingRule(roleLabel, matchFn)) continue;
     if (!roleKey && !ruleMatchFn) continue;
-    // Same-role cover: delegate is already in headcount — no staffing boost.
-    if (ruleMatchFn && ruleMatchFn(cover.role || '')) continue;
+    // Same-role cover from the covered crew is already in roster headcount.
+    if (crewsMatch(cover.crew, crew) && ruleMatchFn && ruleMatchFn(cover.role || '')) continue;
     if (!assignmentActiveOnDate(a, dateStr)) continue;
     count += 1;
   }
@@ -141,37 +141,35 @@ function employeeOnLeave(employee, dateStr) {
   });
 }
 
+function enrichConflictEmployees(conflict, assignments) {
+  const employees = (conflict.employees || []).map((emp) => {
+    const delegation = findDelegationForEmpDate(assignments, emp.empId, conflict.date);
+    return {
+      ...emp,
+      delegation: delegation
+        ? {
+            id: String(delegation._id || ''),
+            status: delegationStatus(delegation),
+            coverEmpId: delegation.coverEmpId,
+          }
+        : null,
+    };
+  });
+  const uncovered = employees.filter(
+    (emp) => !hasApprovedCoverOnDate(assignments, emp.empId, conflict.date)
+  );
+  return { ...conflict, employees, uncoveredCount: uncovered.length };
+}
+
 function filterConflictsByDelegations(conflicts, assignments) {
   return (conflicts || [])
-    .map((c) => {
-      if (c.conflictType === 'staffing') {
-        const shortfall = (c.below || []).reduce((sum, row) => sum + (row.shortfall || 0), 0);
-        return { ...c, uncoveredCount: shortfall };
-      }
-
-      const employees = (c.employees || []).map((emp) => {
-        const delegation = findDelegationForEmpDate(assignments, emp.empId, c.date);
-        return {
-          ...emp,
-          delegation: delegation
-            ? {
-                id: String(delegation._id || ''),
-                status: delegationStatus(delegation),
-                coverEmpId: delegation.coverEmpId,
-              }
-            : null,
-        };
-      });
-      const uncovered = employees.filter(
-        (emp) => !hasApprovedCoverOnDate(assignments, emp.empId, c.date)
-      );
-      return { ...c, employees, uncoveredCount: uncovered.length };
-    })
+    .map((c) => enrichConflictEmployees(c, assignments))
     .filter((c) => {
+      if (c.uncoveredCount < 2) return false;
       if (c.conflictType === 'staffing') {
         return (c.below || []).some((row) => row.shortfall > 0);
       }
-      return c.uncoveredCount >= 2;
+      return true;
     });
 }
 

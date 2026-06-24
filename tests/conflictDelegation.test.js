@@ -332,4 +332,59 @@ describe('conflict delegation', () => {
     const filtered = filterConflictsByDelegations(conflicts, assignments);
     expect(filtered).toHaveLength(0);
   });
+
+  test('approved conflict delegation clears staffing conflict and drops conflictCount', () => {
+    const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
+
+    const dailyConflicts = [
+      {
+        date: '2026-07-01',
+        crew: 'A',
+        severity: 'high',
+        conflictType: 'staffing',
+        message: 'Understaffed',
+        employees: [
+          { empId: 'E1', name: 'Alice' },
+          { empId: 'E2', name: 'Bob' },
+        ],
+        below: [{ label: 'CCR Operator', shortfall: 1, available: 2, min: 3 }],
+      },
+      {
+        date: '2026-07-02',
+        crew: 'A',
+        severity: 'high',
+        conflictType: 'staffing',
+        message: 'Understaffed',
+        employees: [
+          { empId: 'E1', name: 'Alice' },
+          { empId: 'E2', name: 'Bob' },
+        ],
+        below: [{ label: 'CCR Operator', shortfall: 1, available: 2, min: 3 }],
+      },
+    ];
+    const assignments = [
+      {
+        _id: '1',
+        absentEmpId: 'E1',
+        coverEmpId: 'E3',
+        crew: 'A',
+        coverFromCrew: 'B',
+        startDate: '2026-07-01',
+        endDate: '2026-07-04',
+        status: 'approved',
+        source: 'conflict_resolution',
+      },
+    ];
+
+    const cycleDates = ['2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04'];
+    const beforeDaily = filterConflictsByDelegations(dailyConflicts, []);
+    const afterDaily = filterConflictsByDelegations(dailyConflicts, assignments);
+    const beforeGrouped = groupConflictsByCycle(beforeDaily, cycleDates);
+    const afterGrouped = groupConflictsByCycle(afterDaily, cycleDates);
+
+    expect(beforeDaily).toHaveLength(2);
+    expect(afterDaily).toHaveLength(0);
+    expect(beforeGrouped.length).toBeGreaterThan(0);
+    expect(afterGrouped).toHaveLength(0);
+  });
 });
