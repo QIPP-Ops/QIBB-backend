@@ -365,17 +365,24 @@ describe('shiftScheduleService General crew exclusion', () => {
 describe('shiftScheduleService General crew weekday display', () => {
   const generalEmployee = { empId: 'G1', name: 'General Staff', crew: 'General', role: 'Chemist', leaves: [] };
 
-  test('formatShiftDisplay shows Day on Saudi weekdays', () => {
-    expect(formatShiftDisplay('General', 'O', '2026-06-24', false)).toBe('Day'); // Wednesday
-    expect(formatShiftDisplay('General', 'O', '2026-06-26', false)).toBe('O'); // Friday (weekend)
+  test('formatShiftDisplay shows weekday letter for General crew standby', () => {
+    expect(formatShiftDisplay('General', 'O', '2026-06-11', false)).toBe('T'); // Thursday
+    expect(formatShiftDisplay('General', 'O', '2026-06-24', false)).toBe('W'); // Wednesday
+    expect(formatShiftDisplay('General', 'O', '2026-06-26', false)).toBe('F'); // Friday (weekend)
+    expect(formatShiftDisplay('General', 'O', '2026-06-06', false)).toBe('S'); // Saturday
   });
 
-  test('resolveEmployeeShift uses Day display for General crew on weekdays', () => {
-    const weekday = resolveEmployeeShift(generalEmployee, '2026-06-24'); // Wednesday
-    expect(weekday.display).toBe('Day');
-    expect(weekday.shift).toBe('O');
+  test('formatShiftDisplay still shows L when on leave', () => {
+    expect(formatShiftDisplay('General', 'O', '2026-06-11', true)).toBe('L');
+  });
 
-    const friday = resolveEmployeeShift(generalEmployee, '2026-06-26'); // Friday
-    expect(friday.display).toBe('O');
+  test('resolveEmployeeShift uses weekday letter display while shift stays O', () => {
+    const thursday = resolveEmployeeShift(generalEmployee, '2026-06-11');
+    expect(thursday.display).toBe('T');
+    expect(thursday.shift).toBe('O');
+
+    const friday = resolveEmployeeShift(generalEmployee, '2026-06-26');
+    expect(friday.display).toBe('F');
+    expect(friday.shift).toBe('O');
   });
 });

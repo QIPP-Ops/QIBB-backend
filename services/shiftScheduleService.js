@@ -48,10 +48,12 @@ function isSaudiWeekend(dateStr) {
   return day === 5 || day === 6;
 }
 
+const WEEKDAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
 function formatShiftDisplay(crew, shift, dateStr, onLeave) {
   if (onLeave) return 'L';
-  if (isGeneralCrew(crew) && shift === 'O' && !isSaudiWeekend(dateStr)) {
-    return 'Day';
+  if (isGeneralCrew(crew) && shift === 'O') {
+    return WEEKDAY_LETTERS[parseDateOnly(dateStr).getDay()];
   }
   return shift;
 }
