@@ -67,7 +67,7 @@ describe('leave balance log API', () => {
     jest.doMock('../models/AdminUser', () => ({
       findOne: jest.fn().mockReturnValue({
         select: () => ({
-          lean: () => Promise.resolve({ empId: 'E100', name: 'Alice' }),
+          lean: () => Promise.resolve({ empId: 'E100', name: 'Alice', crew: 'A' }),
         }),
       }),
     }));
@@ -95,7 +95,7 @@ describe('leave balance log API', () => {
     expect(denied.status).toBe(403);
 
     const adminToken = jwt.sign(
-      { id: 'a1', email: 'a@test.com', role: 'admin', accessRole: 'admin', empId: 'ADMIN', name: 'Admin' },
+      { id: 'a1', email: 'a@test.com', role: 'admin', accessRole: 'admin', empId: 'ADMIN', name: 'Admin', crew: 'A' },
       process.env.JWT_SECRET
     );
     const ok = await request(app)

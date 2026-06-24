@@ -1,4 +1,4 @@
-const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
+const { isSuperAdmin } = require('../middleware/superAdmin');
 
 /**
  * Whether the authenticated user may edit compensate-day balance for a crew member.
@@ -20,15 +20,20 @@ function canEditCompensateBalance(req, targetUser) {
 
 /**
  * Whether the authenticated user may see leave balance fields for targetEmpId.
- * Admins/super admin: all; viewer: own row only; management: own row or same crew.
+ * Super admin: all; crew admin/management/ops lead: same crew; viewer: own row only.
  */
 function canViewLeaveBalance(req, targetEmpId, targetCrew) {
-  if (hasPortalAdminAccess(req)) return true;
+  if (isSuperAdmin(req)) return true;
   const viewerEmpId = req.user?.empId;
   if (!viewerEmpId) return false;
   if (viewerEmpId === targetEmpId) return true;
-  if (req.user?.accessRole === 'management' && targetCrew && req.user.crew === targetCrew) {
-    return true;
+
+  const portalRole = req.user?.accessRole || req.user?.role;
+  if (portalRole === 'admin' || portalRole === 'management' || req.user?.canOpsLead) {
+    if (targetCrew && req.user.crew) {
+      return req.user.crew === targetCrew;
+    }
+    return false;
   }
   return false;
 }

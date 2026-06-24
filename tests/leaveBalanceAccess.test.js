@@ -13,10 +13,13 @@ describe('leaveBalanceAccess', () => {
     compensateDayBalance: 1,
   };
 
-  it('allows admins to see all balances', () => {
-    const req = { user: { role: 'admin', accessRole: 'admin', empId: 'E9' } };
-    expect(canViewLeaveBalance(req, 'E2', 'B')).toBe(true);
-    expect(redactLeaveBalancesForClient(row, req)).toEqual(row);
+  it('allows crew admins to see same-crew balances only', () => {
+    const req = { user: { role: 'admin', accessRole: 'admin', empId: 'E9', crew: 'A' } };
+    expect(canViewLeaveBalance(req, 'E2', 'A')).toBe(true);
+    expect(canViewLeaveBalance(req, 'E2', 'B')).toBe(false);
+    expect(redactLeaveBalancesForClient(row, req).annualLeaveBalance).toBe(12);
+    const redactedOtherCrew = redactLeaveBalancesForClient({ ...row, crew: 'B' }, req);
+    expect(redactedOtherCrew.annualLeaveBalance).toBeUndefined();
   });
 
   it('redacts other employees for viewers', () => {

@@ -66,9 +66,35 @@ function canEditShiftReport(req, employee, duty) {
   return false;
 }
 
+/** Whether the user may view this employee's timesheet (schedule, leave cells, planner). */
+function canViewTimesheetRow(user, row) {
+  return canEditLeaveRow(user, row);
+}
+
+/** Whether the user may approve/reject leave for this employee. */
+function canApproveLeaveForEmployee(req, employee) {
+  if (!req?.user?.empId || !employee?.empId) return false;
+  if (isSuperAdmin(req)) return true;
+
+  const portalRole = req.user.accessRole || req.user.role;
+  const jobRole = req.user.jobRole || req.user.role || '';
+  const hasApproveRole =
+    portalRole === 'admin' ||
+    portalRole === 'management' ||
+    isSicOrSupervisorRole(jobRole);
+  if (!hasApproveRole) return false;
+
+  return canViewTimesheetRow(req.user, {
+    empId: employee.empId,
+    crew: employee.crew || '',
+  });
+}
+
 module.exports = {
   canEditLeaveRow,
   canEditLeaveForEmployee,
+  canViewTimesheetRow,
+  canApproveLeaveForEmployee,
   canAccessShiftReport,
   canEditShiftReport,
 };

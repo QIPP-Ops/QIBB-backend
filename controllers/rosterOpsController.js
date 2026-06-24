@@ -11,7 +11,7 @@ const {
 const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
 const { enrichScheduleRows, filterConflictsByDelegations } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
-const { redactLeaveBalancesForClient } = require('../utils/leaveBalanceAccess');
+const { filterScheduleForViewer } = require('../utils/timesheetAccess');
 
 function fmtDate(d) {
   const x = new Date(d);
@@ -84,11 +84,7 @@ async function buildSchedulePayload(start, end) {
 }
 
 function scheduleForClient(schedule, req) {
-  if (!schedule?.rows) return schedule;
-  return {
-    ...schedule,
-    rows: schedule.rows.map((row) => redactLeaveBalancesForClient(row, req)),
-  };
+  return filterScheduleForViewer(schedule, req);
 }
 
 exports.getSchedule = async (req, res) => {

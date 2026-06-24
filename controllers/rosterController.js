@@ -28,7 +28,12 @@ const {
   buildLeaveRemovedAuditPayload,
   buildLeaveUpdatedAuditPayload,
 } = require('../utils/leaveAuditPayload');
-const { canEditLeaveForEmployee } = require('../utils/rosterLeavePermissions');
+const {
+  canEditLeaveForEmployee,
+  canApproveLeaveForEmployee,
+  canViewTimesheetRow,
+} = require('../utils/rosterLeavePermissions');
+const { filterRosterRowsForViewer } = require('../utils/timesheetAccess');
 const { isSicOrSupervisorRole } = require('../utils/attendancePermissions');
 
 function isSelfServiceLeaveRequest(req, employee) {
@@ -111,10 +116,22 @@ function leaveIsBalanceDeducted(leave) {
   return status === 'approved';
 }
 
-function canViewBalanceLog(req) {
-  if (hasPortalAdminAccess(req)) return true;
-  if (req.user?.accessRole === 'management') return true;
-  return isSicOrSupervisorRole(req.user?.role || '');
+function canViewBalanceLogForEmployee(req, target) {
+  if (!req?.user || !target?.empId) return false;
+  if (isSuperAdmin(req)) return true;
+
+  const portalRole = req.user.accessRole || req.user.role;
+  const jobRole = req.user.jobRole || req.user.role || '';
+  const hasRole =
+    portalRole === 'admin' ||
+    portalRole === 'management' ||
+    isSicOrSupervisorRole(jobRole);
+  if (!hasRole) return false;
+
+  return canViewTimesheetRow(req.user, {
+    empId: target.empId,
+    crew: target.crew || '',
+  });
 }
 
 function queueBalanceLog(payload) {
@@ -293,9 +310,10 @@ exports.getRoster = async (req, res) => {
       await AdminUser.find(rosterFilter).select('-passwordHash').lean()
     );
     res.json(
-      filterProtectedAccounts(rows)
-        .map(rosterRowForClient)
-        .map((row) => redactLeaveBalancesForClient(row, req))
+      filterRosterRowsForViewer(
+        filterProtectedAccounts(rows).map(rosterRowForClient),
+        req
+      )
     );
   } catch (error) { res.status(500).json({ message: error.message }); }
 };
@@ -609,12 +627,12 @@ exports.addLeave = async (req, res) => {
 exports.approveLeave = async (req, res) => {
   const { employeeId, leaveId } = req.params;
   try {
-    if (!canApproveLeave(req)) {
+    const user = await AdminUser.findOne({ empId: employeeId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    if (!canApproveLeaveForEmployee(req, user)) {
       return res.status(403).json({ message: 'You do not have permission to approve leave.' });
     }
     const actor = await loadActor(req);
-    const user = await AdminUser.findOne({ empId: employeeId });
-    if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
     const leave = user.leaves.id(leaveId);
     if (!leave) return res.status(404).json({ message: 'Leave not found.' });
@@ -716,12 +734,12 @@ exports.approveLeave = async (req, res) => {
 exports.rejectLeave = async (req, res) => {
   const { employeeId, leaveId } = req.params;
   try {
-    if (!canApproveLeave(req)) {
+    const user = await AdminUser.findOne({ empId: employeeId });
+    if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    if (!canApproveLeaveForEmployee(req, user)) {
       return res.status(403).json({ message: 'You do not have permission to reject leave.' });
     }
     const actor = await loadActor(req);
-    const user = await AdminUser.findOne({ empId: employeeId });
-    if (!user) return res.status(404).json({ message: 'Personnel not found' });
 
     const leave = user.leaves.id(leaveId);
     if (!leave) return res.status(404).json({ message: 'Leave not found.' });
@@ -1356,12 +1374,12 @@ exports.deleteKpi = async (req, res) => {
 
 exports.getBalanceLog = async (req, res) => {
   try {
-    if (!canViewBalanceLog(req)) {
+    const { empId } = req.params;
+    const target = await AdminUser.findOne({ empId }).select('empId name crew').lean();
+    if (!target) return res.status(404).json({ message: 'Personnel not found' });
+    if (!canViewBalanceLogForEmployee(req, target)) {
       return res.status(403).json({ message: 'Not authorized to view balance history.' });
     }
-    const { empId } = req.params;
-    const target = await AdminUser.findOne({ empId }).select('empId name').lean();
-    if (!target) return res.status(404).json({ message: 'Personnel not found' });
 
     const { getBalanceLogForEmployee } = require('../services/leaveBalanceLogService');
     const rows = await getBalanceLogForEmployee(empId, {
@@ -1499,6 +1517,9 @@ exports.exportIcs = async (req, res) => {
   try {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
+    if (!canViewTimesheetRow(req.user, { empId: user.empId, crew: user.crew || '' })) {
+      return res.status(403).json({ message: 'You may only export your own timesheet calendar.' });
+    }
 
     const config = await AdminConfig.findOne();
     const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
