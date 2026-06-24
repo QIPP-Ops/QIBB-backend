@@ -112,6 +112,7 @@ function isEmployeeOnDuty(employee, dateStr, options = {}) {
 
 const { normalizeLeaveType, isAnnualLeaveType } = require('../constants/leaveTypes');
 const { sortRosterEmployees, isGeneralCrew } = require('../utils/rosterRowSort');
+const { buildStaffingShortfallConflicts } = require('./staffingRulesService');
 
 function leaveStyleFlags(type) {
   const t = normalizeLeaveType(type);
@@ -198,58 +199,15 @@ function buildRosterSchedule(employees, options = {}) {
     };
   });
 
-  const conflicts = [];
-  const byCrewDate = {};
+  const { actingAssignments = [] } = options;
 
-  rows.forEach((row) => {
-    if (isGeneralCrew(row.crew)) return;
-    row.cells.forEach((cell) => {
-      if (!cell.onLeave || cell.shift === 'O') return;
-      if (cell.leaveStatus && cell.leaveStatus !== 'approved') return;
-      const key = `${row.crew}|${cell.date}`;
-      if (!byCrewDate[key]) byCrewDate[key] = [];
-      byCrewDate[key].push({ empId: row.empId, name: row.name, role: row.role, color: row.color });
-    });
-  });
-
-  Object.entries(byCrewDate).forEach(([key, people]) => {
-    if (people.length < 2) return;
-    const [crew, date] = key.split('|');
-    for (let i = 0; i < people.length; i++) {
-      for (let j = i + 1; j < people.length; j++) {
-        conflicts.push({
-          date,
-          crew,
-          severity: 'high',
-          message: `${people[i].name} and ${people[j].name} both on leave while crew ${crew} is scheduled to work`,
-          employees: [people[i], people[j]],
-        });
-      }
-    }
-  });
-
-  // Cross-crew: same role coverage on a day (e.g. two CCR on leave same day)
-  const byRoleDate = {};
-  rows.forEach((row) => {
-    if (isGeneralCrew(row.crew)) return;
-    row.cells.forEach((cell) => {
-      if (!cell.onLeave) return;
-      if (cell.leaveStatus && cell.leaveStatus !== 'approved') return;
-      const key = `${row.role}|${cell.date}`;
-      if (!byRoleDate[key]) byRoleDate[key] = [];
-      byRoleDate[key].push({ empId: row.empId, name: row.name, crew: row.crew, color: row.color });
-    });
-  });
-  Object.entries(byRoleDate).forEach(([key, people]) => {
-    if (people.length < 2) return;
-    const [role, date] = key.split('|');
-    conflicts.push({
-      date,
-      crew: people.map((p) => p.crew).join('/'),
-      severity: 'medium',
-      message: `${people.length} ${role} staff on leave on ${date}: ${people.map((p) => p.name).join(', ')}`,
-      employees: people,
-    });
+  const conflicts = buildStaffingShortfallConflicts(sortedEmployees, {
+    dates,
+    baseDate,
+    actingAssignments,
+    approvedLeaveOnly: true,
+    getShiftForDate,
+    isGeneralCrew,
   });
 
   const crewsToCheck = [

@@ -35,10 +35,10 @@ describe('leaveAccrualService', () => {
     expect(applyCap(10, 5)).toBe(5);
   });
 
-  test('accrueEmployeeForRange adds balances', () => {
+  test('accrueEmployeeForRange adds annual balance only', () => {
     const emp = {
       annualLeaveBalance: 0,
-      bankLeaveBalance: 0,
+      bankLeaveBalance: 5,
       annualLeaveAccrualRate: 0.0575,
       bankLeaveAccrualRate: 0.02,
       annualLeaveCap: null,
@@ -47,7 +47,8 @@ describe('leaveAccrualService', () => {
     const result = accrueEmployeeForRange(emp, '2026-01-01', '2026-01-10');
     expect(result.days).toBe(10);
     expect(emp.annualLeaveBalance).toBeCloseTo(0.575, 3);
-    expect(emp.bankLeaveBalance).toBeCloseTo(0.2, 3);
+    expect(emp.bankLeaveBalance).toBe(5);
+    expect(result.bankAdded).toBe(0);
   });
 });
 

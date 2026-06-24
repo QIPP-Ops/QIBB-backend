@@ -37,9 +37,11 @@ describe('leaveConflictService', () => {
     },
   ];
 
-  test('STAFFING_RULES includes CCR minimum 3', () => {
-    const ccr = STAFFING_RULES.find((r) => r.label === 'CCR Operator');
-    expect(ccr.min).toBe(3);
+  test('STAFFING_RULES uses combined leader minimum', () => {
+    const leader = STAFFING_RULES.find((r) => r.label === 'Leader');
+    expect(leader?.min).toBe(1);
+    expect(leader?.match('Supervisor')).toBe(true);
+    expect(leader?.match('Shift in Charge Engineer')).toBe(true);
   });
 
   test('calendarDatesInclusive spans leave range', () => {
@@ -47,7 +49,7 @@ describe('leaveConflictService', () => {
     expect(dates).toEqual(['2026-06-01', '2026-06-02', '2026-06-03']);
   });
 
-  test('findSameCrewRoleOverlaps detects overlapping same-role leave', () => {
+  test('findSameCrewRoleOverlaps no longer flags same-role overlap (staffing rules only)', () => {
     const subject = {
       empId: 'E2',
       name: 'Bob',
@@ -57,8 +59,7 @@ describe('leaveConflictService', () => {
     };
     const newLeave = { start: new Date('2026-06-02'), end: new Date('2026-06-04') };
     const overlaps = findSameCrewRoleOverlaps(crewA, subject, newLeave);
-    expect(overlaps.length).toBeGreaterThan(0);
-    expect(overlaps[0].otherName).toBe('Alice');
+    expect(overlaps.length).toBe(0);
   });
 
   test('findStaffingShortfalls when too many CCR on leave', () => {
@@ -105,7 +106,7 @@ describe('leaveConflictService', () => {
         : e
     );
     const withoutCover = findSameCrewRoleOverlaps(employees, subject, newLeave, []);
-    expect(withoutCover.length).toBeGreaterThan(0);
+    expect(withoutCover.length).toBe(0);
 
     const approvedDelegation = [
       {

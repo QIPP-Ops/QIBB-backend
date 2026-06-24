@@ -126,16 +126,22 @@ describe('attendance API', () => {
       }),
     });
     AttendanceRecord.findOne.mockResolvedValue(null);
-    AttendanceRecord.create.mockResolvedValue({
-      _id: 'att-1',
-      empId: 'EMP-100',
-      date: '2026-06-23',
-      crew: 'A',
-      status: 'present',
-      toObject: () => ({ empId: 'EMP-100', date: '2026-06-23', status: 'present' }),
-    });
+    const supervisorId = '507f1f77bcf86cd799439088';
+    AttendanceRecord.create.mockImplementation((doc) =>
+      Promise.resolve({
+        ...doc,
+        _id: 'att-1',
+        toObject: () => doc,
+      })
+    );
 
-    const token = tokenFor({ jobRole: 'Shift in Charge', crew: 'A' });
+    const token = tokenFor({
+      id: supervisorId,
+      email: 'sic@acwapower.com',
+      jobRole: 'Shift in Charge',
+      crew: 'A',
+      name: 'SIC Logger',
+    });
     const res = await request(app)
       .post('/api/attendance')
       .set('Authorization', `Bearer ${token}`)
@@ -149,7 +155,18 @@ describe('attendance API', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(AttendanceRecord.create).toHaveBeenCalled();
+    expect(AttendanceRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        empId: 'EMP-100',
+        loggedBy: supervisorId,
+        loggedByEmail: 'sic@acwapower.com',
+      })
+    );
+    expect(AttendanceRecord.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        loggedBy: 'EMP-100',
+      })
+    );
     expect(logAction).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'ATTENDANCE_RECORDED' })
     );

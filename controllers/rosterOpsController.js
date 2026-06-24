@@ -60,13 +60,14 @@ async function buildSchedulePayload(start, end) {
     );
     const employees = sortRosterEmployees(allEmployees);
   const overrideMap = await loadOverridesForRange(start, end);
+  const actingAssignments = await loadActingAssignmentsForRange(start, end);
   const schedule = buildRosterSchedule(employees, {
     startDate: start,
     endDate: end,
     baseDate: config?.shiftCycleBaseDate || '2026-01-01',
     overrideMap,
+    actingAssignments,
   });
-  const actingAssignments = await loadActingAssignmentsForRange(start, end);
   const employeeById = new Map(employees.map((e) => [e.empId, e]));
   schedule.rows = enrichScheduleRows(schedule.rows, actingAssignments, employeeById);
   schedule.actingAssignments = actingAssignments;

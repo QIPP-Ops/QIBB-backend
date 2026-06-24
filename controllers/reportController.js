@@ -203,7 +203,7 @@ exports.getBalanceSnapshot = async (req, res) => {
     if (roleFilter) query.role = roleFilter;
 
     const users = await AdminUser.find(query)
-      .select('empId name crew role compensateDayBalance annualLeaveBalance bankLeaveBalance annualLeaveAccrualRate bankLeaveAccrualRate')
+      .select('empId name crew role compensateDayBalance annualLeaveBalance bankLeaveBalance annualLeaveAccrualRate')
       .sort({ crew: 1, name: 1 })
       .lean();
 
@@ -216,7 +216,6 @@ exports.getBalanceSnapshot = async (req, res) => {
       'Bank Leave Balance': u.bankLeaveBalance ?? 0,
       'Compensate Off Balance': u.compensateDayBalance ?? 0,
       'Annual Accrual Rate': u.annualLeaveAccrualRate ?? 0,
-      'Bank Accrual Rate': u.bankLeaveAccrualRate ?? 0,
     }));
 
     res.json(rows);
@@ -243,14 +242,15 @@ exports.getStaffingConflicts = async (req, res) => {
     );
     const employees = sortRosterEmployees(allEmployees);
     const overrideMap = await loadOverrideMap(from, to);
+    const actingAssignments = await loadActingForRange(from, to);
     const schedule = buildRosterSchedule(employees, {
       startDate: from,
       endDate: to,
       baseDate: config?.shiftCycleBaseDate || '2026-01-01',
       overrideMap,
+      actingAssignments,
     });
 
-    const actingAssignments = await loadActingForRange(from, to);
     let conflicts = filterActiveConflicts(
       filterConflictsByDelegations(schedule.conflicts, actingAssignments)
     );
@@ -268,7 +268,8 @@ exports.getStaffingConflicts = async (req, res) => {
         Date: c.date,
         Crew: c.crew,
         Severity: c.severity,
-        'Conflict Type': c.severity === 'high' ? 'Crew overlap' : 'Role coverage',
+        'Conflict Type': 'Staffing shortfall',
+        'Shortfall Roles': (c.below || []).map((b) => b.label).join(', '),
         Message: c.message,
         Employees: (c.employees || []).map((e) => e.name).join(', '),
         'Has Cover': hasCover ? 'Yes' : 'No',

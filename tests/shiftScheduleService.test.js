@@ -89,7 +89,7 @@ describe('shiftScheduleService General crew exclusion', () => {
     expect(schedule.conflictCount).toBe(0);
   });
 
-  test('buildRosterSchedule still generates conflicts for shifting crews', () => {
+  test('buildRosterSchedule generates staffing conflicts when minimums not met', () => {
     const employees = [
       {
         empId: 'A1',
@@ -111,6 +111,53 @@ describe('shiftScheduleService General crew exclusion', () => {
       endDate: '2026-06-10',
     });
     expect(schedule.conflicts.length).toBeGreaterThan(0);
+    expect(schedule.conflicts[0].conflictType).toBe('staffing');
+  });
+
+  test('buildRosterSchedule does not conflict when different roles on leave and minimums met', () => {
+    const employees = [
+      {
+        empId: 'A-SUP',
+        name: 'Moustafa',
+        crew: 'A',
+        role: 'Supervisor',
+        leaves: [leave('2026-06-05', '2026-06-05')],
+      },
+      {
+        empId: 'A-SIC',
+        name: 'SIC Backup',
+        crew: 'A',
+        role: 'Shift in Charge',
+        leaves: [],
+      },
+      {
+        empId: 'A-LOC',
+        name: 'Khaled',
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [leave('2026-06-05', '2026-06-05')],
+      },
+      ...Array.from({ length: 3 }, (_, i) => ({
+        empId: `A-CCR-${i}`,
+        name: `CCR ${i}`,
+        crew: 'A',
+        role: 'CCR Operator',
+        leaves: [],
+      })),
+      ...Array.from({ length: 3 }, (_, i) => ({
+        empId: `A-LOC-${i}`,
+        name: `Local ${i}`,
+        crew: 'A',
+        role: 'Local Operator',
+        leaves: [],
+      })),
+    ];
+    const schedule = buildRosterSchedule(employees, {
+      startDate: '2026-06-01',
+      endDate: '2026-06-10',
+    });
+    const onConflictDay = schedule.conflicts.filter((c) => c.date === '2026-06-05');
+    expect(onConflictDay).toEqual([]);
   });
 
   test('filterGeneralCrewConflicts removes mixed-crew conflicts involving General', () => {

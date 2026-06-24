@@ -35,28 +35,21 @@ function accrueEmployeeForRange(emp, startDate, endDate) {
   if (days <= 0) return null;
 
   const annualRate = Number(emp.annualLeaveAccrualRate) || 0;
-  const bankRate = Number(emp.bankLeaveAccrualRate) || 0;
-  if (annualRate === 0 && bankRate === 0) return null;
+  if (annualRate === 0) return null;
 
   let annual = emp.annualLeaveBalance ?? 0;
-  let bank = emp.bankLeaveBalance ?? 0;
   const annualBefore = annual;
-  const bankBefore = bank;
 
   const annualAdded = annualRate * days;
-  const bankAdded = bankRate * days;
 
   annual += annualAdded;
-  bank += bankAdded;
 
   annual = applyCap(annual, emp.annualLeaveCap);
-  bank = applyCap(bank, emp.bankLeaveCap);
 
   emp.annualLeaveBalance = Math.round(annual * 10000) / 10000;
-  emp.bankLeaveBalance = Math.round(bank * 10000) / 10000;
   emp.lastLeaveAccrualDate = parseDateOnly(endDate);
 
-  return { annualAdded, bankAdded, days, annualBefore, bankBefore };
+  return { annualAdded, bankAdded: 0, days, annualBefore, bankBefore: emp.bankLeaveBalance ?? 0 };
 }
 
 /**
@@ -98,18 +91,6 @@ async function runDailyLeaveAccrual(asOf = new Date()) {
           delta: result.annualAdded,
           balanceBefore: result.annualBefore,
           balanceAfter: emp.annualLeaveBalance,
-          performedBy: 'system',
-          reason: `Daily accrual (${result.days} days)`,
-        });
-      }
-      if (result.bankAdded > 0) {
-        await logBalanceChange({
-          empId: emp.empId,
-          changeType: 'accrual',
-          balanceField: 'bankLeaveBalance',
-          delta: result.bankAdded,
-          balanceBefore: result.bankBefore,
-          balanceAfter: emp.bankLeaveBalance,
           performedBy: 'system',
           reason: `Daily accrual (${result.days} days)`,
         });

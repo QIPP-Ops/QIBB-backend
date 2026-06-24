@@ -94,8 +94,8 @@ describe('willBreachStaffingRules', () => {
     expect(result.breached).toBe(false);
   });
 
-  test('STAFFING_RULES includes minimum CCR count', () => {
-    const ccr = STAFFING_RULES.find((r) => r.label === 'CCR Operator');
-    expect(ccr?.min).toBe(3);
+  test('STAFFING_RULES uses combined leader minimum', () => {
+    const leader = STAFFING_RULES.find((r) => r.label === 'Leader');
+    expect(leader?.min).toBe(1);
   });
 });

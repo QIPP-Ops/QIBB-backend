@@ -209,4 +209,29 @@ describe('reports API', () => {
     expect(res.body[0]['Employee ID']).toBe('E1');
     expect(res.body[0].Date).toBe('2026-06-15');
   });
+
+  test('GET /api/reports/balance-snapshot omits bank accrual rate column', async () => {
+    AdminUser.find.mockImplementation(() =>
+      mockFindChain([
+        {
+          empId: 'E1',
+          name: 'Alice',
+          crew: 'A',
+          role: 'CCR Operator',
+          annualLeaveBalance: 10,
+          bankLeaveBalance: 2,
+          annualLeaveAccrualRate: 0.05,
+          bankLeaveAccrualRate: 0.02,
+        },
+      ])
+    );
+
+    const res = await request(app)
+      .get('/api/reports/balance-snapshot')
+      .set('Authorization', `Bearer ${tokenFor('admin@acwaops.com')}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body[0]['Annual Accrual Rate']).toBe(0.05);
+    expect(res.body[0]).not.toHaveProperty('Bank Accrual Rate');
+  });
 });
