@@ -1,3 +1,5 @@
+const AdminUser = require('../models/AdminUser');
+const ActingAssignment = require('../models/ActingAssignment');
 const { leaveOnDate, fmtDate, parseDateOnly } = require('./shiftScheduleService');
 const {
   actingCoverCountForRole,
@@ -168,6 +170,104 @@ async function emailStaffingBelowMinimum(crew, date, below) {
   });
 }
 
+function approvedLeavesOnly(employee, includeLeaveId = null) {
+  return (employee.leaves || []).filter((lv) => {
+    const status = lv.status || 'approved';
+    if (includeLeaveId && String(lv._id) === String(includeLeaveId)) return true;
+    return status === 'approved';
+  });
+}
+
+function employeeOnApprovedLeave(employee, dateStr) {
+  return approvedLeavesOnly(employee).some((lv) => leaveOnDate(lv, dateStr));
+}
+
+function staffingCountsForDateApprovedOnly(employees, crew, dateStr, actingAssignments = []) {
+  const roleKeyByLabel = {
+    'Shift in Charge': 'shift_in_charge',
+    Supervisor: 'supervisor',
+  };
+  const approved = approvedAssignmentsForRange(actingAssignments, dateStr, dateStr);
+  const counts = STAFFING_RULES.map((rule) => {
+    const roster = employees.filter((e) => e.crew === crew && rule.match(e.role));
+    const available = roster.filter((e) => !employeeOnApprovedLeave(e, dateStr));
+    const roleKey = roleKeyByLabel[rule.label];
+    const actingBoost = actingCoverCountForRole(
+      employees,
+      approved,
+      crew,
+      dateStr,
+      roleKey,
+      rule.match
+    );
+    const totalAvailable = available.length + actingBoost;
+    return {
+      label: rule.label,
+      min: rule.min,
+      available: totalAvailable,
+      rosterSize: roster.length,
+      actingCover: actingBoost,
+      shortfall: Math.max(0, rule.min - totalAvailable),
+    };
+  });
+  return counts.filter((c) => c.rosterSize > 0);
+}
+
+function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave, actingAssignments = []) {
+  const crew = subjectEmployee.crew;
+  const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
+  const alerts = [];
+
+  for (const dateStr of dates) {
+    const counts = staffingCountsForDateApprovedOnly(employees, crew, dateStr, actingAssignments);
+    const below = counts.filter((c) => c.shortfall > 0);
+    if (!below.length) continue;
+    alerts.push({ crew, date: dateStr, below });
+  }
+  return alerts;
+}
+
+/**
+ * Simulate approving leave and check whether STAFFING_RULES would be breached.
+ */
+async function willBreachStaffingRules(empId, startDate, endDate, leaveId = null) {
+  const subject = await AdminUser.findOne({ empId: String(empId).trim() }).lean();
+  if (!subject) return { breached: false, alerts: [] };
+
+  const employees = await AdminUser.find({ isApproved: true }).lean();
+  const simulatedLeave = {
+    start: startDate,
+    end: endDate,
+    status: 'approved',
+    _id: leaveId || 'simulated',
+  };
+
+  const subjectSim = {
+    ...subject,
+    leaves: [
+      ...approvedLeavesOnly(subject).filter((lv) => !leaveId || String(lv._id) !== String(leaveId)),
+      simulatedLeave,
+    ],
+  };
+
+  const allEmployees = employees.map((e) => {
+    if (e.empId !== subject.empId) {
+      return { ...e, leaves: approvedLeavesOnly(e) };
+    }
+    return subjectSim;
+  });
+
+  const actingAssignments = await ActingAssignment.find({ status: 'approved' }).lean();
+  const alerts = findStaffingShortfallsApprovedOnly(
+    allEmployees,
+    subjectSim,
+    simulatedLeave,
+    actingAssignments
+  );
+
+  return { breached: alerts.length > 0, alerts };
+}
+
 /**
  * Run conflict + staffing checks after a leave record is saved.
  */
@@ -208,5 +308,6 @@ module.exports = {
   calendarDatesInclusive,
   findSameCrewRoleOverlaps,
   findStaffingShortfalls,
+  willBreachStaffingRules,
   processLeaveSaved,
 };

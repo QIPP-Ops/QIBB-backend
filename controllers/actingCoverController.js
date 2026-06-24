@@ -3,6 +3,7 @@ const AdminUser = require('../models/AdminUser');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { logAction } = require('../services/auditLogService');
+const { createLeavePushNotification } = require('../services/notificationService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const { sendMail, emailTemplate, isEmailConfigured } = require('../services/emailService');
 const {
@@ -209,6 +210,17 @@ async function createDelegationRecord({
     console.warn('[delegation] delegate notify failed:', err.message);
   }
 
+  try {
+    await createLeavePushNotification(
+      cover.empId,
+      'delegation_request',
+      `${absent?.name || absent.empId} asked you to cover ${roleAtTime || roleKey} duties (${startDate} → ${endDate}).`,
+      leaveId || ''
+    );
+  } catch (err) {
+    console.warn('[delegation] push notify failed:', err.message);
+  }
+
   return doc;
 }
 
@@ -400,6 +412,16 @@ exports.approveDelegation = async (req, res) => {
       } catch (err) {
         console.warn('[delegation] absent notify failed:', err.message);
       }
+      try {
+        await createLeavePushNotification(
+          absent.empId,
+          'delegation_approved',
+          `${cover?.name || doc.coverEmpId} approved your cover request (${doc.startDate} → ${doc.endDate}).`,
+          doc.leaveId || ''
+        );
+      } catch (err) {
+        console.warn('[delegation] push notify failed:', err.message);
+      }
     }
 
     const populated = await populateDelegation(
@@ -455,6 +477,16 @@ exports.declineDelegation = async (req, res) => {
         await notifyAbsentDelegationResponse({ absent, delegate: cover, doc, approved: false });
       } catch (err) {
         console.warn('[delegation] absent notify failed:', err.message);
+      }
+      try {
+        await createLeavePushNotification(
+          absent.empId,
+          'delegation_declined',
+          `${cover?.name || doc.coverEmpId} declined your cover request (${doc.startDate} → ${doc.endDate}).`,
+          doc.leaveId || ''
+        );
+      } catch (err) {
+        console.warn('[delegation] push notify failed:', err.message);
       }
     }
 

@@ -1,4 +1,5 @@
 const AdminUser = require('../models/AdminUser');
+const { logBalanceChange } = require('./leaveBalanceLogService');
 
 function fmtDate(d) {
   const x = new Date(d);
@@ -39,6 +40,8 @@ function accrueEmployeeForRange(emp, startDate, endDate) {
 
   let annual = emp.annualLeaveBalance ?? 0;
   let bank = emp.bankLeaveBalance ?? 0;
+  const annualBefore = annual;
+  const bankBefore = bank;
 
   const annualAdded = annualRate * days;
   const bankAdded = bankRate * days;
@@ -53,7 +56,7 @@ function accrueEmployeeForRange(emp, startDate, endDate) {
   emp.bankLeaveBalance = Math.round(bank * 10000) / 10000;
   emp.lastLeaveAccrualDate = parseDateOnly(endDate);
 
-  return { annualAdded, bankAdded, days };
+  return { annualAdded, bankAdded, days, annualBefore, bankBefore };
 }
 
 /**
@@ -87,6 +90,30 @@ async function runDailyLeaveAccrual(asOf = new Date()) {
     const result = accrueEmployeeForRange(emp, start, end);
     if (result) {
       await emp.save();
+      if (result.annualAdded > 0) {
+        await logBalanceChange({
+          empId: emp.empId,
+          changeType: 'accrual',
+          balanceField: 'annualLeaveBalance',
+          delta: result.annualAdded,
+          balanceBefore: result.annualBefore,
+          balanceAfter: emp.annualLeaveBalance,
+          performedBy: 'system',
+          reason: `Daily accrual (${result.days} days)`,
+        });
+      }
+      if (result.bankAdded > 0) {
+        await logBalanceChange({
+          empId: emp.empId,
+          changeType: 'accrual',
+          balanceField: 'bankLeaveBalance',
+          delta: result.bankAdded,
+          balanceBefore: result.bankBefore,
+          balanceAfter: emp.bankLeaveBalance,
+          performedBy: 'system',
+          reason: `Daily accrual (${result.days} days)`,
+        });
+      }
       updated += 1;
     } else if (!emp.lastLeaveAccrualDate && end >= hireDate) {
       emp.lastLeaveAccrualDate = end;

@@ -19,6 +19,8 @@ const {
 } = require('../constants/leaveTypes');
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 const { logAction } = require('../services/auditLogService');
+const { createLeavePushNotification } = require('../services/notificationService');
+const { logBalanceChange } = require('../services/leaveBalanceLogService');
 const AUDIT_ACTIONS = require('../constants/auditActions');
 const {
   snapshotLeaveBalances,
@@ -87,15 +89,49 @@ function leaveIsBalanceDeducted(leave) {
   return status === 'approved';
 }
 
-function restoreLeaveBalances(user, leave) {
+function canViewBalanceLog(req) {
+  if (hasPortalAdminAccess(req)) return true;
+  if (req.user?.accessRole === 'management') return true;
+  return isSicOrSupervisorRole(req.user?.role || '');
+}
+
+function queueBalanceLog(payload) {
+  logBalanceChange(payload).catch((err) => console.warn('[balance-log]', err.message));
+}
+
+function restoreLeaveBalances(user, leave, logCtx = {}) {
   if (!leaveIsBalanceDeducted(leave)) return normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
   const leaveType = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
   const span = leaveBalanceSpanDays(leave);
   if (isAnnualLeaveType(leaveType)) {
-    user.annualLeaveBalance = Math.round(((user.annualLeaveBalance ?? 0) + span) * 10000) / 10000;
+    const before = user.annualLeaveBalance ?? 0;
+    user.annualLeaveBalance = Math.round((before + span) * 10000) / 10000;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'restore',
+      balanceField: 'annualLeaveBalance',
+      delta: span,
+      balanceBefore: before,
+      balanceAfter: user.annualLeaveBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave restore: ${leaveType}`,
+    });
   }
   if (isBankLeaveType(leaveType)) {
-    user.bankLeaveBalance = Math.round(((user.bankLeaveBalance ?? 0) + span) * 10000) / 10000;
+    const before = user.bankLeaveBalance ?? 0;
+    user.bankLeaveBalance = Math.round((before + span) * 10000) / 10000;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'restore',
+      balanceField: 'bankLeaveBalance',
+      delta: span,
+      balanceBefore: before,
+      balanceAfter: user.bankLeaveBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave restore: ${leaveType}`,
+    });
   }
   if (isCompensateLeaveType(leaveType)) {
     const compSpan =
@@ -104,12 +140,24 @@ function restoreLeaveBalances(user, leave) {
         : typeof leave.totalDays === 'number' && leave.totalDays > 0
           ? leave.totalDays
           : calendarDaysInclusive(leave.start, leave.end);
-    user.compensateDayBalance = (user.compensateDayBalance ?? 0) + compSpan;
+    const before = user.compensateDayBalance ?? 0;
+    user.compensateDayBalance = before + compSpan;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'restore',
+      balanceField: 'compensateDayBalance',
+      delta: compSpan,
+      balanceBefore: before,
+      balanceAfter: user.compensateDayBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave restore: ${leaveType}`,
+    });
   }
   return leaveType;
 }
 
-function deductLeaveBalances(user, leaveData, leaveTypeStr) {
+function deductLeaveBalances(user, leaveData, leaveTypeStr, logCtx = {}) {
   const spanDays = leaveBalanceSpanDays(leaveData);
 
   if (isAnnualLeaveType(leaveTypeStr)) {
@@ -121,6 +169,17 @@ function deductLeaveBalances(user, leaveData, leaveTypeStr) {
       };
     }
     user.annualLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'deduct',
+      balanceField: 'annualLeaveBalance',
+      delta: -spanDays,
+      balanceBefore: bal,
+      balanceAfter: user.annualLeaveBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave deduct: ${leaveTypeStr}`,
+    });
   }
   if (isBankLeaveType(leaveTypeStr)) {
     const bal = user.bankLeaveBalance ?? 0;
@@ -131,6 +190,17 @@ function deductLeaveBalances(user, leaveData, leaveTypeStr) {
       };
     }
     user.bankLeaveBalance = Math.round((bal - spanDays) * 10000) / 10000;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'deduct',
+      balanceField: 'bankLeaveBalance',
+      delta: -spanDays,
+      balanceBefore: bal,
+      balanceAfter: user.bankLeaveBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave deduct: ${leaveTypeStr}`,
+    });
   }
   if (isCompensateLeaveType(leaveTypeStr)) {
     const span =
@@ -147,6 +217,17 @@ function deductLeaveBalances(user, leaveData, leaveTypeStr) {
       };
     }
     user.compensateDayBalance = bal - span;
+    queueBalanceLog({
+      empId: user.empId,
+      changeType: 'deduct',
+      balanceField: 'compensateDayBalance',
+      delta: -span,
+      balanceBefore: bal,
+      balanceAfter: user.compensateDayBalance,
+      leaveId: logCtx.leaveId || '',
+      performedBy: logCtx.performedBy || 'system',
+      reason: logCtx.reason || `Leave deduct: ${leaveTypeStr}`,
+    });
   }
   return { ok: true };
 }
@@ -316,7 +397,10 @@ exports.addLeave = async (req, res) => {
     const balancesBefore = snapshotLeaveBalances(user);
 
     if (!selfService) {
-      const deductResult = deductLeaveBalances(user, leaveData, leaveTypeStr);
+      const deductResult = deductLeaveBalances(user, leaveData, leaveTypeStr, {
+        performedBy: actor?.empId || 'system',
+        reason: 'Leave applied by admin',
+      });
       if (!deductResult.ok) {
         return res.status(400).json({ message: deductResult.message });
       }
@@ -390,6 +474,19 @@ exports.addLeave = async (req, res) => {
       console.warn('[leave] delegation skipped:', delegationErr.message);
     }
 
+    if (selfService) {
+      try {
+        await createLeavePushNotification(
+          user.empId,
+          'leave_pending',
+          `Your ${leaveTypeStr} leave (${startStr} → ${endStr}) is pending approval.`,
+          user.leaves[user.leaves.length - 1]?._id?.toString() || ''
+        );
+      } catch (notifyErr) {
+        console.warn('[leave] pending notification failed:', notifyErr.message);
+      }
+    }
+
     try {
       const { processLeaveSaved } = require('../services/leaveConflictService');
       const ActingAssignment = require('../models/ActingAssignment');
@@ -436,9 +533,29 @@ exports.approveLeave = async (req, res) => {
       return res.status(400).json({ message: 'Rejected leave cannot be approved.' });
     }
 
+    const startStr = new Date(leave.start).toISOString().slice(0, 10);
+    const endStr = new Date(leave.end).toISOString().slice(0, 10);
+    const forceApprove = req.query.force === 'true';
+
+    const { willBreachStaffingRules } = require('../services/leaveConflictService');
+    const staffingCheck = await willBreachStaffingRules(employeeId, startStr, endStr, leaveId);
+    if (staffingCheck.breached && !forceApprove) {
+      return res.status(422).json({
+        message: 'Approving this leave would breach minimum staffing rules.',
+        staffingAlerts: staffingCheck.alerts,
+      });
+    }
+    if (staffingCheck.breached && forceApprove && !isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only super administrators may force-approve staffing breaches.' });
+    }
+
     const leaveTypeStr = normalizeLeaveType(normalizeCompensateLeaveType(leave.type || 'Planned'));
     const balancesBefore = snapshotLeaveBalances(user);
-    const deductResult = deductLeaveBalances(user, leave, leaveTypeStr);
+    const deductResult = deductLeaveBalances(user, leave, leaveTypeStr, {
+      leaveId,
+      performedBy: actor?.empId || 'system',
+      reason: 'Leave approved',
+    });
     if (!deductResult.ok) {
       return res.status(400).json({ message: deductResult.message });
     }
@@ -446,8 +563,6 @@ exports.approveLeave = async (req, res) => {
     leave.status = 'approved';
     await user.save();
 
-    const startStr = new Date(leave.start).toISOString().slice(0, 10);
-    const endStr = new Date(leave.end).toISOString().slice(0, 10);
     await logRosterEvent({
       action: 'LEAVE_APPROVED',
       actor,
@@ -476,6 +591,17 @@ exports.approveLeave = async (req, res) => {
       req,
     });
 
+    try {
+      await createLeavePushNotification(
+        user.empId,
+        'leave_approved',
+        `Your ${leaveTypeStr} leave (${startStr} → ${endStr}) has been approved.`,
+        leaveId
+      );
+    } catch (notifyErr) {
+      console.warn('[leave] approve notification failed:', notifyErr.message);
+    }
+
     res.json(user);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -501,7 +627,11 @@ exports.rejectLeave = async (req, res) => {
 
     const balancesBefore = snapshotLeaveBalances(user);
     if (currentStatus === 'approved') {
-      restoreLeaveBalances(user, leave);
+      restoreLeaveBalances(user, leave, {
+        leaveId,
+        performedBy: actor?.empId || 'system',
+        reason: 'Leave rejected',
+      });
     }
     leave.status = 'rejected';
     await user.save();
@@ -536,6 +666,17 @@ exports.rejectLeave = async (req, res) => {
       }),
       req,
     });
+
+    try {
+      await createLeavePushNotification(
+        user.empId,
+        'leave_rejected',
+        `Your ${leaveTypeStr} leave (${startStr} → ${endStr}) has been rejected.`,
+        leaveId
+      );
+    } catch (notifyErr) {
+      console.warn('[leave] reject notification failed:', notifyErr.message);
+    }
 
     res.json(user);
   } catch (error) {
@@ -606,15 +747,27 @@ exports.updateLeave = async (req, res) => {
     const balancesBefore = snapshotLeaveBalances(user);
     const wasApproved = leaveIsBalanceDeducted(existing);
     if (wasApproved) {
-      restoreLeaveBalances(user, existing);
+      restoreLeaveBalances(user, existing, {
+        leaveId,
+        performedBy: actor?.empId || 'system',
+        reason: 'Leave updated (restore)',
+      });
     }
 
     const deductResult = wasApproved
-      ? deductLeaveBalances(user, leaveData, leaveData.type)
+      ? deductLeaveBalances(user, leaveData, leaveData.type, {
+          leaveId,
+          performedBy: actor?.empId || 'system',
+          reason: 'Leave updated (deduct)',
+        })
       : { ok: true };
     if (!deductResult.ok) {
       if (wasApproved) {
-        deductLeaveBalances(user, existing, previousType);
+        deductLeaveBalances(user, existing, previousType, {
+          leaveId,
+          performedBy: actor?.empId || 'system',
+          reason: 'Leave update rollback',
+        });
       }
       return res.status(400).json({ message: deductResult.message });
     }
@@ -958,7 +1111,11 @@ exports.removeLeave = async (req, res) => {
     let removedEndStr = '';
     let removedLeaveType = 'Planned';
     if (removed) {
-      removedLeaveType = restoreLeaveBalances(user, removed);
+      removedLeaveType = restoreLeaveBalances(user, removed, {
+        leaveId,
+        performedBy: actor?.empId || 'system',
+        reason: 'Leave removed',
+      });
       removedStartStr = new Date(removed.start).toISOString().slice(0, 10);
       removedEndStr = new Date(removed.end).toISOString().slice(0, 10);
     }
@@ -1066,6 +1223,26 @@ exports.deleteKpi = async (req, res) => {
   } catch (error) { res.status(400).json({ message: error.message }); }
 };
 
+exports.getBalanceLog = async (req, res) => {
+  try {
+    if (!canViewBalanceLog(req)) {
+      return res.status(403).json({ message: 'Not authorized to view balance history.' });
+    }
+    const { empId } = req.params;
+    const target = await AdminUser.findOne({ empId }).select('empId name').lean();
+    if (!target) return res.status(404).json({ message: 'Personnel not found' });
+
+    const { getBalanceLogForEmployee } = require('../services/leaveBalanceLogService');
+    const rows = await getBalanceLogForEmployee(empId, {
+      from: req.query.from,
+      to: req.query.to,
+    });
+    res.json({ empId, entries: rows });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.patchLeaveBalances = async (req, res) => {
   try {
     if (!isSuperAdmin(req)) {
@@ -1089,6 +1266,32 @@ exports.patchLeaveBalances = async (req, res) => {
       target.bankLeaveBalance = Number(bankLeaveBalance) || 0;
     }
     await target.save();
+
+    const performer = actor?.empId || 'system';
+    if (annualLeaveBalance !== undefined && target.annualLeaveBalance !== prevAnnual) {
+      await logBalanceChange({
+        empId: target.empId,
+        changeType: 'manual_adjust',
+        balanceField: 'annualLeaveBalance',
+        delta: target.annualLeaveBalance - prevAnnual,
+        balanceBefore: prevAnnual,
+        balanceAfter: target.annualLeaveBalance,
+        performedBy: performer,
+        reason: 'Manual balance edit',
+      });
+    }
+    if (bankLeaveBalance !== undefined && target.bankLeaveBalance !== prevBank) {
+      await logBalanceChange({
+        empId: target.empId,
+        changeType: 'manual_adjust',
+        balanceField: 'bankLeaveBalance',
+        delta: target.bankLeaveBalance - prevBank,
+        balanceBefore: prevBank,
+        balanceAfter: target.bankLeaveBalance,
+        performedBy: performer,
+        reason: 'Manual balance edit',
+      });
+    }
 
     await logRosterEvent({
       action: 'LEAVE_BALANCE_SET',

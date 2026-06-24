@@ -64,6 +64,8 @@ router.delete('/leave/:employeeId/:leaveId', protect, checkEditingLock, c.remove
 
 router.patch('/:empId/compensate-balance', protect, c.patchCompensateBalance);
 
+router.get('/:empId/balance-log', protect, c.getBalanceLog);
+
 router.patch('/:empId/leave-balances', protect, c.patchLeaveBalances);
 
 

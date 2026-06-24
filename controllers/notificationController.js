@@ -9,7 +9,7 @@ exports.listNotifications = async (req, res) => {
       .lean();
     const unread = await Notification.countDocuments({
       recipientUserId: req.user.id,
-      readAt: null,
+      $or: [{ read: false }, { readAt: null }],
     });
     res.json({ notifications: rows, unread });
   } catch (err) {
@@ -22,7 +22,7 @@ exports.markRead = async (req, res) => {
     const { id } = req.params;
     const doc = await Notification.findOneAndUpdate(
       { _id: id, recipientUserId: req.user.id },
-      { $set: { readAt: new Date() } },
+      { $set: { read: true, readAt: new Date() } },
       { new: true }
     );
     if (!doc) return res.status(404).json({ message: 'Notification not found.' });
@@ -35,8 +35,8 @@ exports.markRead = async (req, res) => {
 exports.markAllRead = async (req, res) => {
   try {
     await Notification.updateMany(
-      { recipientUserId: req.user.id, readAt: null },
-      { $set: { readAt: new Date() } }
+      { recipientUserId: req.user.id, $or: [{ read: false }, { readAt: null }] },
+      { $set: { read: true, readAt: new Date() } }
     );
     res.json({ message: 'All notifications marked read.' });
   } catch (err) {

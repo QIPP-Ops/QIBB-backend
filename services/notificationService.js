@@ -99,8 +99,12 @@ async function createNotification({
   const doc = await Notification.create({
     type,
     recipientUserId,
+    recipientEmpId: metadata?.recipientEmpId || '',
     title,
     body,
+    message: body,
+    leaveId: metadata?.leaveId || '',
+    read: false,
     link,
     metadata,
     dedupeKey: dedupeKey || undefined,
@@ -400,15 +404,98 @@ async function notifySafetyObservationReminder({ recipientUserId, empId, name, c
   }
 }
 
+const LEAVE_NOTIFICATION_TYPES = new Set([
+  'leave_approved',
+  'leave_rejected',
+  'leave_pending',
+  'delegation_request',
+  'delegation_approved',
+  'delegation_declined',
+]);
+
+const LEAVE_NOTIFICATION_TITLES = {
+  leave_approved: 'Leave approved',
+  leave_rejected: 'Leave rejected',
+  leave_pending: 'Leave pending approval',
+  delegation_request: 'Cover request',
+  delegation_approved: 'Cover request approved',
+  delegation_declined: 'Cover request declined',
+};
+
+function leaveNotificationLink(leaveId) {
+  const base = getFrontendBaseUrlSafe();
+  return leaveId ? `${base}/leave` : `${base}/leave`;
+}
+
+async function createLeavePushNotification(empId, type, message, leaveId = '') {
+  if (!empId || !type || !message) return null;
+  const user = await AdminUser.findOne({ empId: String(empId).trim() })
+    .select('_id empId')
+    .lean();
+  if (!user) return null;
+
+  const title = LEAVE_NOTIFICATION_TITLES[type] || 'Notification';
+  const dedupeKey = leaveId
+    ? `${type}:${empId}:${leaveId}:${Date.now().toString().slice(0, 13)}`
+    : `${type}:${empId}:${message.slice(0, 40)}`;
+
+  return createNotification({
+    type,
+    recipientUserId: user._id,
+    recipientEmpId: user.empId,
+    title,
+    body: message,
+    message,
+    leaveId: leaveId || '',
+    link: leaveNotificationLink(leaveId),
+    metadata: { leaveId: leaveId || null, recipientEmpId: user.empId },
+    dedupeKey,
+    sendEmail: false,
+  }).then(async (doc) => {
+    if (doc && doc.read !== true) {
+      doc.read = false;
+      if (typeof doc.save === 'function') await doc.save();
+    }
+    return doc;
+  });
+}
+
+async function getUnreadForUser(empId) {
+  const user = await AdminUser.findOne({ empId: String(empId).trim() }).select('_id').lean();
+  if (!user) return 0;
+  return Notification.countDocuments({
+    recipientUserId: user._id,
+    $or: [{ read: false }, { readAt: null }],
+  });
+}
+
+async function markAllReadForEmpId(empId) {
+  const user = await AdminUser.findOne({ empId: String(empId).trim() }).select('_id').lean();
+  if (!user) return { modifiedCount: 0 };
+  const now = new Date();
+  const result = await Notification.updateMany(
+    {
+      recipientUserId: user._id,
+      $or: [{ read: false }, { readAt: null }],
+    },
+    { $set: { read: true, readAt: now } }
+  );
+  return result;
+}
+
 module.exports = {
   RECIPIENT_MATRIX,
   SYSTEM_DIGEST_NOTIFICATION_TYPES,
+  LEAVE_NOTIFICATION_TYPES,
   isShiftReportDigestNotification,
   isSupervisorRole,
   findSupervisorsForCrew,
   findSuperAdminUser,
   listAdmins,
   createNotification,
+  createLeavePushNotification,
+  getUnreadForUser,
+  markAllReadForEmpId,
   notifyShiftMissing,
   notifyRosterLockChange,
   notifyQuizAssigned,
