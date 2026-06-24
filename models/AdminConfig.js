@@ -99,6 +99,7 @@ const AdminConfigSchema = new mongoose.Schema({
     type: [String],
     default: ['GR #1 - 2', 'GR #3 - 4', 'GR #5 - 6', 'BOP', 'LAB', 'Operation', 'PTW'],
   },
+  carryForwardCap: { type: Number, default: 30 },
 }, { timestamps: true });
 
 module.exports = mongoose.model('AdminConfig', AdminConfigSchema);

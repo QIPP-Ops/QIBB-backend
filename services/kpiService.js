@@ -313,6 +313,59 @@ async function getAllCrewKpis() {
   return { crews };
 }
 
+function calculateGoalScore(member) {
+  const goals = (member?.kpis || []).filter((k) => k && k.title);
+  if (!goals.length) return null;
+  const sum = goals.reduce((acc, k) => acc + (Number(k.progress) || 0), 0);
+  return Math.round(sum / goals.length);
+}
+
+function calculateUnifiedScore(complianceScore, goalScore) {
+  if (goalScore === null || goalScore === undefined) return complianceScore;
+  return Math.round(complianceScore * 0.5 + goalScore * 0.5);
+}
+
+async function calculateUnifiedKPI(empId) {
+  const member = await AdminUser.findOne({ empId: String(empId).trim() })
+    .select('_id empId name email crew role kpis kpiSubmissionStatus')
+    .lean();
+  if (!member) return null;
+
+  const compliance = await getMemberKpiById(member._id);
+  if (!compliance) return null;
+
+  const goalScore = calculateGoalScore(member);
+  const unifiedKPI = calculateUnifiedScore(compliance.individualKPI, goalScore);
+
+  return {
+    ...compliance,
+    goalScore,
+    unifiedKPI,
+    hasGoals: goalScore !== null,
+    kpiSubmissionStatus: member.kpiSubmissionStatus || '',
+  };
+}
+
+async function getCrewUnifiedKpi(crewId) {
+  const crewResult = await getCrewKpi(crewId);
+  const members = await Promise.all(
+    crewResult.members.map(async (m) => {
+      const memberDoc = await AdminUser.findById(m.memberId).select('kpis kpiSubmissionStatus').lean();
+      const goalScore = calculateGoalScore(memberDoc);
+      const unifiedKPI = calculateUnifiedScore(m.individualKPI, goalScore);
+      return {
+        ...m,
+        goalScore,
+        unifiedKPI,
+        hasGoals: goalScore !== null,
+      };
+    })
+  );
+  const sum = members.reduce((acc, m) => acc + (m.unifiedKPI ?? m.individualKPI), 0);
+  const crewUnifiedKPI = members.length ? Math.round(sum / members.length) : 0;
+  return { crewUnifiedKPI, crewKPI: crewResult.crewKPI, members };
+}
+
 module.exports = {
   AUTH_LEVEL,
   ALL_AUTH_KEYS,
@@ -322,8 +375,12 @@ module.exports = {
   calculatePtwScore,
   calculateTrainingScore,
   calculateIndividualKPI,
+  calculateGoalScore,
+  calculateUnifiedScore,
+  calculateUnifiedKPI,
   getMemberKpiById,
   getCrewKpi,
+  getCrewUnifiedKpi,
   getAllCrewKpis,
   getAvailableCrewSet,
 };

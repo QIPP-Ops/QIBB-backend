@@ -103,3 +103,66 @@ exports.getAllKpis = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getMemberUnifiedKpi = async (req, res) => {
+  try {
+    const { memberId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(memberId)) {
+      return res.status(400).json({ message: 'Invalid member id.' });
+    }
+    const member = await AdminUser.findById(memberId).select('_id empId crew role').lean();
+    if (!member) return res.status(404).json({ message: 'Member not found.' });
+    if (!canViewOtherMemberKpi(req, member)) {
+      return res.status(403).json({ message: 'Not authorized to view this member KPI.' });
+    }
+    const data = await kpiService.calculateUnifiedKPI(member.empId);
+    if (!data) return res.status(404).json({ message: 'Member not found.' });
+    res.json({
+      trainingScore: data.trainingScore,
+      ptwScore: data.ptwScore,
+      individualKPI: data.individualKPI,
+      goalScore: data.goalScore,
+      unifiedKPI: data.unifiedKPI,
+      hasGoals: data.hasGoals,
+      ptwStatus: data.ptwStatus,
+      validUntil: data.validUntil,
+      validUntilFormatted: data.validUntilFormatted,
+      daysUntilExpiry: data.daysUntilExpiry,
+      expiringWithin30: data.expiringWithin30,
+      expiringWithin60: data.expiringWithin60,
+      ptwExpired: data.ptwExpired,
+      missingEmail: data.missingEmail,
+      rosterMismatch: data.rosterMismatch,
+      ptwAuthorizations: data.ptwAuthorizations,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCrewUnifiedKpi = async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const result = await kpiService.getCrewUnifiedKpi(crewId);
+    const canViewAll = hasPortalAdminAccess(req) ||
+      req.user?.canOpsLead ||
+      req.user?.role === 'management' ||
+      req.user?.accessRole === 'management' ||
+      isSupervisorRole(req.user?.jobRole);
+
+    const members = result.members.map((m) => {
+      if (canViewAll || canViewOtherMemberKpi(req, { _id: m.memberId, empId: m.empId, crew: m.crew })) {
+        return m;
+      }
+      return redactMemberScores(m);
+    });
+
+    res.json({
+      crewKPI: result.crewKPI,
+      crewUnifiedKPI: result.crewUnifiedKPI,
+      members,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

@@ -6,6 +6,7 @@ const audit = require('../controllers/auditLogController');
 const loginLog = require('../controllers/loginLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
+const leaveRollover = require('../controllers/leaveRolloverController');
 const authController = require('../controllers/authController');
 const emailBroadcast = require('../controllers/emailBroadcastController');
 const tabVisibility = require('../controllers/tabVisibilityController');
@@ -28,6 +29,8 @@ const pinLimiter = rateLimit({
 router.get('/leave-accrual', protect, requireSuperAdmin, leaveAccrual.listAccrualRates);
 router.patch('/leave-accrual/bulk', protect, requireSuperAdmin, leaveAccrual.bulkPatchAccrualRates);
 router.patch('/leave-accrual/:empId', protect, requireSuperAdmin, leaveAccrual.patchAccrualRates);
+
+router.post('/leave-rollover', protect, requireSuperAdmin, leaveRollover.postLeaveRollover);
 
 router.get('/settings/shift-report-reminders', protect, admin, settings.getShiftReportEmailReminders);
 router.patch('/settings/shift-report-reminders/:crew', protect, admin, settings.patchShiftReportReminderForCrew);
