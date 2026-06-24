@@ -157,28 +157,51 @@ function primaryCrewFromConflict(conflict) {
   return normCrew(raw);
 }
 
+function datesForStaffingCheck(conflict) {
+  if (Array.isArray(conflict?.dates) && conflict.dates.length) {
+    return [...conflict.dates].sort();
+  }
+  return conflict?.date ? [conflict.date] : [];
+}
+
 function refreshStaffingBelow(conflict, assignments, employees) {
   const { staffingCountsForDate, isBelowMinimum } = require('./staffingRulesService');
   const crew = primaryCrewFromConflict(conflict);
-  const approved = approvedAssignmentsForRange(assignments, conflict.date, conflict.date);
-  const counts = staffingCountsForDate(employees, crew, conflict.date, approved, {
-    approvedLeaveOnly: true,
-  });
-  const below = counts.filter(isBelowMinimum);
-  return { ...conflict, below };
+  const byLabel = new Map();
+
+  for (const dateStr of datesForStaffingCheck(conflict)) {
+    const approved = approvedAssignmentsForRange(assignments, dateStr, dateStr);
+    const counts = staffingCountsForDate(employees, crew, dateStr, approved, {
+      approvedLeaveOnly: true,
+    });
+    for (const row of counts.filter(isBelowMinimum)) {
+      const prev = byLabel.get(row.label);
+      if (!prev || (row.shortfall ?? 0) > (prev.shortfall ?? 0)) {
+        byLabel.set(row.label, { ...row });
+      }
+    }
+  }
+
+  return { ...conflict, below: [...byLabel.values()] };
 }
 
 function staffingConflictStillActive(conflict, assignments, employees) {
-  if (!conflict?.date || !employees?.length) {
+  if (!employees?.length) {
     return false;
   }
+  const dates = datesForStaffingCheck(conflict);
+  if (!dates.length) return false;
+
   const { staffingCountsForDate, hasStaffingShortfall } = require('./staffingRulesService');
   const crew = primaryCrewFromConflict(conflict);
-  const approved = approvedAssignmentsForRange(assignments, conflict.date, conflict.date);
-  const counts = staffingCountsForDate(employees, crew, conflict.date, approved, {
-    approvedLeaveOnly: true,
+
+  return dates.some((dateStr) => {
+    const approved = approvedAssignmentsForRange(assignments, dateStr, dateStr);
+    const counts = staffingCountsForDate(employees, crew, dateStr, approved, {
+      approvedLeaveOnly: true,
+    });
+    return hasStaffingShortfall(counts);
   });
-  return hasStaffingShortfall(counts);
 }
 
 function filterConflictsByDelegations(conflicts, assignments, employees = null) {
@@ -195,6 +218,11 @@ function filterConflictsByDelegations(conflicts, assignments, employees = null) 
         return refreshStaffingBelow(c, assignments, employees);
       }
       return c;
+    })
+    .filter((c) => {
+      if (c.conflictType !== 'staffing') return true;
+      const { isBelowMinimum } = require('./staffingRulesService');
+      return (c.below || []).some(isBelowMinimum);
     });
 }
 
@@ -244,24 +272,54 @@ function enrichScheduleRows(rows, assignments, employeeById) {
 
   return rows.map((row) => {
     const tempCovers = temporaryCoverByCover.get(row.empId) || [];
+    const coversForAbsent = coverByAbsent.get(row.empId) || [];
     const cells = (row.cells || []).map((cell) => {
+      let next = { ...cell };
+
+      const activeCoverForAbsent = coversForAbsent.filter((t) =>
+        assignmentActiveOnDate(t, cell.date)
+      );
+      if (activeCoverForAbsent.length) {
+        const primaryCover = activeCoverForAbsent[0];
+        next = {
+          ...next,
+          coveredBy: primaryCover.coverName,
+          coveredByEmpId: primaryCover.coverEmpId,
+          coveredByAssignments: activeCoverForAbsent.map((t) => ({
+            coverName: t.coverName,
+            coverEmpId: t.coverEmpId,
+            roleLabel: t.roleLabel,
+            crew: t.crew,
+            coverFromCrew: t.coverFromCrew,
+            isCrossCrew: t.isCrossCrew,
+            startDate: t.startDate,
+            endDate: t.endDate,
+          })),
+        };
+      }
+
       const activeTemp = tempCovers.filter((t) => assignmentActiveOnDate(t, cell.date));
-      if (!activeTemp.length) return cell;
-      const primary = activeTemp[0];
-      return {
-        ...cell,
-        coveringFor: primary.absentName,
-        coveringRole: primary.roleLabel,
-        temporaryCover: activeTemp.map((t) => ({
-          crew: t.crew,
-          absentName: t.absentName,
-          absentEmpId: t.absentEmpId,
-          roleLabel: t.roleLabel,
-          isCrossCrew: t.isCrossCrew,
-          coveringFor: t.absentName,
-          coveringRole: t.roleLabel,
-        })),
-      };
+      if (activeTemp.length) {
+        const primary = activeTemp[0];
+        next = {
+          ...next,
+          coveringFor: primary.absentName,
+          coveringRole: primary.roleLabel,
+          temporaryCover: activeTemp.map((t) => ({
+            crew: t.crew,
+            absentName: t.absentName,
+            absentEmpId: t.absentEmpId,
+            roleLabel: t.roleLabel,
+            isCrossCrew: t.isCrossCrew,
+            coveringFor: t.absentName,
+            coveringRole: t.roleLabel,
+            coverName: t.coverName,
+            coverEmpId: t.coverEmpId,
+          })),
+        };
+      }
+
+      return next;
     });
 
     return {

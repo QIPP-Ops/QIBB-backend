@@ -101,4 +101,35 @@ describe('staffing headcount uses full roster not only visible rows', () => {
     expect(metaStaffingPool.shortfallBefore).toBe(0);
     expect(metaStaffingPool.stillUnderstaffedAfterBestCover).toBe(0);
   });
+
+  test('unapproved hidden CCR counts in staffing pool (portal approval not required)', () => {
+    const staffingEmployees = [
+      {
+        empId: '2364',
+        name: 'Sami Hamdan Al Harbi',
+        crew: 'A',
+        role: 'CCR Operator',
+        isApproved: true,
+        leaves: [leave('2026-01-05', '2026-01-08')],
+      },
+      { empId: 'faisal', name: 'Faisal', crew: 'A', role: 'CCR Operator', isApproved: true, leaves: [] },
+      { empId: '2711', name: 'Shaheer', crew: 'A', role: 'CCR Operator', isApproved: true, leaves: [] },
+      {
+        empId: 'hidden-ccr',
+        name: 'Hidden Crew A CCR',
+        crew: 'A',
+        role: 'CCR Operator',
+        isApproved: false,
+        hiddenFromLeaveTimesheet: true,
+        leaves: [],
+      },
+    ];
+    const visible = visibleRosterEmployees(staffingEmployees);
+    const schedule = buildRosterSchedule(visible, {
+      startDate: '2026-01-05',
+      endDate: '2026-01-08',
+      staffingEmployees,
+    });
+    expect(schedule.conflicts).toEqual([]);
+  });
 });

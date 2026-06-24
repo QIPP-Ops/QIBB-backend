@@ -58,6 +58,41 @@ describe('actingCoverService conflict cover', () => {
     expect(enriched[0].temporaryCoverAssignments).toHaveLength(1);
   });
 
+  test('enrichScheduleRows marks coveredBy on absent employee leave cells for period only', () => {
+    const rows = [
+      {
+        empId: 'E1',
+        name: 'Alice',
+        crew: 'A',
+        role: 'CCR Operator',
+        cells: [
+          { date: '2026-06-01', shift: 'D', onLeave: true, display: 'L' },
+          { date: '2026-06-02', shift: 'D', onLeave: true, display: 'L' },
+          { date: '2026-06-05', shift: 'D', onLeave: true, display: 'L' },
+        ],
+      },
+    ];
+    const assignments = [
+      {
+        _id: 'd1',
+        absentEmpId: 'E1',
+        coverEmpId: 'E2',
+        role: 'ccr_operator',
+        roleAtTime: 'CCR Operator',
+        crew: 'A',
+        coverFromCrew: 'B',
+        startDate: '2026-06-01',
+        endDate: '2026-06-02',
+        status: 'approved',
+      },
+    ];
+
+    const enriched = enrichScheduleRows(rows, assignments, employeeById);
+    expect(enriched[0].cells[0].coveredBy).toBe('Bob');
+    expect(enriched[0].cells[1].coveredBy).toBe('Bob');
+    expect(enriched[0].cells[2].coveredBy).toBeUndefined();
+  });
+
   test('assignmentActiveOnDate respects end date', () => {
     const a = { startDate: '2026-06-01', endDate: '2026-06-02' };
     expect(assignmentActiveOnDate(a, '2026-06-01')).toBe(true);
@@ -158,6 +193,26 @@ describe('actingCoverService conflict cover', () => {
       },
     ];
     expect(filterConflictsByDelegations(conflicts, assignments, employees)).toHaveLength(0);
+  });
+
+  test('filterConflictsByDelegations clears grouped staffing conflict when all cycle dates meet minimum', () => {
+    const employees = [
+      { empId: 'E1', crew: 'A', role: 'CCR Operator', leaves: [{ start: '2026-06-05', end: '2026-06-06', status: 'approved' }] },
+      { empId: 'E2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'E4', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ];
+    const conflicts = [
+      {
+        date: '2026-06-05',
+        dates: ['2026-06-05', '2026-06-06'],
+        crew: 'A',
+        conflictType: 'staffing',
+        employees: [{ empId: 'E1', name: 'Alice' }],
+        below: [{ label: 'CCR Operator', shortfall: 1, available: 2, min: 3 }],
+      },
+    ];
+    expect(filterConflictsByDelegations(conflicts, [], employees)).toHaveLength(0);
   });
 
   test('actingCoverCountForRole counts cross-crew same-role cover', () => {
