@@ -159,6 +159,29 @@ describe('buildCoverSuggestions', () => {
     expect(candidates.some((c) => c.empId === 'CCR-C1')).toBe(true);
   });
 
+  test('includes General crew standby when on off rotation', () => {
+    const withGeneral = [
+      ...employees,
+      {
+        empId: 'CCR-G1',
+        name: 'General CCR',
+        crew: 'General',
+        role: 'CCR Operator Group 1-2',
+        color: 'crew-green',
+        seniority: 'crew-green',
+        leaves: [],
+      },
+    ];
+    const { candidates } = buildCoverSuggestions(withGeneral, {
+      date: '2026-01-06',
+      crew: 'A',
+      role: 'CCR Operator',
+      shift: 'D',
+      baseDate,
+    });
+    expect(candidates.some((c) => c.empId === 'CCR-G1')).toBe(true);
+  });
+
   test('stillUnderstaffedAfterBestCover is zero when crew is exactly at CCR minimum', () => {
     const atMinimum = [
       { empId: 'CCR-A1', crew: 'A', role: 'CCR Operator', leaves: [] },

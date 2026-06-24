@@ -35,6 +35,8 @@ router.post('/delegations', protect, actingCover.createDelegation);
 
 router.post('/delegations/resolve-conflict', protect, actingCover.resolveConflictDelegation);
 
+router.patch('/delegations/:id', protect, actingCover.patchDelegation);
+
 router.post('/delegations/:id/approve', protect, actingCover.approveDelegation);
 
 router.post('/delegations/:id/decline', protect, actingCover.declineDelegation);

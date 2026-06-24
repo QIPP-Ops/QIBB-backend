@@ -10,7 +10,6 @@ const {
   staffingCountsForDate,
 } = require('./staffingRulesService');
 const { rolesMatchForCover, staffingRuleLabelForRole } = require('../utils/roleCoverMatch');
-const { isGeneralCrew } = require('../utils/rosterRowSort');
 
 const SENIORITY_RANK = {
   'crew-red': 1,
@@ -131,7 +130,8 @@ function buildCoverSuggestions(employees, options = {}) {
   const targetCrew = String(crew).trim();
 
   const pool = (employees || []).filter((e) => {
-    if (!e?.empId || isGeneralCrew(e.crew)) return false;
+    if (!e?.empId) return false;
+    // General crew is a standby pool — eligible when on off rotation (not in conflict rules).
     if (!employeeMatchesRoleParam(e, roleParam, staffingRule)) return false;
     if (employeeOnApprovedLeave(e, dateStr)) return false;
     if (isWorkingOwnShift(e, dateStr, baseDate)) return false;

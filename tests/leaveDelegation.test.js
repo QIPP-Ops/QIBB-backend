@@ -353,4 +353,86 @@ describe('leave delegation API', () => {
     expect(res.body.data).toHaveLength(1);
     expect(res.body.data[0].absentName).toBe('Absent CCR');
   });
+
+  test('PATCH /api/roster/delegations/:id allows super admin to update cover person and dates', async () => {
+    const doc = {
+      _id: '507f1f77bcf86cd799439099',
+      absentEmpId: 'CCR-1',
+      coverEmpId: 'CCR-2',
+      role: 'ccr_operator',
+      roleAtTime: 'CCR Operator',
+      crew: 'A',
+      startDate: '2026-06-01',
+      endDate: '2026-06-05',
+      status: 'approved',
+      save: jest.fn().mockResolvedValue(undefined),
+      toObject: jest.fn().mockReturnValue({
+        absentEmpId: 'CCR-1',
+        coverEmpId: 'CCR-3',
+        crew: 'A',
+        startDate: '2026-06-01',
+        endDate: '2026-06-07',
+        status: 'approved',
+      }),
+    };
+    ActingAssignment.findById.mockResolvedValue(doc);
+    AdminUser.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'CCR-1',
+          name: 'Absent CCR',
+          crew: 'A',
+          role: 'CCR Operator Group 1-2',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'CCR-3',
+          name: 'New Cover',
+          crew: 'B',
+          role: 'CCR Operator Group 3-4',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'CCR-1',
+          name: 'Absent CCR',
+          crew: 'A',
+          role: 'CCR Operator Group 1-2',
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockResolvedValue({
+          empId: 'CCR-3',
+          name: 'New Cover',
+          crew: 'B',
+          role: 'CCR Operator Group 3-4',
+        }),
+      });
+    AdminUser.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          { empId: 'CCR-1', name: 'Absent CCR' },
+          { empId: 'CCR-3', name: 'New Cover' },
+        ]),
+      }),
+    });
+
+    const res = await request(app)
+      .patch('/api/roster/delegations/507f1f77bcf86cd799439099')
+      .set(
+        'Authorization',
+        `Bearer ${tokenFor({ email: SUPER_ADMIN_EMAIL, empId: 'SA-1', crew: 'A', role: 'admin', accessRole: 'admin' })}`
+      )
+      .send({
+        coverEmpId: 'CCR-3',
+        endDate: '2026-06-07',
+        notes: 'Extended cover',
+      });
+
+    expect(res.status).toBe(200);
+    expect(doc.save).toHaveBeenCalled();
+    expect(doc.coverEmpId).toBe('CCR-3');
+    expect(doc.endDate).toBe('2026-06-07');
+  });
 });

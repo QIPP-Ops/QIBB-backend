@@ -238,13 +238,19 @@ function enrichScheduleRows(rows, assignments, employeeById) {
     const cells = (row.cells || []).map((cell) => {
       const activeTemp = tempCovers.filter((t) => assignmentActiveOnDate(t, cell.date));
       if (!activeTemp.length) return cell;
+      const primary = activeTemp[0];
       return {
         ...cell,
+        coveringFor: primary.absentName,
+        coveringRole: primary.roleLabel,
         temporaryCover: activeTemp.map((t) => ({
           crew: t.crew,
           absentName: t.absentName,
+          absentEmpId: t.absentEmpId,
           roleLabel: t.roleLabel,
           isCrossCrew: t.isCrossCrew,
+          coveringFor: t.absentName,
+          coveringRole: t.roleLabel,
         })),
       };
     });

@@ -43,8 +43,16 @@ describe('actingCoverService conflict cover', () => {
 
     const enriched = enrichScheduleRows(rows, assignments, employeeById);
     expect(enriched[0].cells[0].temporaryCover).toEqual([
-      expect.objectContaining({ crew: 'A', absentName: 'Alice', isCrossCrew: true }),
+      expect.objectContaining({
+        crew: 'A',
+        absentName: 'Alice',
+        isCrossCrew: true,
+        coveringFor: 'Alice',
+        coveringRole: 'CCR Operator',
+      }),
     ]);
+    expect(enriched[0].cells[0].coveringFor).toBe('Alice');
+    expect(enriched[0].cells[0].coveringRole).toBe('CCR Operator');
     expect(enriched[0].cells[1].temporaryCover).toBeDefined();
     expect(enriched[0].cells[2].temporaryCover).toBeUndefined();
     expect(enriched[0].temporaryCoverAssignments).toHaveLength(1);
