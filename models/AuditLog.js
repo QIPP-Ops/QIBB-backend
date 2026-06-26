@@ -4,11 +4,13 @@ const AuditLogSchema = new mongoose.Schema(
   {
     timestamp: { type: Date, default: Date.now, index: true },
     actorEmail: { type: String, default: '' },
+    actorCrew: { type: String, default: '', index: true },
     actorName: { type: String, default: '' },
     action: { type: String, required: true },
     targetType: { type: String, default: '' },
     targetId: { type: String, default: '' },
     targetName: { type: String, default: '' },
+    targetCrew: { type: String, default: '', index: true },
     before: { type: mongoose.Schema.Types.Mixed, default: null },
     after: { type: mongoose.Schema.Types.Mixed, default: null },
     ipAddress: { type: String, default: '' },

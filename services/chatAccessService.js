@@ -31,8 +31,16 @@ function isCrewAdminFor(user, crew) {
   return userCrew && userCrew.toLowerCase() === String(crew).trim().toLowerCase();
 }
 
+function isDmParticipant(user, room) {
+  if (!user || !room || room.type !== 'dm') return false;
+  const userId = String(user.userId || user.id || user._id || '');
+  if (!userId) return false;
+  return (room.participants || []).some((id) => String(id) === userId);
+}
+
 function canViewRoom(user, room) {
   if (!user || !room) return false;
+  if (room.type === 'dm') return isDmParticipant(user, room);
   if (isCrossCrewChatViewer(user)) return true;
   const userCrew = String(user.crew || '').trim().toLowerCase();
   const roomCrew = String(room.crew || '').trim().toLowerCase();
@@ -44,6 +52,7 @@ function canViewRoom(user, room) {
 
 function canPostInRoom(user, room, dbUser) {
   if (!canViewRoom(user, room)) return false;
+  if (room.type === 'dm') return true;
   const actor = dbUser || user;
   if (room.postingMode === 'read_only') {
     return isCrewAdminFor(actor, room.crew) || isCrossCrewChatViewer(actor);
@@ -58,6 +67,7 @@ function canPostInRoom(user, room, dbUser) {
 
 function canModerateRoom(user, room) {
   if (!user || !room) return false;
+  if (room.type === 'dm') return false;
   if (isCrossCrewChatViewer(user)) return true;
   return isCrewAdminFor(user, room.crew);
 }
@@ -70,13 +80,24 @@ function canDeleteMessage(user, message, room) {
 }
 
 function canManageRoomSettings(user, room) {
+  if (!room || room.type === 'dm') return false;
   return isCrewAdminFor(user, room?.crew);
+}
+
+function getDmRecipientIds(room, authorId) {
+  if (!room || room.type !== 'dm') return [];
+  const author = String(authorId || '');
+  return (room.participants || [])
+    .map((id) => String(id))
+    .filter((id) => id && id !== author);
 }
 
 module.exports = {
   isOperationManagerUser,
   isCrossCrewChatViewer,
   isCrewAdminFor,
+  isDmParticipant,
+  getDmRecipientIds,
   canViewRoom,
   canPostInRoom,
   canModerateRoom,

@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { normCrew } = require('../utils/rosterRowSort');
 
 const SENSITIVE_KEYS = [
   'password',
@@ -15,6 +16,11 @@ const SENSITIVE_KEYS = [
 
 function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function extractCrewFromPayload(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  return normCrew(payload.crew || '');
 }
 
 function sanitizeValue(input) {
@@ -46,17 +52,22 @@ async function logAction({
     const requestActor = req?.user || {};
     const resolvedActor = actor || requestActor;
     const actorEmail = String(resolvedActor?.email || '').trim().toLowerCase();
+    const actorCrew = normCrew(resolvedActor?.crew || requestActor?.crew || '');
+    const targetCrew =
+      extractCrewFromPayload(after) || extractCrewFromPayload(before) || '';
     const actorName =
       String(resolvedActor?.name || resolvedActor?.displayName || resolvedActor?.email || '').trim() || 'System';
 
     AuditLog.create({
       timestamp: new Date(),
       actorEmail,
+      actorCrew,
       actorName,
       action,
       targetType: targetType || '',
       targetId: targetId != null ? String(targetId) : '',
       targetName: targetName || '',
+      targetCrew,
       before: sanitizeValue(before),
       after: sanitizeValue(after),
       ipAddress: req?.ip || req?.headers?.['x-forwarded-for'] || '',

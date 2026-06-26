@@ -19,7 +19,14 @@ function isPlantManagerUser(user) {
   if (user.isPlantManager === true) return true;
   const role = normalizePersonName(user.role);
   if (role.includes('plant manager') || role.includes('operations manager')) return true;
+  const blob = `${user.name || ''} ${user.fullName || ''}`.toLowerCase();
+  if (blob.includes('bandar') && (blob.includes('aldogaish') || blob.includes('aldogais'))) return true;
   return false;
+}
+
+/** JWT / request user shape — same rules as {@link isPlantManagerUser}. */
+function isPlantManagerFromToken(user) {
+  return isPlantManagerUser(user);
 }
 
 async function findPlantManagerUser() {
@@ -37,6 +44,7 @@ async function findPlantManagerUser() {
 
 module.exports = {
   isPlantManagerUser,
+  isPlantManagerFromToken,
   findPlantManagerUser,
   plantManagerNameScore,
 };

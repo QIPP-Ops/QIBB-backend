@@ -5,6 +5,8 @@ const c = require('../controllers/chatController');
 const router = express.Router();
 
 router.get('/rooms', protect, c.listRooms);
+router.get('/dm/roster', protect, c.getDmRoster);
+router.post('/dm', protect, c.createDm);
 router.get('/rooms/:roomId/messages', protect, c.getMessages);
 router.post('/rooms/:roomId/messages', protect, c.postMessage);
 router.post('/rooms/:roomId/upload', protect, c.uploadFile);

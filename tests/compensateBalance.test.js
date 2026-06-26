@@ -95,6 +95,25 @@ describe('PATCH /api/roster/:empId/compensate-balance', () => {
     expect(res.status).toBe(404);
   });
 
+  test('allows admin editing same crew with mixed crew labels', async () => {
+    const target = mockTarget({ crew: 'A', compensateDayBalance: 2 });
+    mockActor({ email: 'crew.admin@acwapower.com', name: 'Crew Admin', crew: 'Crew A' });
+    const token = tokenFor({
+      role: 'admin',
+      accessRole: 'admin',
+      crew: 'Crew A',
+      email: 'crew.admin@acwapower.com',
+    });
+
+    const res = await request(app)
+      .patch('/api/roster/EMP-200/compensate-balance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ balance: 6 });
+
+    expect(res.status).toBe(200);
+    expect(target.compensateDayBalance).toBe(6);
+  });
+
   test('rejects admin editing other crew', async () => {
     mockTarget({ crew: 'B' });
     const token = tokenFor({

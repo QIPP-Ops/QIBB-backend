@@ -12,6 +12,7 @@ const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
 const { enrichScheduleRows, filterConflictsByDelegations } = require('../services/actingCoverService');
 const { logRosterEvent } = require('../services/rosterAuditService');
 const { filterScheduleForViewer } = require('../utils/timesheetAccess');
+const { enrichScheduleWithAttendance } = require('../services/scheduleAttendanceService');
 
 function fmtDate(d) {
   const x = new Date(d);
@@ -118,7 +119,7 @@ exports.getSchedule = async (req, res) => {
       });
     }
 
-    const schedule = await buildSchedulePayload(start, end);
+    const schedule = await enrichScheduleWithAttendance(await buildSchedulePayload(start, end));
     res.json({ success: true, data: scheduleForClient(schedule, req) });
   } catch (err) {
     res.status(500).json({ message: err.message });

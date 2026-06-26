@@ -1,19 +1,28 @@
-const { isSuperAdmin } = require('./superAdmin');
-
-function isPlantManagerFromToken(user) {
-  if (!user) return false;
-  const role = String(user.role || '').toLowerCase();
-  if (role.includes('plant manager') || role.includes('operations manager')) return true;
-  const blob = `${user.name || ''} ${user.fullName || ''}`.toLowerCase();
-  return blob.includes('bandar') && (blob.includes('aldogaish') || blob.includes('aldogais'));
-}
+const { canViewAuditLogs, canViewLoginLogs } = require('../utils/logAccessPermissions');
+const { isPlantManagerFromToken } = require('../services/plantManagerService');
 
 function requireAuditLogViewer(req, res, next) {
-  if (isSuperAdmin(req)) return next();
-  if (isPlantManagerFromToken(req.user)) return next();
-  return res.status(403).json({
-    message: 'Audit log access is restricted to super administrators and the plant manager.',
-  });
+  if (!canViewAuditLogs(req)) {
+    return res.status(403).json({
+      message:
+        'Audit log access is restricted to super administrators, the plant manager, and crew administrators.',
+    });
+  }
+  return next();
 }
 
-module.exports = { requireAuditLogViewer, isPlantManagerFromToken };
+function requireLoginLogViewer(req, res, next) {
+  if (!canViewLoginLogs(req)) {
+    return res.status(403).json({
+      message:
+        'Login log access is restricted to super administrators, the plant manager, and crew administrators.',
+    });
+  }
+  return next();
+}
+
+module.exports = {
+  requireAuditLogViewer,
+  requireLoginLogViewer,
+  isPlantManagerFromToken,
+};

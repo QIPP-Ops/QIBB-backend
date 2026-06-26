@@ -14,19 +14,29 @@ const { logLoginAttempt } = require('../services/loginLogService');
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-at-least-32-chars-long';
 process.env.SUPER_ADMIN_EMAIL = 'admin@acwaops.com';
 
-function tokenFor(email) {
+function tokenFor(overrides = {}) {
   return jwt.sign(
     buildJwtPayload({
       _id: '507f1f77bcf86cd799439011',
-      email,
+      email: 'admin@acwaops.com',
       name: 'Login Log Tester',
       accessRole: 'admin',
       crew: 'A',
       empId: '100001',
+      ...overrides,
     }),
     process.env.JWT_SECRET,
     { expiresIn: '1h' }
   );
+}
+
+function mockLoginQuery(rows = [{ email: 'user@acwapower.com', success: true }], total = 1) {
+  const lean = jest.fn().mockResolvedValue(rows);
+  const limit = jest.fn(() => ({ lean }));
+  const skip = jest.fn(() => ({ limit }));
+  const sort = jest.fn(() => ({ skip }));
+  LoginLog.find.mockReturnValue({ sort });
+  LoginLog.countDocuments.mockResolvedValue(total);
 }
 
 describe('loginLogService.logLoginAttempt', () => {
@@ -88,26 +98,54 @@ describe('GET /api/admin/login-logs', () => {
   });
 
   test('returns paginated login logs for super admin', async () => {
-    const lean = jest.fn().mockResolvedValue([{ email: 'user@acwapower.com', success: true }]);
-    const limit = jest.fn(() => ({ lean }));
-    const skip = jest.fn(() => ({ limit }));
-    const sort = jest.fn(() => ({ skip }));
-    LoginLog.find.mockReturnValue({ sort });
-    LoginLog.countDocuments.mockResolvedValue(1);
+    mockLoginQuery();
 
     const res = await request(app)
       .get('/api/admin/login-logs?page=1&limit=10')
-      .set('Authorization', `Bearer ${tokenFor('admin@acwaops.com')}`);
+      .set('Authorization', `Bearer ${tokenFor({ email: 'admin@acwaops.com' })}`);
 
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(1);
     expect(Array.isArray(res.body.logs)).toBe(true);
+    expect(LoginLog.find).toHaveBeenCalledWith({});
   });
 
-  test('returns 403 for non-super-admin', async () => {
+  test('returns crew-scoped login logs for crew admin', async () => {
+    mockLoginQuery([{ email: 'member@acwapower.com', crew: 'A', success: true }]);
+
+    const res = await request(app)
+      .get('/api/admin/login-logs?page=1&limit=10')
+      .set(
+        'Authorization',
+        `Bearer ${tokenFor({ email: 'crew.admin@acwapower.com', crew: 'A' })}`
+      );
+
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(1);
+    const filter = LoginLog.find.mock.calls[0][0];
+    expect(filter.$or).toEqual(
+      expect.arrayContaining([{ crew: 'A' }, { crew: 'A' }])
+    );
+  });
+
+  test('returns 403 for regular user', async () => {
     const res = await request(app)
       .get('/api/admin/login-logs')
-      .set('Authorization', `Bearer ${tokenFor('regular.admin@acwapower.com')}`);
+      .set(
+        'Authorization',
+        `Bearer ${tokenFor({ email: 'user@acwapower.com', accessRole: 'viewer', crew: 'A' })}`
+      );
+
+    expect(res.status).toBe(403);
+  });
+
+  test('returns 403 for admin without crew', async () => {
+    const res = await request(app)
+      .get('/api/admin/login-logs')
+      .set(
+        'Authorization',
+        `Bearer ${tokenFor({ email: 'admin@acwapower.com', crew: '' })}`
+      );
 
     expect(res.status).toBe(403);
   });

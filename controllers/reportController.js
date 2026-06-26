@@ -7,12 +7,20 @@ const {
   buildRosterSchedule,
   overrideMapFromDocs,
   filterActiveConflicts,
+  getShiftForDate,
 } = require('../services/shiftScheduleService');
 const { filterProtectedAccounts } = require('../utils/protectedAccounts');
-const { sortRosterEmployees } = require('../utils/rosterRowSort');
+const { sortRosterEmployees, normCrew } = require('../utils/rosterRowSort');
 const { daysBetweenInclusive } = require('../services/leaveAccrualService');
 const { getAllCrewKpis } = require('../services/kpiService');
-const { filterConflictsByDelegations } = require('../services/actingCoverService');
+const {
+  filterConflictsByDelegations,
+  findDelegationForEmpDate,
+  isApprovedDelegation,
+  delegationStatus,
+} = require('../services/actingCoverService');
+const { buildCoverSuggestions } = require('../services/coverSuggestionsService');
+const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
 const ActingAssignment = require('../models/ActingAssignment');
 
 function fmtDateOnly(input) {
@@ -79,8 +87,87 @@ async function loadActingForRange(start, end) {
   }).lean();
 }
 
-function coverageKey(date, crew) {
-  return `${date}|${crew}`;
+function primaryCrewFromConflict(conflict) {
+  const raw = String(conflict?.crew || '').split('/')[0] || conflict?.crew;
+  return normCrew(raw);
+}
+
+function buildStaffingConflictKey(conflict) {
+  const empIds = (conflict.employees || []).map((e) => e.empId).sort().join(',');
+  const cycleKey = conflict.cycleKey || conflict.cycleStart || conflict.date;
+  return `${conflict.severity}|${conflict.crew}|${empIds}|${cycleKey}`;
+}
+
+function buildSuggestedBackupsForConflict(conflict, staffingEmployees, actingAssignments, baseDate) {
+  const crew = primaryCrewFromConflict(conflict);
+  const dateStr = conflict.date;
+  const shift = getShiftForDate(crew, dateStr, baseDate);
+  const seen = new Set();
+  const suggestions = [];
+
+  for (const roleRow of conflict.below || []) {
+    const { candidates } = buildCoverSuggestions(staffingEmployees, {
+      date: dateStr,
+      crew,
+      role: roleRow.label,
+      shift,
+      baseDate,
+      actingAssignments,
+    });
+    for (const candidate of candidates) {
+      if (seen.has(candidate.empId)) continue;
+      seen.add(candidate.empId);
+      suggestions.push(candidate);
+    }
+  }
+
+  suggestions.sort((a, b) => {
+    if (a.eligibleForRequestedShift !== b.eligibleForRequestedShift) {
+      return a.eligibleForRequestedShift ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return suggestions;
+}
+
+function enrichConflictEmployeesForReport(conflict, actingAssignments, employeeById) {
+  return (conflict.employees || []).map((emp) => {
+    const delegation = findDelegationForEmpDate(actingAssignments, emp.empId, conflict.date);
+    const cover = delegation ? employeeById.get(delegation.coverEmpId) : null;
+    return {
+      empId: emp.empId,
+      name: emp.name,
+      role: emp.role,
+      crew: emp.crew,
+      delegation: delegation
+        ? {
+            id: String(delegation._id || ''),
+            status: delegationStatus(delegation),
+            coverEmpId: delegation.coverEmpId,
+            coverName: cover?.name || delegation.coverEmpId,
+          }
+        : null,
+    };
+  });
+}
+
+function coverStatusForEmployees(employees) {
+  if (!employees.length) return { hasCover: 'No', coverNames: '' };
+  const approved = employees.filter((e) => e.delegation?.status === 'approved');
+  if (approved.length === employees.length) {
+    return {
+      hasCover: 'Yes',
+      coverNames: approved.map((e) => e.delegation?.coverName).filter(Boolean).join(', '),
+    };
+  }
+  if (approved.length > 0) {
+    return {
+      hasCover: 'Partial',
+      coverNames: approved.map((e) => e.delegation?.coverName).filter(Boolean).join(', '),
+    };
+  }
+  return { hasCover: 'No', coverNames: '' };
 }
 
 /** GET /api/reports/leave-summary */
@@ -227,26 +314,45 @@ exports.getBalanceSnapshot = async (req, res) => {
 /** GET /api/reports/staffing-conflicts */
 exports.getStaffingConflicts = async (req, res) => {
   try {
+    if (!isSuperAdmin(req) && !hasPortalAdminAccess(req)) {
+      return res.status(403).json({
+        message: 'Only portal administrators may view staffing conflict reports.',
+      });
+    }
+
     const range = defaultDateRange();
     const from = parseDateOnly(req.query.from) || range.start;
     const to = parseDateOnly(req.query.to) || range.end;
-    const crewFilter = String(req.query.crew || '').trim();
+    let crewFilter = String(req.query.crew || '').trim();
     const conflictTypeFilter = String(req.query.conflictType || '').trim().toLowerCase();
     const hasCoverFilter = req.query.hasCover;
 
+    if (!isSuperAdmin(req) && hasPortalAdminAccess(req)) {
+      const actorCrew = normCrew(req.user?.crew);
+      if (!actorCrew) {
+        return res.status(403).json({ message: 'Crew administrators must belong to a crew.' });
+      }
+      if (crewFilter && normCrew(crewFilter) !== actorCrew) {
+        return res.json([]);
+      }
+      crewFilter = actorCrew;
+    }
+
     const config = await AdminConfig.findOne().lean();
+    const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
     const {
       loadStaffingRosterEmployees,
       visibleRosterEmployees,
     } = require('../utils/rosterEmployeeLoad');
     const staffingEmployees = await loadStaffingRosterEmployees();
     const employees = visibleRosterEmployees(staffingEmployees);
+    const employeeById = new Map(staffingEmployees.map((e) => [e.empId, e]));
     const overrideMap = await loadOverrideMap(from, to);
     const actingAssignments = await loadActingForRange(from, to);
     const schedule = buildRosterSchedule(employees, {
       startDate: from,
       endDate: to,
-      baseDate: config?.shiftCycleBaseDate || '2026-01-01',
+      baseDate,
       overrideMap,
       actingAssignments,
       staffingEmployees,
@@ -254,34 +360,61 @@ exports.getStaffingConflicts = async (req, res) => {
 
     let conflicts = filterActiveConflicts(
       filterConflictsByDelegations(schedule.conflicts, actingAssignments, staffingEmployees)
-    );
+    ).filter((c) => c.conflictType === 'staffing');
 
-    const coverByKey = new Map();
-    for (const cov of schedule.coverage || []) {
-      coverByKey.set(coverageKey(cov.date, cov.crew), cov);
-    }
+    const actorCanManageCrew = (crew) => {
+      if (isSuperAdmin(req)) return true;
+      if (!hasPortalAdminAccess(req)) return false;
+      return normCrew(req.user?.crew) === normCrew(crew);
+    };
 
     let rows = conflicts.map((c) => {
-      const primaryCrew = String(c.crew || '').split('/')[0] || c.crew;
-      const cover = coverByKey.get(coverageKey(c.date, primaryCrew));
-      const hasCover = Boolean(cover?.suggestedBackups?.length);
+      const primaryCrew = primaryCrewFromConflict(c);
+      const employeesEnriched = enrichConflictEmployeesForReport(c, actingAssignments, employeeById);
+      const { hasCover, coverNames } = coverStatusForEmployees(employeesEnriched);
+      const suggestedBackups = buildSuggestedBackupsForConflict(
+        c,
+        staffingEmployees,
+        actingAssignments,
+        baseDate
+      );
+      const eligibleNames = suggestedBackups
+        .filter((b) => b.eligibleForRequestedShift)
+        .map((b) => b.name);
+
       return {
         Date: c.date,
         Crew: c.crew,
         Severity: c.severity,
         'Conflict Type': 'Staffing shortfall',
-        'Shortfall Roles': (c.below || []).map((b) => b.label).join(', '),
+        'Shortfall Roles': (c.below || []).map((b) => `${b.label} ${b.available}/${b.min}`).join(', '),
         Message: c.message,
-        Employees: (c.employees || []).map((e) => e.name).join(', '),
-        'Has Cover': hasCover ? 'Yes' : 'No',
-        'Suggested Backups': hasCover
-          ? (cover.suggestedBackups || []).map((b) => b.name).join(', ')
-          : '',
+        Employees: employeesEnriched.map((e) => e.name).join(', '),
+        'Has Cover': hasCover,
+        'Cover Names': coverNames,
+        'Suggested Backups': eligibleNames.length
+          ? eligibleNames.join(', ')
+          : suggestedBackups.map((b) => b.name).join(', '),
+        _meta: {
+          conflictKey: buildStaffingConflictKey(c),
+          date: c.date,
+          crew: primaryCrew,
+          shift: getShiftForDate(primaryCrew, c.date, baseDate),
+          shortfallRoles: (c.below || []).map((b) => ({
+            label: b.label,
+            available: b.available,
+            min: b.min,
+            shortfall: b.shortfall,
+          })),
+          employees: employeesEnriched,
+          suggestedBackups,
+          canManage: actorCanManageCrew(primaryCrew),
+        },
       };
     });
 
     if (crewFilter) {
-      rows = rows.filter((r) => String(r.Crew).includes(crewFilter));
+      rows = rows.filter((r) => normCrew(String(r.Crew).split('/')[0]) === normCrew(crewFilter));
     }
     if (conflictTypeFilter) {
       rows = rows.filter(
@@ -290,7 +423,9 @@ exports.getStaffingConflicts = async (req, res) => {
           String(r.Severity).toLowerCase() === conflictTypeFilter
       );
     }
-    if (hasCoverFilter === 'true') rows = rows.filter((r) => r['Has Cover'] === 'Yes');
+    if (hasCoverFilter === 'true') {
+      rows = rows.filter((r) => r['Has Cover'] === 'Yes' || r['Has Cover'] === 'Partial');
+    }
     if (hasCoverFilter === 'false') rows = rows.filter((r) => r['Has Cover'] === 'No');
 
     rows.sort((a, b) => String(a.Date).localeCompare(String(b.Date)));

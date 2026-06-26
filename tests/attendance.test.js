@@ -75,8 +75,8 @@ describe('attendance API', () => {
     expect(res.status).toBe(401);
   });
 
-  test('GET /api/attendance allows supervisor to list own crew', async () => {
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+  test('GET /api/attendance allows crew admin to list own crew', async () => {
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .get('/api/attendance?date=2026-06-23&crew=A')
       .set('Authorization', `Bearer ${token}`);
@@ -85,15 +85,15 @@ describe('attendance API', () => {
     expect(AttendanceRecord.find).toHaveBeenCalled();
   });
 
-  test('GET /api/attendance rejects supervisor for other crew', async () => {
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+  test('GET /api/attendance rejects crew admin for other crew', async () => {
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .get('/api/attendance?date=2026-06-23&crew=B')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);
   });
 
-  test('GET /api/attendance allows member to view own records', async () => {
+  test('GET /api/attendance rejects regular viewer even for own empId', async () => {
     const token = tokenFor({
       jobRole: 'CCR Operator',
       crew: 'A',
@@ -103,23 +103,18 @@ describe('attendance API', () => {
     const res = await request(app)
       .get('/api/attendance?date=2026-06-23&empId=EMP-100')
       .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
   });
 
-  test('GET /api/attendance rejects member viewing other empId', async () => {
-    const token = tokenFor({
-      jobRole: 'CCR Operator',
-      crew: 'A',
-      empId: 'EMP-100',
-      email: 'operator@acwapower.com',
-    });
+  test('GET /api/attendance rejects supervisor job role without admin access', async () => {
+    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
-      .get('/api/attendance?date=2026-06-23&empId=EMP-OTHER')
+      .get('/api/attendance?date=2026-06-23&crew=A')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);
   });
 
-  test('POST /api/attendance creates record for supervisor same crew', async () => {
+  test('POST /api/attendance creates record for crew admin same crew', async () => {
     AdminUser.findOne.mockReturnValue({
       select: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue(crewAEmployee),
@@ -138,6 +133,7 @@ describe('attendance API', () => {
     const token = tokenFor({
       id: supervisorId,
       email: 'sic@acwapower.com',
+      accessRole: 'admin',
       jobRole: 'Shift in Charge',
       crew: 'A',
       name: 'SIC Logger',
@@ -172,14 +168,14 @@ describe('attendance API', () => {
     );
   });
 
-  test('POST /api/attendance rejects supervisor for other crew employee', async () => {
+  test('POST /api/attendance rejects crew admin for other crew employee', async () => {
     AdminUser.findOne.mockReturnValue({
       select: jest.fn().mockReturnValue({
         lean: jest.fn().mockResolvedValue(crewBEmployee),
       }),
     });
 
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .post('/api/attendance')
       .set('Authorization', `Bearer ${token}`)
@@ -215,7 +211,7 @@ describe('attendance API', () => {
       })
     );
 
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .post('/api/attendance/batch')
       .set('Authorization', `Bearer ${token}`)
@@ -269,7 +265,7 @@ describe('attendance API', () => {
       }),
     });
 
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .patch('/api/attendance/att-1')
       .set('Authorization', `Bearer ${token}`)
@@ -292,7 +288,7 @@ describe('attendance API', () => {
     };
     AttendanceRecord.findById.mockResolvedValue(existing);
 
-    const token = tokenFor({ jobRole: 'Supervisor', crew: 'A' });
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .delete('/api/attendance/att-1')
       .set('Authorization', `Bearer ${token}`);

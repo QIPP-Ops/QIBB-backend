@@ -1,12 +1,20 @@
 const { isSuperAdmin } = require('../middleware/superAdmin');
 const { isPlantManagerUser } = require('../services/plantManagerService');
 const { crewsMatch } = require('../services/actingCoverService');
-const { isSicOrSupervisorRole } = require('./attendancePermissions');
+const { isSicOrSupervisorRole, isCrewTimesheetLeadRole } = require('./attendancePermissions');
 
 /** Whether the user may view or interact with leave / shift report rows for this employee. */
 function canEditLeaveRow(user, row) {
   if (!user?.empId) return false;
   if (isSuperAdmin({ user })) return true;
+
+  const jobRole = user.jobRole || user.role || '';
+  if (isCrewTimesheetLeadRole(jobRole)) {
+    if (user.crew && row.crew) {
+      return crewsMatch(user.crew, row.crew);
+    }
+    return user.empId === row.empId;
+  }
 
   const portalRole = user.accessRole || user.role;
   if (portalRole === 'viewer') {
@@ -16,14 +24,6 @@ function canEditLeaveRow(user, row) {
   if (portalRole === 'admin' || portalRole === 'management' || user.canOpsLead) {
     if (user.crew && row.crew) {
       return user.crew === row.crew;
-    }
-    return user.empId === row.empId;
-  }
-
-  const jobRole = user.jobRole || user.role || '';
-  if (isSicOrSupervisorRole(jobRole)) {
-    if (user.crew && row.crew) {
-      return crewsMatch(user.crew, row.crew);
     }
     return user.empId === row.empId;
   }

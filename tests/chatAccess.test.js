@@ -50,4 +50,33 @@ describe('chatAccessService', () => {
     expect(canDeleteMessage(crewAdmin, msg, crewARoom)).toBe(true);
     expect(canModerateRoom(bandar, crewBRoom)).toBe(true);
   });
+
+  test('dm rooms are visible only to participants', () => {
+    const dmRoom = {
+      _id: 'dm1',
+      type: 'dm',
+      crew: 'DM',
+      participants: ['u1', 'u2'],
+      postingMode: 'open',
+      restrictedPosters: [],
+    };
+    expect(canViewRoom({ userId: 'u1' }, dmRoom)).toBe(true);
+    expect(canViewRoom({ userId: 'u3' }, dmRoom)).toBe(false);
+    expect(canViewRoom(bandar, dmRoom)).toBe(false);
+  });
+
+  test('dm participants can post; non-participants cannot', () => {
+    const dmRoom = {
+      _id: 'dm1',
+      type: 'dm',
+      crew: 'DM',
+      participants: ['u1', 'u2'],
+      postingMode: 'read_only',
+      restrictedPosters: [],
+    };
+    const participant = { userId: 'u1', crew: 'A', accessRole: 'viewer' };
+    const outsider = { userId: 'u9', crew: 'A', accessRole: 'viewer' };
+    expect(canPostInRoom(participant, dmRoom, participant)).toBe(true);
+    expect(canPostInRoom(outsider, dmRoom, outsider)).toBe(false);
+  });
 });

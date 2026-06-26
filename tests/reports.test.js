@@ -43,25 +43,28 @@ process.env.SUPER_ADMIN_EMAIL = 'admin@acwaops.com';
 
 const app = require('../app');
 
-const ENDPOINTS = [
+const ENDPOINTS_SUPER_ADMIN_ONLY = [
   '/api/reports/leave-summary',
   '/api/reports/attendance',
   '/api/reports/balance-snapshot',
-  '/api/reports/staffing-conflicts',
   '/api/reports/kpi-scores',
   '/api/reports/balance-history',
 ];
 
-function tokenFor(email) {
+function tokenFor(emailOrOverrides) {
+  const overrides =
+    typeof emailOrOverrides === 'string' ? { email: emailOrOverrides } : emailOrOverrides || {};
+  const email = overrides.email || 'admin@acwaops.com';
   return jwt.sign(
     buildJwtPayload({
       _id: '507f1f77bcf86cd799439011',
       email,
       name: 'Test User',
-      accessRole: email === 'admin@acwaops.com' ? 'admin' : 'viewer',
-      crew: 'A',
-      empId: '100001',
-      role: 'CCR Operator',
+      accessRole:
+        overrides.accessRole || (email === 'admin@acwaops.com' ? 'admin' : 'viewer'),
+      crew: overrides.crew || 'A',
+      empId: overrides.empId || '100001',
+      role: overrides.role || 'CCR Operator',
     }),
     process.env.JWT_SECRET,
     { expiresIn: '1h' }
@@ -92,18 +95,41 @@ describe('reports API', () => {
   });
 
   describe('super-admin guard', () => {
-    test.each(ENDPOINTS)('%s returns 403 for non-super-admin', async (path) => {
+    test.each(ENDPOINTS_SUPER_ADMIN_ONLY)('%s returns 403 for non-super-admin', async (path) => {
       const res = await request(app)
         .get(path)
         .set('Authorization', `Bearer ${tokenFor('ops-admin@acwaops.com')}`);
       expect(res.status).toBe(403);
     });
+
+    test('GET /api/reports/staffing-conflicts allows crew admin', async () => {
+      const res = await request(app)
+        .get('/api/reports/staffing-conflicts')
+        .set(
+          'Authorization',
+          `Bearer ${tokenFor({
+            email: 'crew-admin@acwaops.com',
+            accessRole: 'admin',
+            crew: 'A',
+          })}`
+        );
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
   });
 
   describe('super-admin access', () => {
-    test.each(ENDPOINTS)('%s returns flat array for super admin', async (path) => {
+    test.each(ENDPOINTS_SUPER_ADMIN_ONLY)('%s returns flat array for super admin', async (path) => {
       const res = await request(app)
         .get(path)
+        .set('Authorization', `Bearer ${tokenFor('admin@acwaops.com')}`);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+
+    test('GET /api/reports/staffing-conflicts returns flat array for super admin', async () => {
+      const res = await request(app)
+        .get('/api/reports/staffing-conflicts')
         .set('Authorization', `Bearer ${tokenFor('admin@acwaops.com')}`);
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);

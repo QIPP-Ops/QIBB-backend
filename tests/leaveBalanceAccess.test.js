@@ -58,6 +58,19 @@ describe('leaveBalanceAccess', () => {
       expect(canEditCompensateBalance(otherCrew, target)).toBe(false);
     });
 
+    it('matches crew labels after normalization', () => {
+      const req = { user: { accessRole: 'admin', empId: 'E9', crew: 'Crew A' } };
+      expect(canEditCompensateBalance(req, { empId: 'E2', crew: 'A' })).toBe(true);
+      expect(canEditCompensateBalance(req, { empId: 'E2', crew: 'Crew B' })).toBe(false);
+    });
+
+    it('uses actor crew from database when provided', () => {
+      const req = { user: { accessRole: 'admin', empId: 'E9', crew: 'B' } };
+      const actor = { crew: 'A' };
+      expect(canEditCompensateBalance(req, target, actor)).toBe(true);
+      expect(canEditCompensateBalance(req, { empId: 'E2', crew: 'B' }, actor)).toBe(false);
+    });
+
     it('allows management for same crew only', () => {
       const req = { user: { accessRole: 'management', empId: 'E9', crew: 'A' } };
       expect(canEditCompensateBalance(req, target)).toBe(true);

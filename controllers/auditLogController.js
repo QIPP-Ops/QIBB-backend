@@ -1,4 +1,8 @@
 const AuditLog = require('../models/AuditLog');
+const {
+  buildAuditLogCrewFilter,
+  mergeFilters,
+} = require('../utils/logAccessPermissions');
 
 exports.getAuditLog = async (req, res) => {
   try {
@@ -6,25 +10,28 @@ exports.getAuditLog = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 200);
     const skip = (page - 1) * limit;
 
-    const filter = {};
+    const baseFilter = {};
     if (req.query.actorEmail) {
-      filter.actorEmail = String(req.query.actorEmail).trim().toLowerCase();
+      baseFilter.actorEmail = String(req.query.actorEmail).trim().toLowerCase();
     }
     if (req.query.action) {
-      filter.action = String(req.query.action).trim();
+      baseFilter.action = String(req.query.action).trim();
     }
     if (req.query.targetType) {
-      filter.targetType = String(req.query.targetType).trim();
+      baseFilter.targetType = String(req.query.targetType).trim();
     }
     if (req.query.from || req.query.to) {
-      filter.timestamp = {};
+      baseFilter.timestamp = {};
       if (req.query.from) {
-        filter.timestamp.$gte = new Date(`${String(req.query.from).slice(0, 10)}T00:00:00.000Z`);
+        baseFilter.timestamp.$gte = new Date(`${String(req.query.from).slice(0, 10)}T00:00:00.000Z`);
       }
       if (req.query.to) {
-        filter.timestamp.$lte = new Date(`${String(req.query.to).slice(0, 10)}T23:59:59.999Z`);
+        baseFilter.timestamp.$lte = new Date(`${String(req.query.to).slice(0, 10)}T23:59:59.999Z`);
       }
     }
+
+    const crewFilter = await buildAuditLogCrewFilter(req);
+    const filter = mergeFilters(baseFilter, crewFilter);
 
     const [logs, total] = await Promise.all([
       AuditLog.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).lean(),
@@ -34,6 +41,9 @@ exports.getAuditLog = async (req, res) => {
     const pages = Math.max(Math.ceil(total / limit), 1);
     return res.json({ logs, total, page, pages });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ message: error.message });
+    }
     return res.status(500).json({ message: 'Failed to fetch audit logs', error: error.message });
   }
 };

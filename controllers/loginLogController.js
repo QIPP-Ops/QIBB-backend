@@ -1,4 +1,8 @@
 const LoginLog = require('../models/LoginLog');
+const {
+  buildLoginLogCrewFilter,
+  mergeFilters,
+} = require('../utils/logAccessPermissions');
 
 exports.getLoginLogs = async (req, res) => {
   try {
@@ -6,27 +10,30 @@ exports.getLoginLogs = async (req, res) => {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 25, 1), 200);
     const skip = (page - 1) * limit;
 
-    const filter = {};
+    const baseFilter = {};
     if (req.query.email) {
-      filter.email = String(req.query.email).trim().toLowerCase();
+      baseFilter.email = String(req.query.email).trim().toLowerCase();
     }
     if (req.query.success === 'true') {
-      filter.success = true;
+      baseFilter.success = true;
     } else if (req.query.success === 'false') {
-      filter.success = false;
+      baseFilter.success = false;
     }
     if (req.query.failureCode) {
-      filter.failureCode = String(req.query.failureCode).trim();
+      baseFilter.failureCode = String(req.query.failureCode).trim();
     }
     if (req.query.from || req.query.to) {
-      filter.timestamp = {};
+      baseFilter.timestamp = {};
       if (req.query.from) {
-        filter.timestamp.$gte = new Date(`${String(req.query.from).slice(0, 10)}T00:00:00.000Z`);
+        baseFilter.timestamp.$gte = new Date(`${String(req.query.from).slice(0, 10)}T00:00:00.000Z`);
       }
       if (req.query.to) {
-        filter.timestamp.$lte = new Date(`${String(req.query.to).slice(0, 10)}T23:59:59.999Z`);
+        baseFilter.timestamp.$lte = new Date(`${String(req.query.to).slice(0, 10)}T23:59:59.999Z`);
       }
     }
+
+    const crewFilter = buildLoginLogCrewFilter(req);
+    const filter = mergeFilters(baseFilter, crewFilter);
 
     const [logs, total] = await Promise.all([
       LoginLog.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).lean(),
@@ -36,6 +43,9 @@ exports.getLoginLogs = async (req, res) => {
     const pages = Math.max(Math.ceil(total / limit), 1);
     return res.json({ logs, total, page, pages });
   } catch (error) {
+    if (error.status === 403) {
+      return res.status(403).json({ message: error.message });
+    }
     return res.status(500).json({ message: 'Failed to fetch login logs', error: error.message });
   }
 };

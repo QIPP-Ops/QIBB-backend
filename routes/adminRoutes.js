@@ -16,7 +16,7 @@ const surveyController = require('../controllers/surveyController');
 const groupPreset = require('../controllers/groupPresetController');
 const { protect, admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
-const { requireAuditLogViewer } = require('../middleware/auditLogAccess');
+const { requireAuditLogViewer, requireLoginLogViewer } = require('../middleware/auditLogAccess');
 
 const pinLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -42,7 +42,7 @@ router.post('/email-broadcast', protect, requireSuperAdmin, emailBroadcast.sendE
 router.get('/email-domains', protect, requireSuperAdmin, c.getEmailDomains);
 router.patch('/email-domains', protect, requireSuperAdmin, c.patchEmailDomains);
 router.get('/audit-log', protect, requireAuditLogViewer, audit.getAuditLog);
-router.get('/login-logs', protect, requireSuperAdmin, loginLog.getLoginLogs);
+router.get('/login-logs', protect, requireLoginLogViewer, loginLog.getLoginLogs);
 
 router.get('/group-presets', protect, admin, groupPreset.listGroupPresets);
 router.put('/group-presets', protect, requireSuperAdmin, groupPreset.saveGroupPresets);

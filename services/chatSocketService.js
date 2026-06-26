@@ -11,6 +11,7 @@ const {
   getRoomById,
   ensureDefaultCrewRooms,
   serializeRoom,
+  getRoomMemberIds,
 } = require('./chatRoomService');
 const {
   createMessage,
@@ -131,8 +132,10 @@ function initChatSocket(httpServer) {
         io.to(roomChannel(roomId)).emit('chat:message', { roomId, message });
         // Ensure sender sees their message even if room join is still in flight.
         socket.emit('chat:message', { roomId, message });
-        const roster = await getCrewRoster(room.crew);
-        const memberIds = roster.map((r) => String(r._id));
+        const memberIds =
+          room.type === 'dm'
+            ? await getRoomMemberIds(room, userId)
+            : (await getCrewRoster(room.crew)).map((r) => String(r._id));
         const author = socket.dbUser;
         await notifyMentions({
           message,

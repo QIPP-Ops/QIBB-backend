@@ -1483,13 +1483,13 @@ exports.patchCompensateBalance = async (req, res) => {
     }
     const target = await AdminUser.findOne({ empId });
     if (!target) return res.status(404).json({ message: 'Personnel not found' });
-    if (!canEditCompensateBalance(req, target)) {
+    const actor = await loadActor(req);
+    if (!canEditCompensateBalance(req, target, actor)) {
       return res.status(403).json({ message: 'Not allowed to edit compensate balance for this employee.' });
     }
     const prev = target.compensateDayBalance ?? 0;
     target.compensateDayBalance = Number(bal);
     await target.save();
-    const actor = await loadActor(req);
     await logRosterEvent({
       action: 'COMPENSATE_BALANCE_SET',
       actor,

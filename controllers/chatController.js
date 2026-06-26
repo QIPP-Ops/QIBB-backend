@@ -16,6 +16,10 @@ const {
   updateRoomSettings,
   serializeRoom,
   ensureDefaultCrewRooms,
+  enrichDmRooms,
+  createOrGetDmRoom,
+  getApprovedUsersForDm,
+  getRoomMemberIds,
 } = require('../services/chatRoomService');
 const {
   listMessages,
@@ -58,12 +62,13 @@ exports.listRooms = async (req, res) => {
       { ...req.user, crew: dbUser?.crew },
       require('../services/chatAccessService')
     );
+    const enriched = await enrichDmRooms(rooms, userId(req));
     const prefs = await Promise.all(
       rooms.map((r) => getRoomPreferences(r._id, userId(req)))
     );
     const prefMap = Object.fromEntries(prefs.filter(Boolean).map((p) => [String(p.roomId), p]));
     res.json({
-      rooms: rooms.map((r) => ({
+      rooms: enriched.map((r) => ({
         ...serializeRoom(r),
         muted: Boolean(prefMap[String(r._id)]?.muted),
         lastReadAt: prefMap[String(r._id)]?.lastReadAt || null,
@@ -120,11 +125,15 @@ exports.postMessage = async (req, res) => {
       mentionIds: message.mentions,
       onlineUserIds: getOnlineUserIds(),
     });
+    const memberIds =
+      room.type === 'dm'
+        ? await getRoomMemberIds(room, userId(req))
+        : roster.map((r) => String(r._id));
     await notifyRoomMessage({
       room,
       message,
       author: dbUser,
-      memberIds: roster.map((r) => String(r._id)),
+      memberIds,
       onlineUserIds: getOnlineUserIds(),
       mutedUserIds: room.mutedUsers || [],
     });
@@ -221,6 +230,28 @@ exports.getRoster = async (req, res) => {
     if (!room || !canViewRoom({ ...req.user, crew: dbUser?.crew }, room)) {
       return res.status(403).json({ message: 'Room not accessible.' });
     }
+    if (room.type === 'dm') {
+      const viewerId = userId(req);
+      const otherId = (room.participants || [])
+        .map((id) => String(id))
+        .find((id) => id !== String(viewerId));
+      if (!otherId) return res.json({ roster: [] });
+      const other = await AdminUser.findById(otherId)
+        .select('_id name fullName email empId crew')
+        .lean();
+      if (!other) return res.json({ roster: [] });
+      return res.json({
+        roster: [
+          {
+            id: String(other._id),
+            name: other.name || other.fullName || other.email,
+            email: other.email,
+            empId: other.empId,
+            crew: other.crew,
+          },
+        ],
+      });
+    }
     const roster = await getCrewRoster(room.crew);
     res.json({
       roster: roster.map((r) => ({
@@ -294,6 +325,37 @@ exports.markRead = async (req, res) => {
   try {
     const pref = await markRoomRead(req.params.roomId, userId(req));
     res.json({ lastReadAt: pref.lastReadAt });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+};
+
+exports.getDmRoster = async (req, res) => {
+  try {
+    const users = await getApprovedUsersForDm(userId(req));
+    res.json({
+      roster: users.map((r) => ({
+        id: String(r._id),
+        name: r.name || r.fullName || r.email,
+        email: r.email,
+        empId: r.empId,
+        crew: r.crew,
+      })),
+    });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message });
+  }
+};
+
+exports.createDm = async (req, res) => {
+  try {
+    const recipientUserId = req.body?.recipientUserId;
+    const room = await createOrGetDmRoom({
+      userId: userId(req),
+      recipientUserId,
+    });
+    const [enriched] = await enrichDmRooms([room.toObject ? room.toObject() : room], userId(req));
+    res.status(201).json({ room: serializeRoom(enriched) });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
   }

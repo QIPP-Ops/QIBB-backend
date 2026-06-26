@@ -31,6 +31,13 @@ describe('timesheetAccess — row visibility', () => {
     expect(canViewTimesheetRow(sic, { empId: '200001', crew: 'C' })).toBe(true);
     expect(canViewTimesheetRow(sic, { empId: '200001', crew: 'A' })).toBe(false);
   });
+
+  test('GDP Engineer with viewer portal role sees same crew only', () => {
+    const gdp = { empId: 'a-gdp', accessRole: 'viewer', jobRole: 'GDP Engineer', crew: 'A' };
+    expect(canViewTimesheetRow(gdp, { empId: 'a-ccr1', crew: 'A' })).toBe(true);
+    expect(canViewTimesheetRow(gdp, { empId: 'b-ccr1', crew: 'B' })).toBe(false);
+    expect(canViewTimesheetRow(gdp, { empId: 'a-gdp', crew: 'A' })).toBe(true);
+  });
 });
 
 describe('timesheetAccess — schedule filtering', () => {

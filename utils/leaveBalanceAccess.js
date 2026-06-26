@@ -1,17 +1,30 @@
 const { isSuperAdmin } = require('../middleware/superAdmin');
+const { normCrew } = require('./rosterRowSort');
+
+/** Same crew when both sides have a crew label (supports Crew A vs A). */
+function sameCrewForAccess(actorCrew, targetCrew) {
+  const a = String(actorCrew ?? '').trim();
+  const b = String(targetCrew ?? '').trim();
+  if (!a || !b) return false;
+  return normCrew(a) === normCrew(b);
+}
+
+function resolveActorCrew(req, actor) {
+  return actor?.crew ?? req?.user?.crew;
+}
 
 /**
  * Whether the authenticated user may edit compensate-day balance for a crew member.
  * Super admin: all; admin/management/ops lead: same crew (or own row when crew unset).
  */
-function canEditCompensateBalance(req, targetUser) {
+function canEditCompensateBalance(req, targetUser, actor) {
   if (!req?.user || !targetUser) return false;
   if (isSuperAdmin(req)) return true;
 
   const portalRole = req.user.accessRole || req.user.role;
   if (portalRole === 'admin' || portalRole === 'management' || req.user.canOpsLead) {
-    if (req.user.crew && targetUser.crew) {
-      return req.user.crew === targetUser.crew;
+    if (sameCrewForAccess(resolveActorCrew(req, actor), targetUser.crew)) {
+      return true;
     }
     return req.user.empId === targetUser.empId;
   }
@@ -30,10 +43,7 @@ function canViewLeaveBalance(req, targetEmpId, targetCrew) {
 
   const portalRole = req.user?.accessRole || req.user?.role;
   if (portalRole === 'admin' || portalRole === 'management' || req.user?.canOpsLead) {
-    if (targetCrew && req.user.crew) {
-      return req.user.crew === targetCrew;
-    }
-    return false;
+    return sameCrewForAccess(req.user.crew, targetCrew);
   }
   return false;
 }
@@ -54,4 +64,5 @@ module.exports = {
   canViewLeaveBalance,
   canEditCompensateBalance,
   redactLeaveBalancesForClient,
+  sameCrewForAccess,
 };
