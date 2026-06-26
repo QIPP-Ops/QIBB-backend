@@ -22,6 +22,7 @@ const NotificationSchema = new mongoose.Schema(
         'ptw_expiry',
         'chat_mention',
         'chat_message',
+        'chat_dm',
         'safety_observation_reminder',
       ],
     },

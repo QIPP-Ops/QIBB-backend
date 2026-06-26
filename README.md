@@ -43,6 +43,7 @@ Required variables:
 | `R2_PUBLIC_URL` | Optional CDN base; empty = signed URLs only |
 | `CHAT_MAX_FILE_MB` | Max upload size per file (default `25`) |
 | `CHAT_EMAIL_ON_MENTION` | Set `1` to email offline users on @mention |
+| `CHAT_EMAIL_ON_DM` | Email offline users on new private messages (default on; set `0` to disable) |
 
 Real-time chat uses **Socket.io** on the same HTTP server (`/socket.io`). REST API under `/api/chat/*`.
 

@@ -22,6 +22,10 @@ const {
 const { buildCoverSuggestions } = require('../services/coverSuggestionsService');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
 const ActingAssignment = require('../models/ActingAssignment');
+const {
+  buildLoggedByLookup,
+  resolveLoggedByDisplay,
+} = require('../utils/resolveLoggedByDisplay');
 
 function fmtDateOnly(input) {
   if (!input) return '';
@@ -256,6 +260,7 @@ exports.getAttendanceReport = async (req, res) => {
     if (isLateFilter === 'false') query.isLate = false;
 
     const records = await AttendanceRecord.find(query).sort({ date: -1, empId: 1 }).lean();
+    const loggedByLookup = await buildLoggedByLookup(records);
 
     const rows = records.map((r) => ({
       'Employee ID': r.empId,
@@ -268,7 +273,7 @@ exports.getAttendanceReport = async (req, res) => {
       'Left Early': r.isLeftEarly ? 'Yes' : 'No',
       'Left Early Minutes': r.leftEarlyMinutes ?? 0,
       Remarks: r.remarks || '',
-      'Logged By': r.loggedBy || r.loggedByEmail || '',
+      'Logged By': resolveLoggedByDisplay(r, loggedByLookup),
       'Logged At': r.loggedAt ? new Date(r.loggedAt).toISOString() : '',
       'Derived From Leave': r.derivedFromLeave ? 'Yes' : 'No',
     }));

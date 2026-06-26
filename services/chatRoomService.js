@@ -112,6 +112,13 @@ async function createOrGetDmRoom({ userId, recipientUserId }) {
     throw Object.assign(new Error('Recipient is not available for private chat.'), { status: 404 });
   }
 
+  const sender = await AdminUser.findById(senderId)
+    .select('_id isApproved isActive')
+    .lean();
+  if (!sender || sender.isApproved !== true || sender.isActive === false) {
+    throw Object.assign(new Error('Your account is not approved for private chat.'), { status: 403 });
+  }
+
   const dmKey = buildDmKey(senderId, recipientId);
   const existing = await ChatRoom.findOne({ type: 'dm', dmKey }).lean();
   if (existing) return existing;

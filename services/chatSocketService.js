@@ -21,9 +21,12 @@ const {
   setPinned,
   markRoomRead,
   getCrewRoster,
+  getDmMentionRoster,
 } = require('./chatMessageService');
-const { notifyMentions, notifyRoomMessage } = require('./chatNotifyService');
+const { notifyMentions, notifyRoomMessage, notifyDmMessage } = require('./chatNotifyService');
 const { getOnlineUserIds, setUserOnline, setUserOffline } = require('./chatOnlineUsers');
+const { logChatMessageAction } = require('./chatAuditService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 
 let io = null;
 
@@ -44,6 +47,24 @@ function roomChannel(roomId) {
 
 async function getDbUser(userId) {
   return AdminUser.findById(userId).select('-passwordHash').lean();
+}
+
+async function resolveMentionRoster(room) {
+  if (room.type === 'dm') {
+    return getDmMentionRoster(room.participants || []);
+  }
+  return getCrewRoster(room.crew);
+}
+
+async function assertSocketMessageAccess(socket, messageId) {
+  const ChatMessage = require('../models/ChatMessage');
+  const msg = await ChatMessage.findById(messageId).lean();
+  if (!msg) return null;
+  const room = await getRoomById(msg.roomId);
+  if (!room || !canViewRoom(socket.user, room)) {
+    throw Object.assign(new Error('Room not accessible.'), { status: 403 });
+  }
+  return { msg, room };
 }
 
 function initChatSocket(httpServer) {
@@ -88,7 +109,9 @@ function initChatSocket(httpServer) {
     socket.on('chat:join', async ({ roomId }) => {
       try {
         const room = await getRoomById(roomId);
-        if (!room || !canViewRoom(socket.user, room)) return;
+        if (!room || !canViewRoom(socket.user, room)) {
+          return socket.emit('chat:error', { message: 'Room not accessible.' });
+        }
         socket.join(roomChannel(roomId));
         await markRoomRead(roomId, userId);
         socket.emit('chat:joined', { roomId, room: serializeRoom(room) });
@@ -120,6 +143,7 @@ function initChatSocket(httpServer) {
         if (!canPostInRoom(socket.user, room, socket.dbUser)) {
           return socket.emit('chat:error', { message: 'You cannot post in this room.' });
         }
+        const mentionRoster = await resolveMentionRoster(room);
         const message = await createMessage({
           roomId,
           topicId: room.type === 'topic' ? roomId : room.parentRoomId,
@@ -128,6 +152,14 @@ function initChatSocket(httpServer) {
           attachments,
           replyTo,
           crew: room.crew,
+          mentionRoster,
+        });
+        await logChatMessageAction({
+          req: { user: socket.user, ip: socket.handshake.address },
+          action: AUDIT_ACTIONS.CHAT_MESSAGE_SENT,
+          message,
+          room,
+          author: socket.dbUser,
         });
         io.to(roomChannel(roomId)).emit('chat:message', { roomId, message });
         // Ensure sender sees their message even if room join is still in flight.
@@ -144,14 +176,24 @@ function initChatSocket(httpServer) {
           mentionIds: message.mentions,
           onlineUserIds: getOnlineUserIds(),
         });
-        await notifyRoomMessage({
-          room,
-          message,
-          author,
-          memberIds,
-          onlineUserIds: getOnlineUserIds(),
-          mutedUserIds: room.mutedUsers || [],
-        });
+        if (room.type === 'dm') {
+          await notifyDmMessage({
+            room,
+            message,
+            author,
+            recipientIds: memberIds,
+            onlineUserIds: getOnlineUserIds(),
+          });
+        } else {
+          await notifyRoomMessage({
+            room,
+            message,
+            author,
+            memberIds,
+            onlineUserIds: getOnlineUserIds(),
+            mutedUserIds: room.mutedUsers || [],
+          });
+        }
       } catch (err) {
         socket.emit('chat:error', { message: err.message });
       }
@@ -159,8 +201,19 @@ function initChatSocket(httpServer) {
 
     socket.on('chat:edit', async ({ messageId, roomId, text }) => {
       try {
+        const access = await assertSocketMessageAccess(socket, messageId);
+        if (!access) return socket.emit('chat:error', { message: 'Message not found.' });
+        const beforeText = access.msg.text;
         const updated = await editMessage(messageId, userId, text);
         if (!updated) return socket.emit('chat:error', { message: 'Message not found.' });
+        await logChatMessageAction({
+          req: { user: socket.user, ip: socket.handshake.address },
+          action: AUDIT_ACTIONS.CHAT_MESSAGE_EDITED,
+          message: updated,
+          room: access.room,
+          author: socket.dbUser,
+          beforeText,
+        });
         io.to(roomChannel(roomId)).emit('chat:edited', { roomId, messageId, text, editedAt: updated.editedAt });
       } catch (err) {
         socket.emit('chat:error', { message: err.message });
@@ -175,6 +228,13 @@ function initChatSocket(httpServer) {
         if (!msg || !canDeleteMessage(socket.user, msg, room)) {
           return socket.emit('chat:error', { message: 'Not allowed.' });
         }
+        await logChatMessageAction({
+          req: { user: socket.user, ip: socket.handshake.address },
+          action: AUDIT_ACTIONS.CHAT_MESSAGE_DELETED,
+          message: msg,
+          room,
+          author: socket.dbUser,
+        });
         await softDeleteMessage(messageId, userId);
         io.to(roomChannel(roomId)).emit('chat:deleted', { roomId, messageId });
       } catch (err) {
@@ -184,6 +244,8 @@ function initChatSocket(httpServer) {
 
     socket.on('chat:react', async ({ messageId, roomId, emoji }) => {
       try {
+        const access = await assertSocketMessageAccess(socket, messageId);
+        if (!access) return socket.emit('chat:error', { message: 'Message not found.' });
         const updated = await toggleReaction(messageId, userId, emoji);
         if (!updated) return;
         io.to(roomChannel(roomId)).emit('chat:reaction', {

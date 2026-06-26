@@ -2,6 +2,7 @@ const AdminUser = require('../models/AdminUser');
 const { isSuperAdmin, hasPortalAdminAccess } = require('../middleware/superAdmin');
 const { isPlantManagerFromToken } = require('../services/plantManagerService');
 const { normCrew } = require('./rosterRowSort');
+const { CHAT_AUDIT_ACTIONS } = require('../services/chatAuditService');
 
 function hasFullLogAccess(req) {
   if (isSuperAdmin(req)) return true;
@@ -76,6 +77,15 @@ function mergeFilters(baseFilter, scopeFilter) {
   return { $and: [baseFilter, scopeFilter] };
 }
 
+/** Chat/contact audit is visible to super admin only — hide from crew admins and plant managers. */
+function buildNonChatAuditFilter() {
+  return { action: { $nin: CHAT_AUDIT_ACTIONS } };
+}
+
+function canViewChatAudit(req) {
+  return isSuperAdmin(req);
+}
+
 module.exports = {
   hasFullLogAccess,
   canViewAuditLogs,
@@ -84,4 +94,6 @@ module.exports = {
   buildLoginLogCrewFilter,
   mergeFilters,
   getCrewMemberEmails,
+  buildNonChatAuditFilter,
+  canViewChatAudit,
 };

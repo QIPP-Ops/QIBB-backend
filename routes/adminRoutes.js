@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const c = require('../controllers/adminController');
 const audit = require('../controllers/auditLogController');
+const chatAudit = require('../controllers/chatAuditController');
 const loginLog = require('../controllers/loginLogController');
 const settings = require('../controllers/systemSettingsController');
 const leaveAccrual = require('../controllers/leaveAccrualController');
@@ -42,6 +43,8 @@ router.post('/email-broadcast', protect, requireSuperAdmin, emailBroadcast.sendE
 router.get('/email-domains', protect, requireSuperAdmin, c.getEmailDomains);
 router.patch('/email-domains', protect, requireSuperAdmin, c.patchEmailDomains);
 router.get('/audit-log', protect, requireAuditLogViewer, audit.getAuditLog);
+router.get('/chat-audit', protect, requireSuperAdmin, chatAudit.getChatAuditLog);
+router.get('/chat-audit/messages', protect, requireSuperAdmin, chatAudit.searchChatMessages);
 router.get('/login-logs', protect, requireLoginLogViewer, loginLog.getLoginLogs);
 
 router.get('/group-presets', protect, admin, groupPreset.listGroupPresets);

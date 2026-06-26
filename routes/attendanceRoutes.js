@@ -4,6 +4,7 @@ const c = require('../controllers/attendanceController');
 
 const router = express.Router();
 
+router.get('/reminder-status', protect, c.getReminderStatus);
 router.get('/', protect, c.listAttendance);
 router.post('/', protect, c.upsertAttendance);
 router.post('/batch', protect, c.batchUpsertAttendance);

@@ -150,13 +150,16 @@ describe('GET /api/admin/audit-log', () => {
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(1);
     const filter = AuditLog.find.mock.calls[0][0];
-    const crewScope = filter.$and ? filter.$and[filter.$and.length - 1] : filter;
+    const clauses = filter.$and || [filter];
+    const crewScope = clauses.find((clause) => Array.isArray(clause.$or));
     expect(crewScope.$or).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ actorCrew: 'A' }),
         expect.objectContaining({ targetCrew: 'A' }),
       ])
     );
+    const nonChatScope = clauses.find((clause) => clause.action?.$nin);
+    expect(nonChatScope).toBeDefined();
   });
 
   test('returns 403 for regular user', async () => {

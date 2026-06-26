@@ -1,4 +1,5 @@
 jest.mock('../models/AdminUser', () => ({
+  find: jest.fn(),
   findOne: jest.fn(),
 }));
 
@@ -13,11 +14,16 @@ jest.mock('../services/auditLogService', () => ({
   logAction: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('../services/attendanceReminderService', () => ({
+  getAttendanceReminderStatus: jest.fn(),
+}));
+
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const AdminUser = require('../models/AdminUser');
 const AttendanceRecord = require('../models/AttendanceRecord');
 const { logAction } = require('../services/auditLogService');
+const { getAttendanceReminderStatus } = require('../services/attendanceReminderService');
 const { buildJwtPayload } = require('../utils/jwtAuth');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
@@ -58,9 +64,11 @@ function tokenFor(overrides = {}) {
 
 function mockFindChain(rows = []) {
   return {
+    select: jest.fn().mockReturnThis(),
     sort: jest.fn().mockReturnValue({
       lean: jest.fn().mockResolvedValue(rows),
     }),
+    lean: jest.fn().mockResolvedValue(rows),
   };
 }
 
@@ -68,6 +76,16 @@ describe('attendance API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     AttendanceRecord.find.mockImplementation(() => mockFindChain([]));
+    AdminUser.find.mockImplementation(() => mockFindChain([]));
+    getAttendanceReminderStatus.mockResolvedValue({
+      show: true,
+      date: '2026-06-23',
+      crew: 'A',
+      isWorkingDay: true,
+      expectedCount: 3,
+      savedCount: 1,
+      missingCount: 2,
+    });
   });
 
   test('GET /api/attendance requires auth', async () => {
@@ -76,12 +94,42 @@ describe('attendance API', () => {
   });
 
   test('GET /api/attendance allows crew admin to list own crew', async () => {
+    const loggerId = '6a31592c52b3edbe3b0a2142';
+    AttendanceRecord.find.mockImplementation(() =>
+      mockFindChain([
+        {
+          empId: 'EMP-100',
+          date: '2026-06-23',
+          crew: 'A',
+          status: 'present',
+          loggedBy: loggerId,
+          loggedByEmail: 'm.algarni@acwapower.com',
+        },
+      ])
+    );
+    AdminUser.find.mockImplementation((query) => {
+      if (query?.empId) {
+        return mockFindChain([crewAEmployee]);
+      }
+      if (query?._id) {
+        return mockFindChain([
+          {
+            _id: loggerId,
+            name: 'Mohammad Algarni',
+            email: 'm.algarni@acwapower.com',
+          },
+        ]);
+      }
+      return mockFindChain([]);
+    });
+
     const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
     const res = await request(app)
       .get('/api/attendance?date=2026-06-23&crew=A')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data[0].loggedBy).toBe('Mohammad Algarni');
     expect(AttendanceRecord.find).toHaveBeenCalled();
   });
 
@@ -314,5 +362,31 @@ describe('attendance API', () => {
     expect(logAction).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'ATTENDANCE_DELETED' })
     );
+  });
+
+  test('GET /api/attendance/reminder-status requires auth', async () => {
+    const res = await request(app).get('/api/attendance/reminder-status');
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /api/attendance/reminder-status allows crew admin for own crew', async () => {
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .get('/api/attendance/reminder-status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.show).toBe(true);
+    expect(getAttendanceReminderStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ crew: 'A' })
+    );
+  });
+
+  test('GET /api/attendance/reminder-status rejects viewer', async () => {
+    const token = tokenFor({ accessRole: 'viewer', jobRole: 'CCR Operator', crew: 'A' });
+    const res = await request(app)
+      .get('/api/attendance/reminder-status')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
   });
 });

@@ -108,8 +108,16 @@ async function serializeMessage(row, authorMap, replyMap) {
   };
 }
 
-async function createMessage({ roomId, topicId, authorId, text, attachments, replyTo, crew }) {
-  const roster = await getCrewRoster(crew);
+async function getDmMentionRoster(participantIds) {
+  const ids = (participantIds || []).filter(Boolean);
+  if (!ids.length) return [];
+  return AdminUser.find({ _id: { $in: ids }, isApproved: true, isActive: { $ne: false } })
+    .select('_id name fullName email empId crew')
+    .lean();
+}
+
+async function createMessage({ roomId, topicId, authorId, text, attachments, replyTo, crew, mentionRoster }) {
+  const roster = mentionRoster || (await getCrewRoster(crew));
   const mentions = extractMentionIds(text, roster);
   const doc = await ChatMessage.create({
     roomId,
@@ -223,5 +231,6 @@ module.exports = {
   serializeMessage,
   extractMentionIds,
   getCrewRoster,
+  getDmMentionRoster,
   DEFAULT_PAGE_SIZE,
 };

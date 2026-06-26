@@ -179,6 +179,7 @@ describe('reports API', () => {
   });
 
   test('GET /api/reports/attendance filters by date range', async () => {
+    const loggerId = '6a31592c52b3edbe3b0a2142';
     const allRecords = [
       {
         empId: 'E1',
@@ -191,7 +192,8 @@ describe('reports API', () => {
         isLeftEarly: false,
         leftEarlyMinutes: 0,
         remarks: '',
-        loggedBy: 'Supervisor',
+        loggedBy: loggerId,
+        loggedByEmail: 'm.algarni@acwapower.com',
         loggedAt: new Date('2026-06-15T08:00:00Z'),
         derivedFromLeave: false,
       },
@@ -225,6 +227,19 @@ describe('reports API', () => {
       return mockFindChain(rows);
     });
 
+    AdminUser.find.mockImplementation((query) => {
+      if (query?._id) {
+        return mockFindChain([
+          {
+            _id: loggerId,
+            name: 'Mohammad Algarni',
+            email: 'm.algarni@acwapower.com',
+          },
+        ]);
+      }
+      return mockFindChain([]);
+    });
+
     const res = await request(app)
       .get('/api/reports/attendance')
       .query({ from: '2026-06-01', to: '2026-06-30' })
@@ -234,6 +249,7 @@ describe('reports API', () => {
     expect(res.body).toHaveLength(1);
     expect(res.body[0]['Employee ID']).toBe('E1');
     expect(res.body[0].Date).toBe('2026-06-15');
+    expect(res.body[0]['Logged By']).toBe('Mohammad Algarni');
   });
 
   test('GET /api/reports/balance-snapshot omits bank accrual rate column', async () => {

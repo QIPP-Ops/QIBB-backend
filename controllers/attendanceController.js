@@ -16,6 +16,11 @@ const {
   enrichAttendanceRecord,
   upsertDerivedAttendanceForDate,
 } = require('../services/attendanceLeaveSyncService');
+const { getAttendanceReminderStatus } = require('../services/attendanceReminderService');
+const {
+  buildLoggedByLookup,
+  resolveLoggedByDisplay,
+} = require('../utils/resolveLoggedByDisplay');
 
 function actorFromReq(req) {
   return {
@@ -108,9 +113,14 @@ exports.listAttendance = async (req, res) => {
             .lean()
         : [];
     const employeeByEmpId = new Map(employees.map((e) => [e.empId, e]));
-    const enriched = records.map((record) =>
-      enrichAttendanceRecord(record, employeeByEmpId.get(record.empId))
-    );
+    const loggedByLookup = await buildLoggedByLookup(records);
+    const enriched = records.map((record) => {
+      const base = enrichAttendanceRecord(record, employeeByEmpId.get(record.empId));
+      return {
+        ...base,
+        loggedBy: resolveLoggedByDisplay(record, loggedByLookup),
+      };
+    });
 
     res.json({ success: true, data: enriched });
   } catch (err) {
@@ -426,5 +436,45 @@ exports.syncAttendanceFromLeave = async (req, res) => {
     });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message || 'Failed to sync attendance from leave.' });
+  }
+};
+
+exports.getReminderStatus = async (req, res) => {
+  try {
+    if (!canLogAttendance(req)) {
+      return res.status(403).json({ message: 'You are not allowed to view attendance reminders.' });
+    }
+
+    const date = String(req.query.date || todayStr()).trim();
+    let crew = String(req.query.crew || '').trim();
+
+    if (!isSuperAdminUser(req)) {
+      crew = String(req.user?.crew || '').trim();
+      if (!crew) {
+        return res.json({
+          success: true,
+          data: {
+            show: false,
+            date,
+            crew: '',
+            isWorkingDay: false,
+            expectedCount: 0,
+            savedCount: 0,
+            missingCount: 0,
+          },
+        });
+      }
+    } else if (!crew) {
+      crew = String(req.user?.crew || 'A').trim();
+    }
+
+    if (!canViewAttendanceList(req, { crew })) {
+      return res.status(403).json({ message: 'You are not allowed to view attendance for this crew.' });
+    }
+
+    const data = await getAttendanceReminderStatus({ crew, date });
+    res.json({ success: true, data });
+  } catch (err) {
+    res.status(err.status || 500).json({ message: err.message || 'Failed to load attendance reminder status.' });
   }
 };

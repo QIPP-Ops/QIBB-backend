@@ -33,10 +33,13 @@ const {
   setRoomMuted,
   getRoomPreferences,
   getCrewRoster,
+  getDmMentionRoster,
 } = require('../services/chatMessageService');
 const { uploadChatFile, getSignedDownloadUrl } = require('../services/chatFileService');
-const { notifyMentions, notifyRoomMessage } = require('../services/chatNotifyService');
+const { notifyMentions, notifyRoomMessage, notifyDmMessage } = require('../services/chatNotifyService');
 const { getOnlineUserIds } = require('../services/chatOnlineUsers');
+const { logChatMessageAction } = require('../services/chatAuditService');
+const AUDIT_ACTIONS = require('../constants/auditActions');
 const ChatMessage = require('../models/ChatMessage');
 
 const upload = multer({
@@ -52,6 +55,24 @@ async function loadDbUser(req) {
   if (req.dbUser) return req.dbUser;
   req.dbUser = await AdminUser.findById(userId(req)).select('-passwordHash').lean();
   return req.dbUser;
+}
+
+async function resolveMentionRoster(room) {
+  if (room.type === 'dm') {
+    return getDmMentionRoster(room.participants || []);
+  }
+  return getCrewRoster(room.crew);
+}
+
+async function assertMessageRoomAccess(req, messageId) {
+  const msg = await ChatMessage.findById(messageId).lean();
+  if (!msg) return null;
+  const room = await getRoomById(msg.roomId);
+  const dbUser = await loadDbUser(req);
+  if (!room || !canViewRoom({ ...req.user, crew: dbUser?.crew }, room)) {
+    throw Object.assign(new Error('Room not accessible.'), { status: 403 });
+  }
+  return { msg, room, dbUser };
 }
 
 exports.listRooms = async (req, res) => {
@@ -108,6 +129,7 @@ exports.postMessage = async (req, res) => {
       return res.status(403).json({ message: 'You cannot post in this room.' });
     }
     const { text, attachments, replyTo } = req.body || {};
+    const mentionRoster = await resolveMentionRoster(room);
     const message = await createMessage({
       roomId: room._id,
       topicId: room.type === 'topic' ? room._id : null,
@@ -116,8 +138,16 @@ exports.postMessage = async (req, res) => {
       attachments,
       replyTo,
       crew: room.crew,
+      mentionRoster,
     });
-    const roster = await getCrewRoster(room.crew);
+    await logChatMessageAction({
+      req,
+      action: AUDIT_ACTIONS.CHAT_MESSAGE_SENT,
+      message,
+      room,
+      author: dbUser,
+    });
+    const roster = mentionRoster;
     await notifyMentions({
       message,
       room,
@@ -129,14 +159,24 @@ exports.postMessage = async (req, res) => {
       room.type === 'dm'
         ? await getRoomMemberIds(room, userId(req))
         : roster.map((r) => String(r._id));
-    await notifyRoomMessage({
-      room,
-      message,
-      author: dbUser,
-      memberIds,
-      onlineUserIds: getOnlineUserIds(),
-      mutedUserIds: room.mutedUsers || [],
-    });
+    if (room.type === 'dm') {
+      await notifyDmMessage({
+        room,
+        message,
+        author: dbUser,
+        recipientIds: memberIds,
+        onlineUserIds: getOnlineUserIds(),
+      });
+    } else {
+      await notifyRoomMessage({
+        room,
+        message,
+        author: dbUser,
+        memberIds,
+        onlineUserIds: getOnlineUserIds(),
+        mutedUserIds: room.mutedUsers || [],
+      });
+    }
     res.status(201).json({ message });
   } catch (err) {
     res.status(err.status || 500).json({ message: err.message });
@@ -145,8 +185,19 @@ exports.postMessage = async (req, res) => {
 
 exports.editMessage = async (req, res) => {
   try {
+    const access = await assertMessageRoomAccess(req, req.params.messageId);
+    if (!access) return res.status(404).json({ message: 'Message not found.' });
+    const beforeText = access.msg.text;
     const updated = await editMessage(req.params.messageId, userId(req), req.body?.text);
     if (!updated) return res.status(404).json({ message: 'Message not found.' });
+    await logChatMessageAction({
+      req,
+      action: AUDIT_ACTIONS.CHAT_MESSAGE_EDITED,
+      message: updated,
+      room: access.room,
+      author: access.dbUser,
+      beforeText,
+    });
     res.json({ messageId: req.params.messageId, text: updated.text, editedAt: updated.editedAt });
   } catch (err) {
     res.status(err.status || 403).json({ message: err.message });
@@ -160,6 +211,14 @@ exports.deleteMessage = async (req, res) => {
     if (!msg || !canDeleteMessage(req.user, msg, room)) {
       return res.status(403).json({ message: 'Not allowed.' });
     }
+    const dbUser = await loadDbUser(req);
+    await logChatMessageAction({
+      req,
+      action: AUDIT_ACTIONS.CHAT_MESSAGE_DELETED,
+      message: msg,
+      room,
+      author: dbUser,
+    });
     await softDeleteMessage(req.params.messageId, userId(req));
     res.json({ ok: true });
   } catch (err) {
@@ -285,6 +344,8 @@ exports.search = async (req, res) => {
 
 exports.react = async (req, res) => {
   try {
+    const access = await assertMessageRoomAccess(req, req.params.messageId);
+    if (!access) return res.status(404).json({ message: 'Message not found.' });
     const updated = await toggleReaction(req.params.messageId, userId(req), req.body?.emoji);
     if (!updated) return res.status(404).json({ message: 'Message not found.' });
     res.json({ reactions: updated.reactions });
@@ -323,6 +384,11 @@ exports.muteRoom = async (req, res) => {
 
 exports.markRead = async (req, res) => {
   try {
+    const room = await getRoomById(req.params.roomId);
+    const dbUser = await loadDbUser(req);
+    if (!room || !canViewRoom({ ...req.user, crew: dbUser?.crew }, room)) {
+      return res.status(403).json({ message: 'Room not accessible.' });
+    }
     const pref = await markRoomRead(req.params.roomId, userId(req));
     res.json({ lastReadAt: pref.lastReadAt });
   } catch (err) {

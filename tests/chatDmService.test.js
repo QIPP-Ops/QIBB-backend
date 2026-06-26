@@ -31,16 +31,26 @@ describe('chat DM service', () => {
   test('createOrGetDmRoom returns existing room', async () => {
     const existing = { _id: 'dm1', type: 'dm', dmKey: 'u1:u2' };
     ChatRoom.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(existing) });
-    AdminUser.findById.mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue({
-          _id: 'u2',
-          name: 'Recipient',
-          isApproved: true,
-          isActive: true,
+    AdminUser.findById
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u2',
+            name: 'Recipient',
+            isApproved: true,
+            isActive: true,
+          }),
         }),
-      }),
-    });
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u1',
+            isApproved: true,
+            isActive: true,
+          }),
+        }),
+      });
 
     const room = await createOrGetDmRoom({ userId: 'u1', recipientUserId: 'u2' });
     expect(room).toEqual(existing);
@@ -49,16 +59,26 @@ describe('chat DM service', () => {
 
   test('createOrGetDmRoom creates room for approved recipient', async () => {
     ChatRoom.findOne.mockReturnValue({ lean: jest.fn().mockResolvedValue(null) });
-    AdminUser.findById.mockReturnValue({
-      select: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue({
-          _id: 'u2',
-          name: 'Recipient',
-          isApproved: true,
-          isActive: true,
+    AdminUser.findById
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u2',
+            name: 'Recipient',
+            isApproved: true,
+            isActive: true,
+          }),
         }),
-      }),
-    });
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u1',
+            isApproved: true,
+            isActive: true,
+          }),
+        }),
+      });
     ChatRoom.create.mockResolvedValue({ _id: 'new-dm', type: 'dm' });
 
     const room = await createOrGetDmRoom({ userId: 'u1', recipientUserId: 'u2' });
@@ -70,5 +90,32 @@ describe('chat DM service', () => {
       })
     );
     expect(room._id).toBe('new-dm');
+  });
+
+  test('createOrGetDmRoom rejects unapproved sender', async () => {
+    AdminUser.findById
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u2',
+            name: 'Recipient',
+            isApproved: true,
+            isActive: true,
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue({
+            _id: 'u1',
+            isApproved: false,
+            isActive: true,
+          }),
+        }),
+      });
+
+    await expect(
+      createOrGetDmRoom({ userId: 'u1', recipientUserId: 'u2' })
+    ).rejects.toMatchObject({ status: 403 });
   });
 });

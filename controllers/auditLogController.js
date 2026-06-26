@@ -1,6 +1,8 @@
 const AuditLog = require('../models/AuditLog');
+const { isSuperAdmin } = require('../middleware/superAdmin');
 const {
   buildAuditLogCrewFilter,
+  buildNonChatAuditFilter,
   mergeFilters,
 } = require('../utils/logAccessPermissions');
 
@@ -31,7 +33,10 @@ exports.getAuditLog = async (req, res) => {
     }
 
     const crewFilter = await buildAuditLogCrewFilter(req);
-    const filter = mergeFilters(baseFilter, crewFilter);
+    let filter = mergeFilters(baseFilter, crewFilter);
+    if (!isSuperAdmin(req)) {
+      filter = mergeFilters(filter, buildNonChatAuditFilter());
+    }
 
     const [logs, total] = await Promise.all([
       AuditLog.find(filter).sort({ timestamp: -1 }).skip(skip).limit(limit).lean(),
