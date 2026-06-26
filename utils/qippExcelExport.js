@@ -52,7 +52,7 @@ async function addQippReportHeader(workbook, worksheet, colCount, meta) {
   mergeExcelRow(worksheet, r, 1, colCount);
   styleExcelCell(worksheet.getCell(r, 1), {
     fill: QIPP_EXCEL_FILL.light,
-    align: { horizontal: 'center', vertical: 'middle' },
+    align: { horizontal: 'left', vertical: 'middle' },
   });
   worksheet.getRow(r).height = 36;
 
@@ -62,9 +62,8 @@ async function addQippReportHeader(workbook, worksheet, colCount, meta) {
       buffer: fs.readFileSync(logoPath),
       extension: 'png',
     });
-    const centerCol = (colCount - 1) / 2;
     worksheet.addImage(imageId, {
-      tl: { col: centerCol - 0.8, row: r - 1 + 0.25 },
+      tl: { col: 0.15, row: r - 1 + 0.25 },
       ext: { width: 88, height: 28 },
     });
   }
