@@ -1,6 +1,13 @@
 const path = require('path');
 const ExcelJS = require('exceljs');
 const AdminUser = require('../models/AdminUser');
+const {
+  addQippReportHeader,
+  addQippSectionBand,
+  addQippTableHeaderRow,
+  styleExcelCell,
+  QIPP_EXCEL_FILL,
+} = require('../utils/qippExcelExport');
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const ROSTER_PATH = path.join(__dirname, '../data/roster.json');
@@ -147,52 +154,97 @@ async function buildMonthlyPlannedLeavesWorkbook(yearMonth) {
     return a.leaveStart.localeCompare(b.leaveStart);
   });
 
+  const monthLabel = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1))
+    .toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+  const columns = [
+    'Emp ID',
+    'Name',
+    'Crew',
+    'Role',
+    'Leave Start',
+    'Leave End',
+    'Days in Month',
+    'Leave Type',
+  ];
+  const colCount = columns.length;
+
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'QIPP';
   const sheet = workbook.addWorksheet(`Planned Leaves ${ym}`);
+
+  const headerEndRow = await addQippReportHeader(workbook, sheet, colCount, {
+    title: 'PLANNED LEAVES',
+    subtitle: monthLabel,
+    metaTriplet: {
+      left: `Month: ${ym}`,
+      center: `Rows: ${rows.length}`,
+      right: 'Plant: QIPP',
+    },
+  });
+  addQippSectionBand(sheet, headerEndRow, colCount, 'Leave segments');
+  const tableHeaderRow = headerEndRow + 1;
+  addQippTableHeaderRow(sheet, tableHeaderRow, columns);
+
   sheet.columns = [
-    { header: 'Emp ID', key: 'empId', width: 12 },
-    { header: 'Name', key: 'name', width: 32 },
-    { header: 'Crew', key: 'crew', width: 8 },
-    { header: 'Role', key: 'role', width: 24 },
-    { header: 'Leave Start', key: 'leaveStart', width: 14 },
-    { header: 'Leave End', key: 'leaveEnd', width: 14 },
-    { header: 'Days in Month', key: 'daysInMonth', width: 14 },
-    { header: 'Leave Type', key: 'leaveType', width: 20 },
+    { width: 12 },
+    { width: 32 },
+    { width: 8 },
+    { width: 24 },
+    { width: 14 },
+    { width: 14 },
+    { width: 14 },
+    { width: 20 },
   ];
 
-  const headerRow = sheet.getRow(1);
-  headerRow.font = { bold: true, color: { argb: 'FF2E2044' } };
-  headerRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FFF9F7FC' },
-  };
+  const dataRows =
+    rows.length > 0
+      ? rows
+      : [
+          {
+            empId: '',
+            name: '(No leave segments overlap this month)',
+            crew: '',
+            role: '',
+            leaveStart: '',
+            leaveEnd: '',
+            daysInMonth: '',
+            leaveType: '',
+          },
+        ];
 
-  for (const row of rows) {
-    sheet.addRow(row);
-  }
-
-  if (rows.length === 0) {
-    sheet.addRow({
-      empId: '',
-      name: '(No leave segments overlap this month)',
-      crew: '',
-      role: '',
-      leaveStart: '',
-      leaveEnd: '',
-      daysInMonth: '',
-      leaveType: '',
+  dataRows.forEach((row, i) => {
+    const r = tableHeaderRow + 1 + i;
+    const values = [
+      row.empId,
+      row.name,
+      row.crew,
+      row.role,
+      row.leaveStart,
+      row.leaveEnd,
+      row.daysInMonth,
+      row.leaveType,
+    ];
+    const dataFill = i % 2 === 0 ? QIPP_EXCEL_FILL.white : QIPP_EXCEL_FILL.light;
+    values.forEach((value, colIdx) => {
+      const cell = sheet.getCell(r, colIdx + 1);
+      cell.value = value;
+      styleExcelCell(cell, {
+        fill: dataFill,
+        align: { horizontal: colIdx === 0 ? 'center' : 'left', vertical: 'middle', wrapText: true },
+        tableBorder: true,
+      });
     });
-  }
+  });
+
+  sheet.views = [{ state: 'frozen', ySplit: tableHeaderRow, xSplit: 0 }];
 
   const buffer = await workbook.xlsx.writeBuffer();
   return {
     buffer,
     filename: `planned-leaves-${ym}.xlsx`,
     rowCount: rows.length,
-    monthLabel: new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1))
-      .toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    monthLabel,
   };
 }
 
