@@ -21,7 +21,7 @@
     "id": "monthly-planned-leaves",
     "name": "Monthly planned leaves",
     "subject": "Planned leave roster — {{month}}",
-    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>Attached is the <strong>planned leave timeline</strong> for <strong>{{month}}</strong>, filtered to leave segments overlapping that month.</p></div><p>Please review the roster and confirm your team's coverage plans.</p><ul class=\"info-list\"><li>Open the attached Excel file for the full crew breakdown</li><li>Flag any conflicts or coverage gaps to your supervisor</li><li>Update the leave planner if plans have changed</li></ul><p class=\"muted\">Contact your supervisor if you need to adjust leave plans.</p>"
+    "body": "<p>Dear <strong>{{name}}</strong>,</p><div class=\"callout\"><p>Attached is the <strong>planned leave timeline</strong> for <strong>{{month}}</strong>, filtered to leave segments overlapping that month.</p></div><p>Please review the roster and confirm your team's coverage plans.</p><ul class=\"info-list\"><li>Open the attached Excel file for the full crew breakdown</li><li>Flag any conflicts or coverage gaps to your line manager</li><li>Update the leave planner if plans have changed</li></ul><p class=\"muted\">Contact your line manager if you need to adjust leave plans.</p>"
   },
   {
     "id": "course-reminder",
