@@ -30,8 +30,8 @@ const {
 } = require('../utils/leaveAuditPayload');
 const {
   canEditLeaveForEmployee,
+  canEditLeaveRow,
   canApproveLeaveForEmployee,
-  canViewTimesheetRow,
 } = require('../utils/rosterLeavePermissions');
 const { filterRosterRowsForViewer } = require('../utils/timesheetAccess');
 const { isSicOrSupervisorRole } = require('../utils/attendancePermissions');
@@ -128,7 +128,7 @@ function canViewBalanceLogForEmployee(req, target) {
     isSicOrSupervisorRole(jobRole);
   if (!hasRole) return false;
 
-  return canViewTimesheetRow(req.user, {
+  return canEditLeaveRow(req.user, {
     empId: target.empId,
     crew: target.crew || '',
   });
@@ -1517,10 +1517,6 @@ exports.exportIcs = async (req, res) => {
   try {
     const user = await AdminUser.findOne({ empId: req.params.empId });
     if (!user) return res.status(404).json({ message: 'Personnel not found' });
-    if (!canViewTimesheetRow(req.user, { empId: user.empId, crew: user.crew || '' })) {
-      return res.status(403).json({ message: 'You may only export your own timesheet calendar.' });
-    }
-
     const config = await AdminConfig.findOne();
     const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
     const today = new Date(); today.setHours(0, 0, 0, 0);

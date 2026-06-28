@@ -68,7 +68,7 @@ function canEditShiftReport(req, employee, duty) {
 
 /** Whether the user may view this employee's timesheet (schedule, leave cells, planner). */
 function canViewTimesheetRow(user, row) {
-  return canEditLeaveRow(user, row);
+  return Boolean(user && row?.empId);
 }
 
 /** Whether the user may approve/reject leave for this employee. */
@@ -84,7 +84,7 @@ function canApproveLeaveForEmployee(req, employee) {
     isSicOrSupervisorRole(jobRole);
   if (!hasApproveRole) return false;
 
-  return canViewTimesheetRow(req.user, {
+  return canEditLeaveRow(req.user, {
     empId: employee.empId,
     crew: employee.crew || '',
   });

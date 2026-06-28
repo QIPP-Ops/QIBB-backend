@@ -6,7 +6,7 @@ function todayStr() {
 
 /**
  * Attach saved attendance to schedule cells for past dates only.
- * Privacy: call after buildRosterSchedule; filterScheduleForViewer still strips hidden rows.
+ * Privacy: call after buildRosterSchedule; filterScheduleForViewer redacts leave balances only.
  */
 async function enrichScheduleWithAttendance(schedule) {
   if (!schedule?.rows?.length) return schedule;
