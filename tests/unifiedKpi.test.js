@@ -30,7 +30,7 @@ describe('unified KPI score', () => {
     expect(calculateGoalScore({ kpis: [{ title: '', progress: 50 }] })).toBeNull();
   });
 
-  test('compliance KPI formula unchanged at 50/50 training and PTW', () => {
-    expect(calculateIndividualKPI(80, 60)).toBe(70);
+  test('compliance KPI formula blends training, PTW, and attendance 40/40/20', () => {
+    expect(calculateIndividualKPI(80, 60, 100)).toBe(76);
   });
 });

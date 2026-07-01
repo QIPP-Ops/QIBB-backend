@@ -81,5 +81,18 @@ describe('leaveBalanceAccess', () => {
       const req = { user: { accessRole: 'viewer', empId: 'E2', crew: 'A' } };
       expect(canEditCompensateBalance(req, target)).toBe(false);
     });
+
+    it('allows delegated super admin to edit any crew', () => {
+      const req = {
+        user: {
+          email: 'b.aldogaish@nomac.com',
+          superAdmin: true,
+          accessRole: 'viewer',
+          empId: '3167',
+          crew: 'S',
+        },
+      };
+      expect(canEditCompensateBalance(req, { empId: 'E2', crew: 'Z' })).toBe(true);
+    });
   });
 });

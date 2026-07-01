@@ -25,17 +25,14 @@ describe('validateCycleLeaveOffDays', () => {
     expect(result.ok).toBe(true);
   });
 
-  test('cycle leave without 4 off days is rejected', () => {
+  test('multi-day cycle leave without 4 off days is allowed', () => {
     const result = validateCycleLeaveOffDays({
       crew: 'B',
       startDate: '2026-01-01',
       endDate: '2026-01-04',
       baseDate: BASE,
     });
-    expect(result.ok).toBe(false);
-    expect(result.requiredEndDate).toBe('2026-01-08');
-    expect(result.message).toContain('2026-01-08');
-    expect(result.message).toMatch(/4 off days/i);
+    expect(result.ok).toBe(true);
   });
 
   test('cycle leave through all 4 off days is allowed', () => {

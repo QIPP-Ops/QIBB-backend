@@ -1,4 +1,5 @@
 const { SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
+const { isPrimarySuperAdminUser } = require('../middleware/superAdmin');
 
 const JWT_EXPIRES_IN = '8h';
 
@@ -8,8 +9,7 @@ function normalizeEmail(email) {
 
 /** Portal JWT role: admin | management | user */
 function portalRoleFromUser(user) {
-  const email = normalizeEmail(user.email);
-  if (email === normalizeEmail(SUPER_ADMIN_EMAIL)) return 'admin';
+  if (isPrimarySuperAdminUser(user) || Boolean(user.superAdmin)) return 'admin';
   const access = user.accessRole || 'viewer';
   if (access === 'admin') return 'admin';
   if (access === 'management') return 'management';
@@ -31,6 +31,7 @@ function buildJwtPayload(user) {
     name: displayName,
     accessRole: user.accessRole || 'viewer',
     canOpsLead: Boolean(user.canOpsLead) || portalRole === 'admin',
+    superAdmin: isPrimarySuperAdminUser(user) || Boolean(user.superAdmin),
     crew: user.crew,
     empId: user.empId,
     jobRole: user.role,
@@ -60,6 +61,7 @@ function normalizeDecodedUser(decoded) {
     displayName,
     name: displayName,
     accessRole,
+    superAdmin: decoded.superAdmin === true,
   };
 }
 

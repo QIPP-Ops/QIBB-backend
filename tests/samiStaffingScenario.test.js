@@ -17,6 +17,12 @@ jest.mock('../models/ActingAssignment', () => ({
   find: jest.fn(),
 }));
 
+jest.mock('../models/AdminConfig', () => ({
+  findOne: jest.fn(() => ({
+    lean: () => Promise.resolve({ shiftCycleBaseDate: '2026-01-01' }),
+  })),
+}));
+
 function leave(start, end, status = 'approved') {
   return { start, end, type: 'Annual Leave', status };
 }

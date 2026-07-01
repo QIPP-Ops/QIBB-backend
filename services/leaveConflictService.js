@@ -11,7 +11,6 @@ const { notifyLeaveConflict } = require('./notificationService');
 const {
   emailCallout,
   emailDetailTable,
-  emailInfoList,
 } = require('./emailHtmlHelpers');
 const {
   STAFFING_RULES,
@@ -21,6 +20,14 @@ const {
   calendarDatesInclusive,
   isBelowMinimum,
 } = require('./staffingRulesService');
+const { groupStaffingAlertsByDateRange } = require('../utils/staffingAlertGrouping');
+const {
+  buildGroupBreakdown,
+  formatStaffingNotifyMessage,
+  formatStaffingEmailHtml,
+} = require('../utils/staffingConflictDetail');
+const { getShiftForDate } = require('./shiftScheduleService');
+const { buildCoverSuggestions } = require('./coverSuggestionsService');
 const { isGeneralCrew } = require('../utils/rosterRowSort');
 
 function leaveRangesOverlap(aStart, aEnd, bStart, bEnd) {
@@ -40,12 +47,13 @@ function findSameCrewRoleOverlaps(employees, subjectEmployee, newLeave, actingAs
   return [];
 }
 
-function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssignments = []) {
+function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssignments = [], options = {}) {
   if (isGeneralCrew(subjectEmployee.crew)) return [];
 
   const crew = subjectEmployee.crew;
   const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
-  const alerts = [];
+  const { baseDate = '2026-01-01' } = options;
+  const dailyAlerts = [];
 
   for (const dateStr of dates) {
     const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, {
@@ -53,34 +61,73 @@ function findStaffingShortfalls(employees, subjectEmployee, newLeave, actingAssi
     });
     const below = counts.filter(isBelowMinimum);
     if (!below.length) continue;
-    alerts.push({ crew, date: dateStr, below });
+    const shift = getShiftForDate(crew, dateStr, baseDate);
+    const groups = buildGroupBreakdown(employees, crew, dateStr, below, {
+      approvedLeaveOnly: false,
+    });
+    dailyAlerts.push({
+      crew,
+      date: dateStr,
+      shift,
+      below,
+      groups,
+      groupLabels: groups.map((g) => g.groupLabel),
+    });
   }
-  return alerts;
+  return groupStaffingAlertsByDateRange(dailyAlerts);
 }
 
-async function emailStaffingBelowMinimum(crew, date, below) {
-  const lines = below.map((b) => `${b.label}: ${b.available} available (minimum ${b.min})`);
+async function emailStaffingBelowMinimum(crew, dateStart, dateEnd, alert, employees = [], actingAssignments = [], baseDate = '2026-01-01') {
+  const dateLabel = dateStart === dateEnd ? dateStart : `${dateStart} – ${dateEnd}`;
+  const below = alert.below || alert;
+  const groups = alert.groups || [];
+  const shift = alert.shift;
+  const suggestedNames = [];
+  const seen = new Set();
+
+  for (const roleRow of below) {
+    const { candidates } = buildCoverSuggestions(employees, {
+      date: dateStart,
+      crew,
+      role: roleRow.label,
+      shift: shift || getShiftForDate(crew, dateStart, baseDate),
+      baseDate,
+      actingAssignments,
+    });
+    for (const candidate of candidates) {
+      if (seen.has(candidate.empId)) continue;
+      seen.add(candidate.empId);
+      if (candidate.eligibleForRequestedShift) suggestedNames.push(candidate.name);
+    }
+  }
+
   const body = `
     ${emailCallout('<p>Minimum staffing is not met after this leave request.</p>', 'warning')}
-    ${emailDetailTable([
-      { label: 'Crew', value: crew },
-      { label: 'Date', value: date },
-    ])}
-    ${emailInfoList(lines)}
-    <p>Review roster coverage and consider backup assignments.</p>
+    ${formatStaffingEmailHtml(
+      { crew, shift, dateLabel, below, groups },
+      suggestedNames.slice(0, 6)
+    )}
   `;
+  const shiftPart = shift ? ` ${shift === 'D' ? 'Day' : shift === 'N' ? 'Night' : shift}` : '';
   await sendAdminBulkEmail({
-    subject: `Staffing Below Minimum — ${crew} ${date}`,
+    subject: `Staffing Below Minimum — Shift ${crew}${shiftPart} ${dateLabel}`,
     bodyHtml: body,
   });
 }
 
-function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave, actingAssignments = []) {
+function findStaffingShortfallsApprovedOnly(
+  employees,
+  subjectEmployee,
+  newLeave,
+  actingAssignments = [],
+  options = {}
+) {
   if (isGeneralCrew(subjectEmployee.crew)) return [];
 
   const crew = subjectEmployee.crew;
   const dates = calendarDatesInclusive(newLeave.start, newLeave.end);
-  const alerts = [];
+  const { baseDate = '2026-01-01' } = options;
+  const dailyAlerts = [];
 
   for (const dateStr of dates) {
     const counts = staffingCountsForDate(employees, crew, dateStr, actingAssignments, {
@@ -88,9 +135,20 @@ function findStaffingShortfallsApprovedOnly(employees, subjectEmployee, newLeave
     });
     const below = counts.filter(isBelowMinimum);
     if (!below.length) continue;
-    alerts.push({ crew, date: dateStr, below });
+    const shift = getShiftForDate(crew, dateStr, baseDate);
+    const groups = buildGroupBreakdown(employees, crew, dateStr, below, {
+      approvedLeaveOnly: true,
+    });
+    dailyAlerts.push({
+      crew,
+      date: dateStr,
+      shift,
+      below,
+      groups,
+      groupLabels: groups.map((g) => g.groupLabel),
+    });
   }
-  return alerts;
+  return groupStaffingAlertsByDateRange(dailyAlerts);
 }
 
 /**
@@ -126,11 +184,14 @@ async function willBreachStaffingRules(empId, startDate, endDate, leaveId = null
   });
 
   const actingAssignments = await ActingAssignment.find({ status: 'approved' }).lean();
+  const config = await require('../models/AdminConfig').findOne().lean();
+  const baseDate = config?.shiftCycleBaseDate || '2026-01-01';
   const alerts = findStaffingShortfallsApprovedOnly(
     allEmployees,
     subjectSim,
     simulatedLeave,
-    actingAssignments
+    actingAssignments,
+    { baseDate }
   );
 
   return { breached: alerts.length > 0, alerts };
@@ -139,23 +200,37 @@ async function willBreachStaffingRules(empId, startDate, endDate, leaveId = null
 /**
  * Run staffing checks after a leave record is saved (role-based understaffing only).
  */
-async function processLeaveSaved(subjectEmployee, newLeave, allEmployees, actingAssignments = []) {
+async function processLeaveSaved(subjectEmployee, newLeave, allEmployees, actingAssignments = [], options = {}) {
+  const { baseDate = '2026-01-01' } = options;
   const approved = approvedAssignmentsForRange(
     actingAssignments,
     fmtDate(parseDateOnly(newLeave.start)),
     fmtDate(parseDateOnly(newLeave.end))
   );
 
-  const staffingAlerts = findStaffingShortfalls(allEmployees, subjectEmployee, newLeave, approved);
+  const staffingAlerts = findStaffingShortfalls(
+    allEmployees,
+    subjectEmployee,
+    newLeave,
+    approved,
+    { baseDate }
+  );
   for (const alert of staffingAlerts) {
+    const dateEnd = alert.dateEnd || alert.date;
     try {
-      await notifyLeaveConflict(
-        `Staffing below minimum for crew ${alert.crew} on ${alert.date}: ${alert.below.map((b) => b.label).join(', ')}`
-      );
+      await notifyLeaveConflict(formatStaffingNotifyMessage(alert));
     } catch (err) {
       console.warn('[leave-conflict] staffing in-app notify failed:', err.message);
     }
-    await emailStaffingBelowMinimum(alert.crew, alert.date, alert.below);
+    await emailStaffingBelowMinimum(
+      alert.crew,
+      alert.date,
+      dateEnd,
+      alert,
+      allEmployees,
+      approved,
+      baseDate
+    );
   }
 
   return { overlapCount: 0, staffingAlertCount: staffingAlerts.length };

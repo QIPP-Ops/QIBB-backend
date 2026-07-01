@@ -52,6 +52,8 @@ exports.getMemberKpi = async (req, res) => {
     res.json({
       trainingScore: data.trainingScore,
       ptwScore: data.ptwScore,
+      attendanceScore: data.attendanceScore,
+      attendanceSummary: data.attendanceSummary,
       individualKPI: data.individualKPI,
       ptwStatus: data.ptwStatus,
       validUntil: data.validUntil,
@@ -120,6 +122,8 @@ exports.getMemberUnifiedKpi = async (req, res) => {
     res.json({
       trainingScore: data.trainingScore,
       ptwScore: data.ptwScore,
+      attendanceScore: data.attendanceScore,
+      attendanceSummary: data.attendanceSummary,
       individualKPI: data.individualKPI,
       goalScore: data.goalScore,
       unifiedKPI: data.unifiedKPI,

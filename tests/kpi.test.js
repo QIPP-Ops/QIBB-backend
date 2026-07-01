@@ -9,10 +9,11 @@ const {
 describe('kpiService scoring', () => {
   const member = { empId: '100', name: 'Test User', role: 'CCR Operator' };
 
-  test('individual KPI rounds training and PTW 50/50', () => {
-    expect(calculateIndividualKPI(80, 100)).toBe(90);
-    expect(calculateIndividualKPI(100, 0)).toBe(50);
-    expect(calculateIndividualKPI(0, 0)).toBe(0);
+  test('individual KPI blends training, PTW, and attendance 40/40/20', () => {
+    expect(calculateIndividualKPI(80, 100, 100)).toBe(92);
+    expect(calculateIndividualKPI(100, 0, 100)).toBe(60);
+    expect(calculateIndividualKPI(0, 0, 0)).toBe(0);
+    expect(calculateIndividualKPI(80, 60, 90)).toBe(74);
   });
 
   test('training score is 100 when no assignments', () => {

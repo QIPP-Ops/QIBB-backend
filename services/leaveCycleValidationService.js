@@ -1,16 +1,10 @@
 /**
- * Cycle leave must include the 4 off days that follow the D-D-N-N work block.
- * Single-calendar-day leave is exempt.
+ * Cycle leave validation helpers.
+ * Multi-day leave is allowed for any contiguous period; whole D-D-N-N + 4 off days
+ * is no longer required. Single-day leave remains supported.
  */
 
-const { calendarDatesInclusive } = require('./leaveConflictService');
-const {
-  crewCycleKeysForDates,
-  getShiftForDate,
-} = require('./shiftCycleConflict');
-const { normCrew } = require('../utils/rosterRowSort');
-
-const SHIFTING_CREWS = new Set(['A', 'B', 'C', 'D']);
+const { getShiftForDate } = require('./shiftCycleConflict');
 
 function pad(n) {
   return String(n).padStart(2, '0');
@@ -24,12 +18,6 @@ function parseDateOnly(str) {
   const d = new Date(str);
   d.setHours(0, 0, 0, 0);
   return d;
-}
-
-function toIsoDateOnly(value) {
-  if (!value) return '';
-  if (typeof value === 'string') return value.slice(0, 10);
-  return new Date(value).toISOString().slice(0, 10);
 }
 
 function addDays(dateStr, days) {
@@ -82,52 +70,10 @@ function getCycleRequiredEndDate(crew, cycleStartDate, baseDate = '2026-01-01') 
 }
 
 /**
- * @returns {{ ok: true } | { ok: false, message: string, requiredEndDate: string }}
+ * Leave periods are validated as contiguous ranges; no whole-cycle extension is enforced.
+ * @returns {{ ok: true }}
  */
-function validateCycleLeaveOffDays({ crew, startDate, endDate, baseDate = '2026-01-01' }) {
-  const start = toIsoDateOnly(startDate);
-  const end = toIsoDateOnly(endDate);
-  const dates = calendarDatesInclusive(start, end);
-
-  if (dates.length <= 1) {
-    return { ok: true };
-  }
-
-  const crewNorm = normCrew(crew);
-  if (!SHIFTING_CREWS.has(crewNorm)) {
-    return { ok: true };
-  }
-
-  const extendedEnd = addDays(end, 16);
-  const extendedDates = calendarDatesInclusive(start, extendedEnd);
-  const cycleKeys = crewCycleKeysForDates(crewNorm, extendedDates, baseDate);
-
-  let requiredEnd = null;
-  for (const date of dates) {
-    const shift = getShiftForDate(crewNorm, date, baseDate);
-    if (shift !== 'D' && shift !== 'N') continue;
-
-    const cycleKey = cycleKeys.get(date);
-    if (!cycleKey) continue;
-
-    const cycleEnd = getCycleRequiredEndDate(crewNorm, cycleKey, baseDate);
-    if (cycleEnd && (!requiredEnd || cycleEnd > requiredEnd)) {
-      requiredEnd = cycleEnd;
-    }
-  }
-
-  if (!requiredEnd) {
-    return { ok: true };
-  }
-
-  if (end < requiredEnd) {
-    return {
-      ok: false,
-      message: `Cycle leave must include the 4 off days (date range must end on ${requiredEnd}).`,
-      requiredEndDate: requiredEnd,
-    };
-  }
-
+function validateCycleLeaveOffDays() {
   return { ok: true };
 }
 

@@ -389,4 +389,102 @@ describe('attendance API', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(403);
   });
+
+  test('GET /api/attendance allows super admin to list any crew', async () => {
+    AttendanceRecord.find.mockImplementation(() =>
+      mockFindChain([
+        {
+          empId: 'EMP-200',
+          date: '2026-01-15',
+          crew: 'B',
+          status: 'present',
+        },
+      ])
+    );
+    AdminUser.find.mockImplementation(() => mockFindChain([crewBEmployee]));
+
+    const token = tokenFor({ email: 'admin@acwaops.com', crew: 'S' });
+    const res = await request(app)
+      .get('/api/attendance?date=2026-01-15&crew=B')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].empId).toBe('EMP-200');
+  });
+
+  test('POST /api/attendance allows super admin for other crew on past date', async () => {
+    const employeeOnLeave = {
+      ...crewBEmployee,
+      leaves: [{ start: '2026-01-10', end: '2026-01-20', status: 'approved', type: 'Annual' }],
+    };
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(employeeOnLeave),
+      }),
+    });
+    AttendanceRecord.findOne.mockResolvedValue({
+      derivedFromLeave: true,
+      status: 'absent',
+      toObject() {
+        return { derivedFromLeave: true, status: 'absent' };
+      },
+      save: jest.fn().mockImplementation(function saveMock() {
+        return Promise.resolve(this);
+      }),
+    });
+    AttendanceRecord.create.mockImplementation((doc) =>
+      Promise.resolve({
+        ...doc,
+        _id: 'att-sa-1',
+        toObject: () => doc,
+      })
+    );
+
+    const token = tokenFor({ email: 'admin@acwaops.com', crew: 'S', id: 'sa-1' });
+    const res = await request(app)
+      .post('/api/attendance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        empId: 'EMP-200',
+        date: '2026-01-15',
+        status: 'present',
+        remarks: 'Super admin override',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe('present');
+    expect(logAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'ATTENDANCE_UPDATED' })
+    );
+  });
+
+  test('POST /api/attendance rejects crew admin overriding leave-derived record', async () => {
+    const employeeOnLeave = {
+      ...crewAEmployee,
+      leaves: [{ start: '2026-06-20', end: '2026-06-25', status: 'approved', type: 'Annual' }],
+    };
+    AdminUser.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(employeeOnLeave),
+      }),
+    });
+    AttendanceRecord.findOne.mockResolvedValue({
+      derivedFromLeave: true,
+      status: 'absent',
+    });
+
+    const token = tokenFor({ accessRole: 'admin', jobRole: 'Supervisor', crew: 'A' });
+    const res = await request(app)
+      .post('/api/attendance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        empId: 'EMP-100',
+        date: '2026-06-23',
+        status: 'present',
+      });
+
+    expect(res.status).toBe(409);
+  });
 });

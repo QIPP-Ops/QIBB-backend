@@ -19,6 +19,7 @@ function parseDateOnly(str) {
 }
 
 const { normCrew } = require('../utils/rosterRowSort');
+const { mergeGroupBreakdowns } = require('../utils/staffingConflictDetail');
 
 function getShiftForDate(crew, date, baseDate) {
   const crewKey = normCrew(crew);
@@ -149,6 +150,19 @@ function groupConflictsByCycle(conflicts, dates, baseDate = '2026-01-01') {
       if (!g.dates.includes(c.date)) g.dates.push(c.date);
       g.employees = mergeEmployees(g.employees, c.employees);
       g.below = mergeBelow(g.below, c.below);
+      if (c.shift && !g.shift) g.shift = c.shift;
+      g.groups = mergeGroupBreakdowns(g.groups, c.groups);
+      g.groupLabels = [...new Set([...(g.groupLabels || []), ...(c.groupLabels || [])])].sort();
+      if (c.groups?.length || c.groupLabels?.length) {
+        const { formatStaffingConflictMessage } = require('../utils/staffingConflictDetail');
+        g.message = formatStaffingConflictMessage({
+          crew: g.crew,
+          shift: g.shift,
+          dateLabel: g.cycleLabel || g.date,
+          below: g.below,
+          groups: g.groups,
+        });
+      }
     }
   }
 
@@ -157,6 +171,16 @@ function groupConflictsByCycle(conflicts, dates, baseDate = '2026-01-01') {
     g.date = g.dates[0];
     g.dateEnd = g.dates[g.dates.length - 1];
     g.cycleLabel = formatCycleLabel(g.dates);
+    if (g.conflictType === 'staffing' && g.below?.length) {
+      const { formatStaffingConflictMessage } = require('../utils/staffingConflictDetail');
+      g.message = formatStaffingConflictMessage({
+        crew: g.crew,
+        shift: g.shift,
+        dateLabel: g.cycleLabel,
+        below: g.below,
+        groups: g.groups,
+      });
+    }
     return g;
   });
 }

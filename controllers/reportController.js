@@ -20,6 +20,8 @@ const {
   delegationStatus,
 } = require('../services/actingCoverService');
 const { buildCoverSuggestions } = require('../services/coverSuggestionsService');
+const { groupConflictsByCycle } = require('../services/shiftCycleConflict');
+const { rotationShiftLabel } = require('../utils/staffingConflictDetail');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
 const ActingAssignment = require('../models/ActingAssignment');
 const {
@@ -367,6 +369,8 @@ exports.getStaffingConflicts = async (req, res) => {
       filterConflictsByDelegations(schedule.conflicts, actingAssignments, staffingEmployees)
     ).filter((c) => c.conflictType === 'staffing');
 
+    conflicts = groupConflictsByCycle(conflicts, schedule.dates, baseDate);
+
     const actorCanManageCrew = (crew) => {
       if (isSuperAdmin(req)) return true;
       if (!hasPortalAdminAccess(req)) return false;
@@ -388,8 +392,10 @@ exports.getStaffingConflicts = async (req, res) => {
         .map((b) => b.name);
 
       return {
-        Date: c.date,
-        Crew: c.crew,
+        Date: c.cycleLabel || c.date,
+        Shift: c.crew,
+        Rotation: rotationShiftLabel(c.shift || getShiftForDate(primaryCrew, c.date, baseDate)),
+        Groups: (c.groupLabels || c.groups?.map((g) => g.groupLabel) || []).join(', '),
         Severity: c.severity,
         'Conflict Type': 'Staffing shortfall',
         'Shortfall Roles': (c.below || []).map((b) => `${b.label} ${b.available}/${b.min}`).join(', '),
@@ -403,8 +409,12 @@ exports.getStaffingConflicts = async (req, res) => {
         _meta: {
           conflictKey: buildStaffingConflictKey(c),
           date: c.date,
+          dateEnd: c.dateEnd || c.date,
+          dateLabel: c.cycleLabel || c.date,
           crew: primaryCrew,
-          shift: getShiftForDate(primaryCrew, c.date, baseDate),
+          shift: c.shift || getShiftForDate(primaryCrew, c.date, baseDate),
+          groups: c.groups || [],
+          groupLabels: c.groupLabels || [],
           shortfallRoles: (c.below || []).map((b) => ({
             label: b.label,
             available: b.available,
@@ -419,7 +429,7 @@ exports.getStaffingConflicts = async (req, res) => {
     });
 
     if (crewFilter) {
-      rows = rows.filter((r) => normCrew(String(r.Crew).split('/')[0]) === normCrew(crewFilter));
+      rows = rows.filter((r) => normCrew(String(r.Shift).split('/')[0]) === normCrew(crewFilter));
     }
     if (conflictTypeFilter) {
       rows = rows.filter(
@@ -489,6 +499,7 @@ exports.getKpiScores = async (req, res) => {
           Role: m.role,
           'Training Score': m.trainingScore,
           'PTW Score': m.ptwScore,
+          'Attendance Score': m.attendanceScore,
           'Compliance KPI': m.individualKPI,
           'Goal Score': goalScore ?? '',
           'Unified KPI': unifiedKPI,

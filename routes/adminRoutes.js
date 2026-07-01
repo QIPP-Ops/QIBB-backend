@@ -16,7 +16,7 @@ const orgLayout = require('../controllers/orgLayoutController');
 const surveyController = require('../controllers/surveyController');
 const groupPreset = require('../controllers/groupPresetController');
 const { protect, admin } = require('../middleware/auth');
-const { requireSuperAdmin } = require('../middleware/superAdmin');
+const { requireSuperAdmin, requireSuperAdminManager } = require('../middleware/superAdmin');
 const { requireAuditLogViewer, requireLoginLogViewer } = require('../middleware/auditLogAccess');
 
 const pinLimiter = rateLimit({
@@ -104,6 +104,8 @@ router.put('/users/:id/approve', protect, admin, c.approveUser);
 router.patch('/users/:id/approve', protect, admin, c.approveUser);
 router.put('/users/:id/role', protect, admin, c.updateUserRole);
 router.patch('/users/:id/role', protect, admin, c.updateUserRole);
+router.get('/users/super-admin-access', protect, requireSuperAdminManager, c.listSuperAdminAccessUsers);
+router.patch('/users/:id/super-admin', protect, requireSuperAdminManager, c.patchSuperAdminAccess);
 router.delete('/users/:id/reject', protect, admin, c.rejectUser);
 router.delete('/users/:id', protect, admin, c.rejectUser);
 router.post('/users/:id/reset-password', protect, requireSuperAdmin, authController.adminResetPassword);

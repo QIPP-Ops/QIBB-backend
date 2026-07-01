@@ -554,9 +554,14 @@ function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
   const { portalRoleFromUser } = require('../utils/jwtAuth');
   const { resolveTabVisibilityForUser } = require('../utils/tabVisibility');
   const { resolveMaintenanceDepartment, canAccessMaintenancePortal } = require('../utils/maintenanceDepartment');
+  const {
+    isSuperAdmin: checkSuperAdmin,
+    canManageSuperAdminAccess,
+  } = require('../middleware/superAdmin');
   const accessRole = dbRow?.accessRole || decodedUser.accessRole || 'viewer';
   const portalRole = dbRow ? portalRoleFromUser(dbRow) : decodedUser.role;
   const email = dbRow?.email || decodedUser.email;
+  const mergedUser = dbRow ? { ...decodedUser, ...dbRow } : decodedUser;
   const tabVisibility = dbRow
     ? resolveTabVisibilityForUser({ email, tabVisibility: dbRow.tabVisibility })
     : resolveTabVisibilityForUser({ email: decodedUser.email });
@@ -569,6 +574,8 @@ function buildAuthMePayload(decodedUser, dbRow, ptwPerson) {
       email,
       role: portalRole,
       accessRole,
+      superAdmin: checkSuperAdmin(mergedUser),
+      canManageSuperAdminAccess: canManageSuperAdminAccess(mergedUser),
       displayName: dbRow?.name || decodedUser.displayName || decodedUser.name,
       name: dbRow?.name || decodedUser.displayName || decodedUser.name,
       empId: dbRow?.empId || decodedUser.empId,
@@ -596,7 +603,7 @@ exports.me = async (req, res) => {
   }
   try {
     const row = await AdminUser.findById(userId)
-      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive tabVisibility maintenanceDepartment')
+      .select('email name empId crew accessRole canOpsLead role profilePhotoUrl isActive tabVisibility maintenanceDepartment superAdmin')
       .lean();
     if (row?.isActive === false) {
       return res.status(403).json({ message: 'Access revoked.', code: 'ACCESS_REVOKED' });

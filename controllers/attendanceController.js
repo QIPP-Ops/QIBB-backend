@@ -13,6 +13,7 @@ const { isSuperAdminUser } = require('../middleware/superAdmin');
 const { approvedLeaveOnDate } = require('../services/shiftScheduleService');
 const {
   applyLeaveDerivedAttendance,
+  resolveDerivedFromLeave,
   enrichAttendanceRecord,
   upsertDerivedAttendanceForDate,
 } = require('../services/attendanceLeaveSyncService');
@@ -159,7 +160,7 @@ exports.upsertAttendance = async (req, res) => {
     const existing = await AttendanceRecord.findOne({ empId, date });
 
     let body = applyLeaveDerivedAttendanceForReq(employee, date, normalized, existing, req);
-    const derivedFromLeave = Boolean(approvedLeaveOnDate(employee, date));
+    const derivedFromLeave = resolveDerivedFromLeave(employee, date, body, req, isSuperAdminUser);
 
     let doc;
     if (existing) {
@@ -251,7 +252,7 @@ exports.batchUpsertAttendance = async (req, res) => {
         const normalized = normalizeRecordBody(row);
         const existing = await AttendanceRecord.findOne({ empId, date });
         const body = applyLeaveDerivedAttendanceForReq(employee, date, normalized, existing, req);
-        const derivedFromLeave = Boolean(approvedLeaveOnDate(employee, date));
+        const derivedFromLeave = resolveDerivedFromLeave(employee, date, body, req, isSuperAdminUser);
         let doc;
 
         if (existing) {
@@ -338,7 +339,7 @@ exports.patchAttendance = async (req, res) => {
       ? applyLeaveDerivedAttendanceForReq(employee, existing.date, normalized, existing, req)
       : normalized;
     const derivedFromLeave = employee
-      ? Boolean(approvedLeaveOnDate(employee, existing.date))
+      ? resolveDerivedFromLeave(employee, existing.date, body, req, isSuperAdminUser)
       : existing.derivedFromLeave;
     Object.assign(existing, body, { derivedFromLeave });
     if (employee) {

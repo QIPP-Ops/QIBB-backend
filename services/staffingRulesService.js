@@ -1,70 +1,83 @@
 const { normCrew, isGeneralCrew } = require('../utils/rosterRowSort');
+const {
+  STAFFING_RULES,
+  pad,
+  crewsMatch,
+  fmtDate,
+  parseDateOnly,
+  leaveOnDate,
+  approvedLeavesOnly,
+  employeeOnApprovedLeave,
+  employeeOnAnyLeave,
+} = require('../utils/staffingRulesShared');
+const {
+  buildGroupBreakdown,
+  formatStaffingConflictMessage,
+} = require('../utils/staffingConflictDetail');
 
-function pad(n) {
-  return String(n).padStart(2, '0');
-}
-
-function crewsMatch(a, b) {
-  return normCrew(a) === normCrew(b);
-}
-
-function normalizedCrewKeys(employees, isGeneralCrew) {
+function normalizedCrewKeys(employees, isGeneralCrewFn) {
   return [
     ...new Set(
       (employees || [])
         .map((e) => normCrew(e.crew))
-        .filter((c) => c && c !== 'General' && c !== 'S' && !isGeneralCrew(c))
+        .filter((c) => c && c !== 'General' && c !== 'S' && !isGeneralCrewFn(c))
     ),
   ];
 }
 
-function fmtDate(d) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+/**
+ * Simulate in-crew auto delegation: spare on-duty crew members whose role can cover
+ * an absent person per rolesMatchForCover (e.g. CCR Operator covering Shift in Charge).
+ * Cover people already counted in the rule's direct headcount are excluded.
+ */
+function computeInCrewAutoCoverBoost(
+  employees,
+  crew,
+  dateStr,
+  rule,
+  shortfallNeeded,
+  actingAssignments,
+  onLeave
+) {
+  if (shortfallNeeded <= 0) return 0;
 
-function parseDateOnly(str) {
-  const d = new Date(str);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
+  const { rolesMatchForCover } = require('../utils/roleCoverMatch');
+  const { approvedAssignmentsForRange, assignmentActiveOnDate } = require('./actingCoverService');
 
-function leaveOnDate(leave, dateStr) {
-  const status = leave?.status || 'approved';
-  if (status === 'rejected') return false;
-  const d = parseDateOnly(dateStr);
-  const s = parseDateOnly(leave.start);
-  const e = parseDateOnly(leave.end);
-  return d >= s && d <= e;
-}
+  const crewMembers = employees.filter((e) => crewsMatch(e.crew, crew));
+  const absentInRule = crewMembers.filter((e) => onLeave(e, dateStr) && rule.match(e.role));
+  if (!absentInRule.length) return 0;
 
-/** Minimum staffing per crew per working day (General crew excluded upstream). */
-const STAFFING_RULES = [
-  {
-    label: 'Leader',
-    min: 1,
-    match: (role) =>
-      /shift in charge/i.test(role || '') ||
-      (/\bsupervisor\b/i.test(role || '') && !/shift in charge/i.test(role || '')),
-  },
-  { label: 'CCR Operator', min: 3, match: (role) => /ccr operator/i.test(role || '') },
-  { label: 'Local Operator', min: 4, match: (role) => /local operator/i.test(role || '') },
-  { label: 'Chemist', min: 1, match: (role) => /chemist/i.test(role || '') },
-];
+  const approved = approvedAssignmentsForRange(actingAssignments, dateStr, dateStr);
+  const usedCoverIds = new Set();
+  for (const a of approved) {
+    if (!crewsMatch(a.crew, crew)) continue;
+    if (assignmentActiveOnDate(a, dateStr)) {
+      usedCoverIds.add(a.coverEmpId);
+    }
+  }
 
-function approvedLeavesOnly(employee, includeLeaveId = null) {
-  return (employee.leaves || []).filter((lv) => {
-    const status = lv.status || 'approved';
-    if (includeLeaveId && String(lv._id) === String(includeLeaveId)) return true;
-    return status === 'approved';
-  });
-}
+  const availableCovers = crewMembers.filter(
+    (e) => !onLeave(e, dateStr) && !usedCoverIds.has(e.empId) && !rule.match(e.role)
+  );
 
-function employeeOnApprovedLeave(employee, dateStr) {
-  return approvedLeavesOnly(employee).some((lv) => leaveOnDate(lv, dateStr));
-}
+  let boost = 0;
+  const autoUsed = new Set();
 
-function employeeOnAnyLeave(employee, dateStr) {
-  return (employee.leaves || []).some((lv) => leaveOnDate(lv, dateStr));
+  for (const absentEmp of absentInRule) {
+    if (boost >= shortfallNeeded) break;
+    const cover = availableCovers.find(
+      (c) =>
+        !autoUsed.has(c.empId) &&
+        rolesMatchForCover(absentEmp.role, c.role)
+    );
+    if (cover) {
+      boost += 1;
+      autoUsed.add(cover.empId);
+    }
+  }
+
+  return Math.min(boost, shortfallNeeded);
 }
 
 function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [], options = {}) {
@@ -86,13 +99,25 @@ function staffingCountsForDate(employees, crew, dateStr, actingAssignments = [],
       null,
       rule.match
     );
-    const totalAvailable = available.length + actingBoost;
+    let totalAvailable = available.length + actingBoost;
+    const shortfallBeforeAuto = Math.max(0, rule.min - totalAvailable);
+    const autoCoverBoost = computeInCrewAutoCoverBoost(
+      employees,
+      crew,
+      dateStr,
+      rule,
+      shortfallBeforeAuto,
+      actingAssignments,
+      onLeave
+    );
+    totalAvailable += autoCoverBoost;
     return {
       label: rule.label,
       min: rule.min,
       available: totalAvailable,
       rosterSize: roster.length,
       actingCover: actingBoost,
+      autoCover: autoCoverBoost,
       shortfall: Math.max(0, rule.min - totalAvailable),
     };
   });
@@ -187,19 +212,32 @@ function buildStaffingShortfallConflicts(employees, options = {}) {
           name: e.name,
           role: e.role,
           crew: normCrew(e.crew),
+          groupLabel: String(e.opsGroupLabel || e.group || '').trim() || 'Unassigned',
           color: e.color || e.seniority || 'crew-grey',
         }));
+
+      const groups = buildGroupBreakdown(employees, crew, dateStr, below, {
+        approvedLeaveOnly,
+      });
+      const groupLabels = groups.map((g) => g.groupLabel);
 
       conflicts.push({
         date: dateStr,
         crew,
+        shift,
         severity: 'high',
         conflictType: 'staffing',
-        message: `Understaffed (${crew}): ${below
-          .map((b) => `${b.label} ${b.available}/${b.min}`)
-          .join(', ')}`,
+        message: formatStaffingConflictMessage({
+          crew,
+          shift,
+          dateLabel: dateStr,
+          below,
+          groups,
+        }),
         employees: onLeavePeople,
         below,
+        groups,
+        groupLabels,
       });
     }
   }
@@ -214,6 +252,7 @@ module.exports = {
   employeeOnAnyLeave,
   crewsMatch,
   normalizedCrewKeys,
+  computeInCrewAutoCoverBoost,
   staffingCountsForDate,
   countAvailableOnDuty,
   isBelowMinimum,

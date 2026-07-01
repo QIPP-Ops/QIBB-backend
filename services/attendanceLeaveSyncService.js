@@ -129,11 +129,12 @@ function applyLeaveDerivedAttendance(employee, date, normalized, existing, req, 
   const approvedLeave = approvedLeaveOnDate(employee, date);
   if (!approvedLeave) return normalized;
 
-  if (
-    existing?.derivedFromLeave &&
-    normalized.status !== 'absent' &&
-    !isSuperAdminUser(req)
-  ) {
+  // Super admin may set any attendance status on leave days (past, present, or future).
+  if (isSuperAdminUser(req)) {
+    return normalized;
+  }
+
+  if (existing?.derivedFromLeave && normalized.status !== 'absent') {
     const err = new Error('Attendance is derived from approved leave and cannot be overridden.');
     err.status = 409;
     throw err;
@@ -152,6 +153,15 @@ function applyLeaveDerivedAttendance(employee, date, normalized, existing, req, 
   };
 }
 
+/** True when absent status is auto-derived from approved leave (not a super-admin override). */
+function resolveDerivedFromLeave(employee, date, body, req, isSuperAdminUser) {
+  const approvedLeave = approvedLeaveOnDate(employee, date);
+  if (!approvedLeave) return false;
+  if (body.status !== 'absent') return false;
+  if (isSuperAdminUser(req)) return false;
+  return true;
+}
+
 function enrichAttendanceRecord(record, employee) {
   if (!employee) return record;
   const overlay = getLeaveOverlayForDate(employee, record.date);
@@ -167,6 +177,7 @@ function enrichAttendanceRecord(record, employee) {
 
 module.exports = {
   applyLeaveDerivedAttendance,
+  resolveDerivedFromLeave,
   enrichAttendanceRecord,
   syncApprovedLeaveRange,
   reconcileLeaveAttendanceRange,

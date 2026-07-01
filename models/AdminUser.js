@@ -46,6 +46,8 @@ const AdminUserSchema = new mongoose.Schema({
 
   // ─── Auth & Access ────────────────────────────────────────────────────────
   accessRole:        { type: String, enum: ['admin', 'viewer', 'management'], default: 'viewer' },
+  /** Granted super-admin privileges (Mohammad Algarni may toggle from Profile). */
+  superAdmin:        { type: Boolean, default: false },
   /** Super-admin controlled: leave conflicts, chemistry alarms, daily digest */
   receiveEmailNotifications: { type: Boolean, default: false },
   canOpsLead:        { type: Boolean, default: false },

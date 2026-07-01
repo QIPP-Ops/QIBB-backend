@@ -47,9 +47,8 @@ function jobRoleFromReq(req) {
 /** Crew admins and super admin may log attendance for their crew (or all crews for super admin). */
 
 function canLogAttendance(req) {
-
+  if (isSuperAdminUser(req)) return true;
   return hasPortalAdminAccess(req);
-
 }
 
 

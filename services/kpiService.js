@@ -1,6 +1,11 @@
 const AdminConfig = require('../models/AdminConfig');
 const AdminUser = require('../models/AdminUser');
 const Notification = require('../models/Notification');
+const {
+  loadAttendanceRecordsForEmployees,
+  summarizeAttendanceRecords,
+  calculateAttendanceScore,
+} = require('./attendanceKpiService');
 const { findPtwPersonForUser, hasAuth } = require('../middleware/ptwAccess');
 const {
   computePtwExpiryInfo,
@@ -165,8 +170,32 @@ function calculateTrainingScore(member, curriculum, completedCourses, quizAssign
   return Math.round((completedCount / totalAssigned) * 100);
 }
 
-function calculateIndividualKPI(trainingScore, ptwScore) {
-  return Math.round(trainingScore * 0.5 + ptwScore * 0.5);
+/** Compliance KPI: training 40%, PTW 40%, annual attendance 20%. */
+function calculateIndividualKPI(trainingScore, ptwScore, attendanceScore = 100) {
+  return Math.round(
+    trainingScore * 0.4 + ptwScore * 0.4 + attendanceScore * 0.2
+  );
+}
+
+function scoreAttendanceForMember(member, attendanceByEmpId) {
+  const empId = String(member.empId || '').trim();
+  const records = empId ? attendanceByEmpId?.get(empId) || [] : [];
+  const summary = summarizeAttendanceRecords(records);
+  const attendanceScore = calculateAttendanceScore(summary);
+  return {
+    attendanceScore,
+    attendanceSummary: {
+      recordCount: summary.recordCount,
+      unexcusedAbsences: summary.unexcusedAbsences,
+      excusedAbsences: summary.excusedAbsences,
+      presentDays: summary.presentDays,
+      partialDays: summary.partialDays,
+      lateIncidents: summary.lateIncidents,
+      totalLateMinutes: summary.totalLateMinutes,
+      earlyIncidents: summary.earlyIncidents,
+      totalEarlyMinutes: summary.totalEarlyMinutes,
+    },
+  };
 }
 
 async function findPtwPersonForMember(member) {
@@ -190,7 +219,7 @@ async function loadTrainingContext() {
 }
 
 async function scoreMember(member, context) {
-  const { curriculum, completedCourses, notifications } = context;
+  const { curriculum, completedCourses, notifications, attendanceByEmpId } = context;
   const userId = member._id;
   const quizAssigned = getQuizAssignmentsForUser(notifications, userId);
   const quizCompleted = getQuizCompletionsForUser(notifications, member.name);
@@ -203,7 +232,11 @@ async function scoreMember(member, context) {
   );
   const ptwPerson = await findPtwPersonForMember(member);
   const ptwScore = calculatePtwScore(member, ptwPerson);
-  const individualKPI = calculateIndividualKPI(trainingScore, ptwScore);
+  const { attendanceScore, attendanceSummary } = scoreAttendanceForMember(
+    member,
+    attendanceByEmpId
+  );
+  const individualKPI = calculateIndividualKPI(trainingScore, ptwScore, attendanceScore);
 
   const targetLevel = ptwTargetLevelForRole(member.role);
   const heldLevel = maxAuthLevel(ptwPerson);
@@ -219,6 +252,8 @@ async function scoreMember(member, context) {
     role: member.role,
     trainingScore,
     ptwScore,
+    attendanceScore,
+    attendanceSummary,
     individualKPI,
     ptwStatus: targetLevel === null
       ? 'N/A'
@@ -239,12 +274,19 @@ async function scoreMember(member, context) {
   };
 }
 
+async function loadScoringContext(members) {
+  const training = await loadTrainingContext();
+  const empIds = (members || []).map((m) => m.empId).filter(Boolean);
+  const attendanceByEmpId = await loadAttendanceRecordsForEmployees(empIds);
+  return { ...training, attendanceByEmpId };
+}
+
 async function getMemberKpiById(memberId) {
   const member = await AdminUser.findById(memberId)
     .select('_id empId name email crew role')
     .lean();
   if (!member) return null;
-  const context = await loadTrainingContext();
+  const context = await loadScoringContext([member]);
   return scoreMember(member, context);
 }
 
@@ -274,7 +316,7 @@ async function getCrewKpi(crewId) {
     return { crewKPI: 0, members: [] };
   }
 
-  const context = await loadTrainingContext();
+  const context = await loadScoringContext(members);
   const scored = await Promise.all(members.map((m) => scoreMember(m, context)));
   const sum = scored.reduce((acc, m) => acc + m.individualKPI, 0);
   const crewKPI = Math.round(sum / scored.length);
@@ -296,7 +338,8 @@ async function getAllCrewKpis() {
     byCrew.get(c).push(m);
   }
 
-  const context = await loadTrainingContext();
+  const allMembers = [...byCrew.values()].flat();
+  const context = await loadScoringContext(allMembers);
   const crews = [];
 
   for (const [crew, crewMembers] of byCrew.entries()) {
@@ -375,6 +418,7 @@ module.exports = {
   calculatePtwScore,
   calculateTrainingScore,
   calculateIndividualKPI,
+  scoreAttendanceForMember,
   calculateGoalScore,
   calculateUnifiedScore,
   calculateUnifiedKPI,

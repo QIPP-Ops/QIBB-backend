@@ -34,6 +34,7 @@ function tokenFor(user) {
       crew: user.crew || 'A',
       name: user.name || 'Test',
       canOpsLead: Boolean(user.canOpsLead),
+      superAdmin: Boolean(user.superAdmin),
     },
     process.env.JWT_SECRET,
     { expiresIn: '1h' }
@@ -176,6 +177,26 @@ describe('PATCH /api/roster/:empId/compensate-balance', () => {
       accessRole: 'admin',
       crew: 'A',
       email: 'admin@acwaops.com',
+    });
+
+    const res = await request(app)
+      .patch('/api/roster/EMP-200/compensate-balance')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ balance: 4 });
+
+    expect(res.status).toBe(200);
+    expect(target.compensateDayBalance).toBe(4);
+  });
+
+  test('allows delegated super admin editing any crew', async () => {
+    const target = mockTarget({ crew: 'Z', compensateDayBalance: 0 });
+    mockActor({ email: 'b.aldogaish@nomac.com', name: 'Bander Khalid AlDogaish' });
+    const token = tokenFor({
+      role: 'admin',
+      accessRole: 'viewer',
+      crew: 'S',
+      email: 'b.aldogaish@nomac.com',
+      superAdmin: true,
     });
 
     const res = await request(app)

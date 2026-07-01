@@ -7,6 +7,12 @@ jest.mock('../models/ActingAssignment', () => ({
   find: jest.fn(),
 }));
 
+jest.mock('../models/AdminConfig', () => ({
+  findOne: jest.fn(() => ({
+    lean: () => Promise.resolve({ shiftCycleBaseDate: '2026-01-01' }),
+  })),
+}));
+
 const {
   STAFFING_RULES,
   willBreachStaffingRules,
@@ -176,6 +182,38 @@ describe('willBreachStaffingRules', () => {
 
     const result = await willBreachStaffingRules('SUP1', '2026-06-16', '2026-06-16');
     expect(result.breached).toBe(false);
+  });
+
+  test('returns not breached when SIC on leave and CCR can auto-cover leader', async () => {
+    const AdminUser = require('../models/AdminUser');
+    const ActingAssignment = require('../models/ActingAssignment');
+
+    AdminUser.findOne.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          empId: 'SIC1',
+          crew: 'A',
+          role: 'Shift in Charge Engineer',
+          leaves: [],
+        }),
+    });
+    mockStaffingFind([
+      {
+        empId: 'SIC1',
+        crew: 'A',
+        role: 'Shift in Charge Engineer',
+        leaves: [],
+      },
+      { empId: 'C1', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'C2', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'C3', crew: 'A', role: 'CCR Operator', leaves: [] },
+      { empId: 'C4', crew: 'A', role: 'CCR Operator', leaves: [] },
+    ]);
+    ActingAssignment.find.mockReturnValue({ lean: () => Promise.resolve([]) });
+
+    const result = await willBreachStaffingRules('SIC1', '2026-06-20', '2026-06-20');
+    expect(result.breached).toBe(false);
+    expect(result.alerts).toEqual([]);
   });
 
   test('STAFFING_RULES uses combined leader minimum', () => {

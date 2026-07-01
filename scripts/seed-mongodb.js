@@ -58,6 +58,8 @@ const {
 
 } = require('./lib/atlasSeedHelpers');
 
+const { BANDER_SUPER_ADMIN_EMAIL } = require('../config/superAdmin');
+
 const { syncPlaceholderEmailForUser } = require('../services/personnelEmailLookup');
 
 
@@ -336,6 +338,38 @@ async function seedSuperAdmin() {
 
 
 
+async function seedDelegatedSuperAdmins() {
+
+  const bander = await AdminUser.findOne({ email: BANDER_SUPER_ADMIN_EMAIL });
+
+  if (!bander) {
+
+    log(`⏭️  Skipped delegated super admin — ${BANDER_SUPER_ADMIN_EMAIL} not in roster`);
+
+    return { action: 'skipped' };
+
+  }
+
+  if (!bander.superAdmin) {
+
+    bander.superAdmin = true;
+
+    await bander.save();
+
+    log(`👑 Granted super admin access to ${bander.name} (${BANDER_SUPER_ADMIN_EMAIL})`);
+
+    return { action: 'updated', email: BANDER_SUPER_ADMIN_EMAIL };
+
+  }
+
+  log(`👑 Delegated super admin already enabled for ${BANDER_SUPER_ADMIN_EMAIL}`);
+
+  return { action: 'unchanged', email: BANDER_SUPER_ADMIN_EMAIL };
+
+}
+
+
+
 async function assertRosterSeeded() {
 
   const { filterProtectedAccounts } = require('../utils/protectedAccounts');
@@ -427,6 +461,8 @@ async function runAtlasSeed(options = {}) {
 
 
   const superAdmin = await seedSuperAdmin();
+
+  await seedDelegatedSuperAdmins();
 
   const ptw = await ensurePtwPersonnelSeeded();
 

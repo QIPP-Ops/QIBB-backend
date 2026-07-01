@@ -74,7 +74,7 @@ function understaffedRoster() {
       role: 'CCR Operator',
       isApproved: true,
       isActive: true,
-      leaves: [leave('2026-06-30', '2026-07-02')],
+      leaves: [leave('2026-07-16', '2026-07-18')],
     },
     {
       empId: 'A2',
@@ -83,7 +83,7 @@ function understaffedRoster() {
       role: 'CCR Operator',
       isApproved: true,
       isActive: true,
-      leaves: [leave('2026-06-30', '2026-07-02')],
+      leaves: [leave('2026-07-16', '2026-07-18')],
     },
     {
       empId: 'A3',
@@ -123,7 +123,7 @@ describe('staffing conflicts report API', () => {
 
     const res = await request(app)
       .get('/api/reports/staffing-conflicts')
-      .query({ from: '2026-06-30', to: '2026-06-30' })
+      .query({ from: '2026-07-16', to: '2026-07-16' })
       .set(
         'Authorization',
         `Bearer ${tokenFor({
@@ -144,13 +144,16 @@ describe('staffing conflicts report API', () => {
 
     const res = await request(app)
       .get('/api/reports/staffing-conflicts')
-      .query({ from: '2026-06-30', to: '2026-06-30', crew: 'A' })
+      .query({ from: '2026-07-16', to: '2026-07-16', crew: 'A' })
       .set('Authorization', `Bearer ${tokenFor()}`);
 
     expect(res.status).toBe(200);
     expect(res.body.length).toBeGreaterThan(0);
     const row = res.body[0];
     expect(row['Conflict Type']).toBe('Staffing shortfall');
+    expect(row.Shift).toBeTruthy();
+    expect(row.Rotation).toBeTruthy();
+    expect(row.Message).toContain('Shift');
     expect(row['Has Cover']).toBe('No');
     expect(row['Suggested Backups']).toContain('Backup CCR');
     expect(row._meta?.suggestedBackups?.length).toBeGreaterThan(0);
@@ -170,8 +173,8 @@ describe('staffing conflicts report API', () => {
           coverFromCrew: 'B',
           role: 'ccr_operator',
           roleAtTime: 'CCR Operator',
-          startDate: '2026-06-30',
-          endDate: '2026-06-30',
+          startDate: '2026-07-16',
+          endDate: '2026-07-16',
           status: 'approved',
         },
       ])
@@ -179,7 +182,7 @@ describe('staffing conflicts report API', () => {
 
     const res = await request(app)
       .get('/api/reports/staffing-conflicts')
-      .query({ from: '2026-06-30', to: '2026-06-30', crew: 'A' })
+      .query({ from: '2026-07-16', to: '2026-07-16', crew: 'A' })
       .set('Authorization', `Bearer ${tokenFor()}`);
 
     expect(res.status).toBe(200);

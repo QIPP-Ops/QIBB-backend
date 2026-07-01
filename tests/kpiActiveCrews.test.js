@@ -14,6 +14,12 @@ jest.mock('../models/Notification', () => ({
   }),
 }));
 
+jest.mock('../models/AttendanceRecord', () => ({
+  find: jest.fn().mockReturnValue({
+    lean: jest.fn().mockResolvedValue([]),
+  }),
+}));
+
 const AdminConfig = require('../models/AdminConfig');
 const AdminUser = require('../models/AdminUser');
 const { getAllCrewKpis, getCrewKpi } = require('../services/kpiService');

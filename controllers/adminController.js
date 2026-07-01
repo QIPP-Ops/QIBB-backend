@@ -430,6 +430,89 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
+exports.listSuperAdminAccessUsers = async (req, res) => {
+  try {
+    const { filterProtectedAccounts } = require('../utils/protectedAccounts');
+    const users = await AdminUser.find({ isApproved: true })
+      .select('name email empId crew accessRole superAdmin')
+      .sort({ name: 1 })
+      .lean();
+    res.json(filterProtectedAccounts(users));
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching super admin access list', error: err.message });
+  }
+};
+
+exports.patchSuperAdminAccess = async (req, res) => {
+  try {
+    const {
+      isPrimarySuperAdminUser,
+      canManageSuperAdminAccess,
+    } = require('../middleware/superAdmin');
+    if (!canManageSuperAdminAccess(req)) {
+      return res.status(403).json({
+        message: 'Only Mohammad Algarni may manage super administrator access.',
+      });
+    }
+
+    const { id } = req.params;
+    const enabled = Boolean(req.body?.enabled ?? req.body?.superAdmin);
+    const target = await AdminUser.findById(id);
+    if (!target) return res.status(404).json({ message: 'User not found.' });
+    if (isPrimarySuperAdminUser(target)) {
+      return res.status(400).json({
+        message: 'The primary super administrator account cannot be modified.',
+      });
+    }
+
+    const prev = Boolean(target.superAdmin);
+    if (prev === enabled) {
+      return res.json({
+        message: `Super admin access already ${enabled ? 'enabled' : 'disabled'}.`,
+        user: target,
+      });
+    }
+
+    target.superAdmin = enabled;
+    await target.save();
+
+    const actor = await AdminUser.findById(req.user.id).select('-passwordHash');
+    await logRosterEvent({
+      action: 'SUPER_ADMIN_ACCESS_CHANGED',
+      actor,
+      target,
+      summary: `Super admin access for ${target.name} (${target.email}): ${prev ? 'on' : 'off'} → ${enabled ? 'on' : 'off'}`,
+      metadata: { superAdmin: enabled },
+    });
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.ROLE_CHANGED,
+      targetType: 'employee',
+      targetId: target._id?.toString(),
+      targetName: target.name,
+      before: { superAdmin: prev },
+      after: { superAdmin: enabled },
+      req,
+    });
+
+    const body = {
+      message: `Super admin access ${enabled ? 'enabled' : 'disabled'}.`,
+      user: target,
+    };
+    const actorId = String(req.user?.userId || req.user?.id || '');
+    if (actorId && String(target._id) === actorId) {
+      const jwt = require('jsonwebtoken');
+      const { buildJwtPayload, JWT_EXPIRES_IN } = require('../utils/jwtAuth');
+      body.token = jwt.sign(buildJwtPayload(target), process.env.JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
+      });
+    }
+    res.json(body);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating super admin access', error: err.message });
+  }
+};
+
 exports.clearPlaceholderEmails = async (req, res) => {
   try {
     const { isSuperAdmin } = require('../middleware/superAdmin');

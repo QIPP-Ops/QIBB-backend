@@ -89,6 +89,48 @@ describe('leaveConflictService', () => {
     });
     const ccrShort = alerts.some((a) => a.below.some((b) => b.label === 'CCR Operator'));
     expect(ccrShort).toBe(true);
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].date).toBe('2026-06-05');
+    expect(alerts[0].dateEnd).toBe('2026-06-05');
+  });
+
+  test('findStaffingShortfalls groups consecutive shortfall days into one period', () => {
+    const subject = {
+      empId: 'E2',
+      name: 'Bob',
+      crew: 'A',
+      role: 'CCR Operator',
+      leaves: [],
+    };
+    const employees = crewA.map((e) => {
+      if (e.empId === 'E2') {
+        return {
+          ...e,
+          leaves: [{ start: new Date('2026-06-06'), end: new Date('2026-06-07') }],
+        };
+      }
+      if (e.empId === 'E1') {
+        return {
+          ...e,
+          leaves: [{ start: new Date('2026-06-06'), end: new Date('2026-06-07') }],
+        };
+      }
+      if (e.empId === 'E3') {
+        return {
+          ...e,
+          leaves: [{ start: new Date('2026-06-06'), end: new Date('2026-06-07') }],
+        };
+      }
+      return e;
+    });
+    const alerts = findStaffingShortfalls(employees, subject, {
+      start: new Date('2026-06-06'),
+      end: new Date('2026-06-07'),
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].date).toBe('2026-06-06');
+    expect(alerts[0].dateEnd).toBe('2026-06-07');
+    expect(alerts[0].dateLabel).toBe('2026-06-06 – 2026-06-07');
   });
 
   test('findStaffingShortfalls skips General crew entirely', () => {
