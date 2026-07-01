@@ -27,7 +27,9 @@ function leaveOnDate(leave, dateStr) {
   return d >= s && d <= e;
 }
 
-/** Minimum staffing per crew per working day (General crew excluded upstream). */
+/** Minimum staffing per crew per working day (General crew excluded upstream).
+ *  Keep in sync with QIBB-frontend `src/lib/shared/staffingRules.ts` and its vitest.
+ */
 const STAFFING_RULES = [
   {
     label: 'Leader',
