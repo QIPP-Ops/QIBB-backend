@@ -12,6 +12,11 @@ const upload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
 });
 
+const referenceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
 const quizUpload = upload.fields([
   { name: 'html', maxCount: 1 },
   { name: 'prizeImage', maxCount: 1 },
@@ -44,10 +49,12 @@ router.post('/quiz/claim-prize', protect, c.claimQuizPrize);
 router.post('/course-reminder', protect, admin, c.sendCourseReminder);
 
 router.get('/references', protect, ref.listReferences);
+router.get('/references/files/:id', protect, ref.serveReferenceFile);
 router.post('/references/categories', protect, admin, ref.createCategory);
 router.patch('/references/categories/:id', protect, admin, ref.updateCategory);
 router.delete('/references/categories/:id', protect, admin, ref.deleteCategory);
 router.post('/references/items', protect, admin, ref.createItem);
+router.post('/references/items/:id/file', protect, admin, referenceUpload.single('file'), ref.uploadItemFile);
 router.patch('/references/items/:id', protect, admin, ref.updateItem);
 router.delete('/references/items/:id', protect, admin, ref.deleteItem);
 

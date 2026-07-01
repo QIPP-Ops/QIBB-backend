@@ -13,10 +13,17 @@ jest.mock('../models/ReferenceItem', () => ({
   deleteMany: jest.fn(),
 }));
 
+jest.mock('../services/referenceFileService', () => ({
+  uploadReferenceFile: jest.fn(),
+  readReferenceFile: jest.fn(),
+  deleteReferenceFile: jest.fn(),
+}));
+
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const ReferenceCategory = require('../models/ReferenceCategory');
 const ReferenceItem = require('../models/ReferenceItem');
+const referenceFileService = require('../services/referenceFileService');
 
 process.env.JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long';
 process.env.COSMOS_URI = 'mongodb://localhost:27017/qipp-test';
@@ -160,6 +167,9 @@ describe('training references API', () => {
       name: 'Legacy',
       deleteOne,
     });
+    ReferenceItem.find.mockReturnValue({
+      select: jest.fn().mockResolvedValue([]),
+    });
     ReferenceItem.deleteMany.mockResolvedValue({ deletedCount: 2 });
 
     const res = await request(app)
@@ -169,5 +179,63 @@ describe('training references API', () => {
     expect(res.status).toBe(200);
     expect(ReferenceItem.deleteMany).toHaveBeenCalledWith({ categoryId: catId });
     expect(deleteOne).toHaveBeenCalled();
+  });
+
+  test('POST /references/items/:id/file uploads file for admin', async () => {
+    const itemId = '507f1f77bcf86cd799439044';
+    const save = jest.fn().mockResolvedValue(undefined);
+    ReferenceItem.findById.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: itemId,
+        storageKey: '',
+        fileUrl: '',
+        fileName: '',
+        mimeType: '',
+        save,
+      }),
+    });
+    referenceFileService.uploadReferenceFile.mockResolvedValue({
+      storageKey: `mongo:${itemId}:file`,
+      fileUrl: `/api/training/references/files/${itemId}`,
+      fileName: 'manual.pdf',
+      mimeType: 'application/pdf',
+      fileData: Buffer.from('%PDF-1.4'),
+      storage: 'mongo',
+    });
+
+    const res = await request(app)
+      .post(`/api/training/references/items/${itemId}/file`)
+      .set('Authorization', `Bearer ${tokenFor(adminUser)}`)
+      .attach('file', Buffer.from('%PDF-1.4 test'), {
+        filename: 'manual.pdf',
+        contentType: 'application/pdf',
+      });
+
+    expect(res.status).toBe(200);
+    expect(referenceFileService.uploadReferenceFile).toHaveBeenCalled();
+    expect(save).toHaveBeenCalled();
+    expect(res.body.fileName).toBe('manual.pdf');
+  });
+
+  test('GET /references/files/:id serves uploaded file', async () => {
+    const itemId = '507f1f77bcf86cd799439033';
+    ReferenceItem.findById.mockReturnValue({
+      select: jest.fn().mockResolvedValue({
+        _id: itemId,
+        storageKey: `mongo:${itemId}:file`,
+        fileName: 'manual.pdf',
+        mimeType: 'application/pdf',
+        fileData: Buffer.from('%PDF-1.4'),
+      }),
+    });
+    referenceFileService.readReferenceFile.mockResolvedValue(Buffer.from('%PDF-1.4'));
+
+    const res = await request(app)
+      .get(`/api/training/references/files/${itemId}`)
+      .set('Authorization', `Bearer ${tokenFor(operator)}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('application/pdf');
+    expect(referenceFileService.readReferenceFile).toHaveBeenCalled();
   });
 });

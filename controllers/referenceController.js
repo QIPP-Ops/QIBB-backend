@@ -1,5 +1,10 @@
 const ReferenceCategory = require('../models/ReferenceCategory');
 const ReferenceItem = require('../models/ReferenceItem');
+const {
+  uploadReferenceFile,
+  readReferenceFile,
+  deleteReferenceFile,
+} = require('../services/referenceFileService');
 
 const VALID_TYPES = ReferenceCategory.REFERENCE_TYPES;
 
@@ -11,6 +16,12 @@ function parseType(raw) {
 
 function createdById(req) {
   return req.user?._id || req.user?.userId || null;
+}
+
+function serializeItem(item) {
+  const doc = item?.toObject ? item.toObject() : { ...item };
+  delete doc.fileData;
+  return doc;
 }
 
 async function buildGroupedResponse(type) {
@@ -33,6 +44,16 @@ async function buildGroupedResponse(type) {
       items: itemsByCategory[String(cat._id)] || [],
     })),
   };
+}
+
+async function clearItemFile(item) {
+  if (!item?.storageKey) return;
+  await deleteReferenceFile({ storageKey: item.storageKey });
+  item.storageKey = '';
+  item.fileUrl = '';
+  item.fileName = '';
+  item.mimeType = '';
+  item.fileData = undefined;
 }
 
 exports.listReferences = async (req, res) => {
@@ -109,6 +130,8 @@ exports.deleteCategory = async (req, res) => {
     const category = await ReferenceCategory.findById(req.params.id);
     if (!category) return res.status(404).json({ message: 'Category not found.' });
 
+    const items = await ReferenceItem.find({ categoryId: category._id }).select('+fileData storageKey');
+    await Promise.all(items.map((item) => clearItemFile(item)));
     await ReferenceItem.deleteMany({ categoryId: category._id });
     await category.deleteOne();
     res.json({ message: 'Category deleted.' });
@@ -144,7 +167,7 @@ exports.createItem = async (req, res) => {
       createdBy: createdById(req),
     });
 
-    res.status(201).json(item);
+    res.status(201).json(serializeItem(item));
   } catch (err) {
     res.status(500).json({ message: 'Error creating reference item', error: err.message });
   }
@@ -169,6 +192,10 @@ exports.updateItem = async (req, res) => {
       item.url = String(req.body.url || '').trim();
     }
 
+    if (req.body.removeFile === true) {
+      await clearItemFile(item);
+    }
+
     if (req.body.sortOrder !== undefined && Number.isFinite(Number(req.body.sortOrder))) {
       item.sortOrder = Number(req.body.sortOrder);
     }
@@ -183,16 +210,81 @@ exports.updateItem = async (req, res) => {
     }
 
     await item.save();
-    res.json(item);
+    res.json(serializeItem(item));
   } catch (err) {
     res.status(500).json({ message: 'Error updating reference item', error: err.message });
   }
 };
 
+exports.uploadItemFile = async (req, res) => {
+  try {
+    const item = await ReferenceItem.findById(req.params.id).select('+fileData');
+    if (!item) return res.status(404).json({ message: 'Reference item not found.' });
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded.' });
+
+    if (item.storageKey) {
+      await clearItemFile(item);
+    }
+
+    const uploaded = await uploadReferenceFile({
+      itemId: String(item._id),
+      file: req.file,
+    });
+
+    item.storageKey = uploaded.storageKey;
+    item.fileUrl = uploaded.fileUrl;
+    item.fileName = uploaded.fileName;
+    item.mimeType = uploaded.mimeType;
+    if (uploaded.fileData) {
+      item.fileData = uploaded.fileData;
+    } else {
+      item.fileData = undefined;
+    }
+
+    await item.save();
+    res.json(serializeItem(item));
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({
+      message: status === 500 ? 'Error uploading reference file' : err.message,
+      error: err.message,
+    });
+  }
+};
+
+exports.serveReferenceFile = async (req, res) => {
+  try {
+    const item = await ReferenceItem.findById(req.params.id).select('+fileData storageKey fileName mimeType');
+    if (!item || !item.storageKey) {
+      return res.status(404).json({ message: 'Reference file not found.' });
+    }
+
+    const buffer = await readReferenceFile({
+      storageKey: item.storageKey,
+      fileData: item.fileData,
+    });
+
+    const mimeType = item.mimeType || 'application/octet-stream';
+    const fileName = item.fileName || 'reference-file';
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName.replace(/"/g, '')}"`);
+    res.send(buffer);
+  } catch (err) {
+    const status = err.status || 500;
+    res.status(status).json({
+      message: status === 500 ? 'Error serving reference file' : err.message,
+      error: err.message,
+    });
+  }
+};
+
 exports.deleteItem = async (req, res) => {
   try {
-    const item = await ReferenceItem.findById(req.params.id);
+    const item = await ReferenceItem.findById(req.params.id).select('+fileData storageKey');
     if (!item) return res.status(404).json({ message: 'Reference item not found.' });
+    await clearItemFile(item);
     await item.deleteOne();
     res.json({ message: 'Reference item deleted.' });
   } catch (err) {
