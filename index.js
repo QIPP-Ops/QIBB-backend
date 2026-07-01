@@ -43,6 +43,18 @@ mongoose.connect(getMongoUri(), { retryWrites: false })
     }
 
     try {
+      const { ensureBuiltinReferencesSeeded } = require('./services/referenceAutoSeed');
+      const refs = await ensureBuiltinReferencesSeeded();
+      if (refs.seeded) {
+        console.log(
+          `[references] seeded ${refs.itemsCreated} item(s) across ${refs.categoriesCreated} new categor(ies)`
+        );
+      }
+    } catch (refErr) {
+      console.warn('[references] startup auto-seed skipped:', refErr.message);
+    }
+
+    try {
       const AdminUser = require('./models/AdminUser');
       const adminCount = await AdminUser.countDocuments({ accessRole: 'admin', isActive: { $ne: false } });
       if (adminCount === 0) {

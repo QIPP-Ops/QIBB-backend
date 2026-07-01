@@ -23,6 +23,7 @@
     "migrate:compensate-leave-types": "node scripts/migrate-compensate-leave-types.js",
     "backup:org-chart": "node scripts/backup-org-chart-data.js",
     "seed:curriculum": "node scripts/seed-curriculum.js",
+    "seed:references": "node scripts/seed-references.js",
     "migrate:auth": "node scripts/migrate-auth-fields.js",
     "set-password": "node scripts/set-user-password.js",
     "test": "jest --forceExit --detectOpenHandles"

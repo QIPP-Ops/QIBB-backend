@@ -5,6 +5,7 @@ const { protect } = require('../middleware/auth');
 const { admin } = require('../middleware/auth');
 const { requireSuperAdmin } = require('../middleware/superAdmin');
 const c = require('../controllers/trainingController');
+const ref = require('../controllers/referenceController');
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -41,5 +42,13 @@ router.patch('/quiz/assignment/:assignmentId', protect, c.updateQuizAssignment);
 router.post('/quiz/complete', protect, c.completeQuiz);
 router.post('/quiz/claim-prize', protect, c.claimQuizPrize);
 router.post('/course-reminder', protect, admin, c.sendCourseReminder);
+
+router.get('/references', protect, ref.listReferences);
+router.post('/references/categories', protect, admin, ref.createCategory);
+router.patch('/references/categories/:id', protect, admin, ref.updateCategory);
+router.delete('/references/categories/:id', protect, admin, ref.deleteCategory);
+router.post('/references/items', protect, admin, ref.createItem);
+router.patch('/references/items/:id', protect, admin, ref.updateItem);
+router.delete('/references/items/:id', protect, admin, ref.deleteItem);
 
 module.exports = router;
