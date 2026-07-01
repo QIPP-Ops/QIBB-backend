@@ -91,9 +91,30 @@ const DEFAULT_REPORTED_BY_DEPARTMENT = 'Operation';
 const MONTHLY_MINIMUM = 2;
 
 const INCENTIVE_TIERS = [
-  { id: 'tier_100', label: '100 SAR gift card', threshold: 100, consecutiveMonths: 1 },
-  { id: 'tier_500', label: '500 SAR gift card', threshold: 500, consecutiveMonths: 2 },
-  { id: 'tier_1000', label: '1000 SAR gift card', threshold: 1000, consecutiveMonths: 3 },
+  {
+    id: 'bronze',
+    label: 'Bronze',
+    threshold: 100,
+    periodDays: 30,
+    periodLabel: '1 month',
+    rewardSar: 100,
+  },
+  {
+    id: 'silver',
+    label: 'Silver',
+    threshold: 500,
+    periodDays: 90,
+    periodLabel: '3 months',
+    rewardSar: 500,
+  },
+  {
+    id: 'gold',
+    label: 'Gold',
+    threshold: 1000,
+    periodDays: 180,
+    periodLabel: '6 months',
+    rewardSar: 1000,
+  },
 ];
 
 function flattenRiskCategories() {

@@ -40,6 +40,10 @@ router.get('/safety-observations/options', protect, safetyObservation.getOptions
 router.get('/safety-observations/compliance', protect, admin, safetyObservation.getMonthlyCompliance);
 router.get('/safety-observations/compliance/mine', protect, safetyObservation.getMyCompliance);
 router.get('/safety-observations/incentives', protect, safetyObservation.getIncentivesSummary);
+router.get('/safety-observations/registered-cases/mine', protect, safetyObservation.listMyRegisteredCases);
+router.post('/safety-observations/registered-cases', protect, safetyObservation.saveRegisteredCase);
+router.get('/safety-observations/registered-cases/admin', protect, admin, safetyObservation.listRegisteredCasesAdmin);
+router.patch('/safety-observations/gift-card-grants', protect, admin, safetyObservation.patchGiftCardGrant);
 router.post('/safety-observations/reminders', protect, safetyObservation.sendReminders);
 router.get('/safety-observations/pending', protect, safetyObservation.listPendingReview);
 router.get('/safety-observations/case/:caseNumber', protect, safetyObservation.getByCaseNumber);

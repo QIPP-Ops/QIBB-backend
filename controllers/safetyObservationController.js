@@ -1,6 +1,8 @@
 const crypto = require('crypto');
 const multer = require('multer');
 const SafetyObservation = require('../models/SafetyObservation');
+const SafetyRegisteredCase = require('../models/SafetyRegisteredCase');
+const SafetyGiftCardGrant = require('../models/SafetyGiftCardGrant');
 const SafetyCaseCounter = require('../models/SafetyCaseCounter');
 const AdminUser = require('../models/AdminUser');
 const { hasPortalAdminAccess, isSuperAdmin } = require('../middleware/superAdmin');
@@ -46,6 +48,55 @@ function monthKeysBack(count, from = new Date()) {
     d.setMonth(d.getMonth() - 1);
   }
   return keys;
+}
+
+function rollingWindowStart(periodDays, from = new Date()) {
+  const start = new Date(from);
+  start.setDate(start.getDate() - periodDays);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function monthRange(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number);
+  const start = new Date(year, month - 1, 1);
+  const end = new Date(year, month, 1);
+  return { start, end };
+}
+
+function normalizeCaseNumber(raw) {
+  return String(raw || '').trim().toUpperCase();
+}
+
+function validateCaseNumber(caseNumber) {
+  if (!caseNumber) return 'Case number is required.';
+  if (!/^SO-/.test(caseNumber)) return 'Case number must start with SO-.';
+  return null;
+}
+
+function registeredCaseRow(doc) {
+  return {
+    id: String(doc._id),
+    userId: String(doc.userId || ''),
+    empId: doc.empId || '',
+    employeeName: doc.employeeName || '',
+    crew: doc.crew || '',
+    caseNumber: doc.caseNumber || '',
+    savedAt: doc.savedAt || doc.createdAt || null,
+  };
+}
+
+async function countRegisteredCasesInWindow(empId, periodDays, from = new Date()) {
+  const since = rollingWindowStart(periodDays, from);
+  return SafetyRegisteredCase.countDocuments({ empId, savedAt: { $gte: since } });
+}
+
+async function countRegisteredCasesInMonth(empId, monthKey) {
+  const { start, end } = monthRange(monthKey);
+  return SafetyRegisteredCase.countDocuments({
+    empId,
+    savedAt: { $gte: start, $lt: end },
+  });
 }
 
 function newId() {
@@ -578,11 +629,12 @@ exports.getMonthlyCompliance = async (req, res) => {
   try {
     const month = String(req.query.month || currentMonthKey()).slice(0, 7);
     const crew = String(req.query.crew || '').trim();
-    const filter = { observationMonth: month, status: { $in: COUNTABLE_STATUSES } };
-    if (crew) filter.crew = crew;
+    const { start, end } = monthRange(month);
+    const match = { savedAt: { $gte: start, $lt: end } };
+    if (crew) match.crew = crew;
 
-    const rows = await SafetyObservation.aggregate([
-      { $match: filter },
+    const rows = await SafetyRegisteredCase.aggregate([
+      { $match: match },
       {
         $group: {
           _id: '$empId',
@@ -618,43 +670,32 @@ exports.getIncentivesSummary = async (req, res) => {
       return res.status(403).json({ message: 'Not allowed.' });
     }
 
-    const months3 = monthKeysBack(3);
-    const rows = await SafetyObservation.aggregate([
-      {
-        $match: {
-          empId,
-          observationMonth: { $in: months3 },
-          status: { $in: COUNTABLE_STATUSES },
-        },
-      },
-      { $group: { _id: '$observationMonth', count: { $sum: 1 } } },
-    ]);
-    const countByMonth = new Map(rows.map((r) => [r._id, r.count]));
-    const monthlyCounts = months3.map((m) => ({ month: m, count: countByMonth.get(m) || 0 }));
+    const month = currentMonthKey();
+    const monthCount = await countRegisteredCasesInMonth(empId, month);
 
-    const currentMonthCount = countByMonth.get(months3[months3.length - 1]) || 0;
+    const grants = await SafetyGiftCardGrant.find({ empId }).lean();
+    const grantByTier = new Map(grants.map((g) => [g.tierId, g]));
 
-    const tiers = INCENTIVE_TIERS.map((tier) => {
-      const recent = months3.slice(-tier.consecutiveMonths);
-      const eligible = recent.every((m) => (countByMonth.get(m) || 0) >= tier.threshold);
-      const progress = Math.min(
-        100,
-        Math.round(
-          (currentMonthCount / tier.threshold) * 100
-        )
-      );
-      return {
-        ...tier,
-        eligible,
-        progress,
-        currentMonthCount,
-      };
-    });
+    const tiers = await Promise.all(
+      INCENTIVE_TIERS.map(async (tier) => {
+        const periodCount = await countRegisteredCasesInWindow(empId, tier.periodDays);
+        const grant = grantByTier.get(tier.id);
+        const eligible = periodCount >= tier.threshold;
+        const progress = Math.min(100, Math.round((periodCount / tier.threshold) * 100));
+        return {
+          ...tier,
+          periodCount,
+          eligible,
+          progress,
+          giftCardGranted: Boolean(grant?.granted),
+          grantedAt: grant?.grantedAt || null,
+        };
+      })
+    );
 
     res.json({
       empId,
-      monthlyCounts,
-      currentMonthCount,
+      monthCount,
       tiers,
       badges: tiers.filter((t) => t.eligible).map((t) => t.id),
     });
@@ -679,8 +720,9 @@ exports.sendReminders = async (req, res) => {
     if (crewFilter) userQuery.crew = crewFilter;
 
     const employees = await AdminUser.find(userQuery).select('_id empId name crew email').lean();
-    const counts = await SafetyObservation.aggregate([
-      { $match: { observationMonth: month, status: { $in: COUNTABLE_STATUSES } } },
+    const { start, end } = monthRange(month);
+    const counts = await SafetyRegisteredCase.aggregate([
+      { $match: { savedAt: { $gte: start, $lt: end } } },
       { $group: { _id: '$empId', count: { $sum: 1 } } },
     ]);
     const countByEmp = new Map(counts.map((c) => [c._id, c.count]));
@@ -723,11 +765,7 @@ exports.getMyCompliance = async (req, res) => {
     const empId = String(req.user?.empId || '').trim();
     if (!empId) return res.status(400).json({ message: 'Employee session is incomplete.' });
     const month = String(req.query.month || currentMonthKey()).slice(0, 7);
-    const count = await SafetyObservation.countDocuments({
-      empId,
-      observationMonth: month,
-      status: { $in: COUNTABLE_STATUSES },
-    });
+    const count = await countRegisteredCasesInMonth(empId, month);
     res.json({
       month,
       count,
@@ -737,5 +775,183 @@ exports.getMyCompliance = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.saveRegisteredCase = async (req, res) => {
+  try {
+    const user = await AdminUser.findById(req.user?.id).select('empId name crew').lean();
+    if (!user?.empId) return res.status(400).json({ message: 'Employee session is incomplete.' });
+
+    const caseNumber = normalizeCaseNumber(req.body?.caseNumber);
+    const caseErr = validateCaseNumber(caseNumber);
+    if (caseErr) return res.status(400).json({ message: caseErr });
+
+    const existing = await SafetyRegisteredCase.findOne({ caseNumber }).lean();
+    if (existing) {
+      return res.status(409).json({
+        message: 'This case number has already been saved.',
+        existing: registeredCaseRow(existing),
+      });
+    }
+
+    const doc = await SafetyRegisteredCase.create({
+      userId: req.user.id,
+      empId: user.empId,
+      employeeName: user.name || '',
+      crew: user.crew || '',
+      caseNumber,
+      savedAt: new Date(),
+    });
+
+    await logAction({
+      actor: req.user,
+      action: AUDIT_ACTIONS.SAFETY_REGISTERED_CASE_SAVED,
+      targetType: 'safety_registered_case',
+      targetId: String(doc._id),
+      targetName: doc.caseNumber,
+      after: doc.toObject(),
+      req,
+    });
+
+    res.status(201).json({ success: true, registeredCase: registeredCaseRow(doc) });
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res.status(409).json({ message: 'This case number has already been saved.' });
+    }
+    res.status(400).json({ message: err.message });
+  }
+};
+
+exports.listMyRegisteredCases = async (req, res) => {
+  try {
+    const empId = String(req.user?.empId || '').trim();
+    if (!empId) return res.status(400).json({ message: 'Employee session is incomplete.' });
+
+    const month = String(req.query.month || '').slice(0, 7);
+    const filter = { empId };
+    if (month) {
+      const { start, end } = monthRange(month);
+      filter.savedAt = { $gte: start, $lt: end };
+    }
+
+    const rows = await SafetyRegisteredCase.find(filter).sort({ savedAt: -1 }).lean();
+    const currentMonth = currentMonthKey();
+    const monthCount = await countRegisteredCasesInMonth(empId, currentMonth);
+
+    res.json({
+      registeredCases: rows.map(registeredCaseRow),
+      month: currentMonth,
+      monthCount,
+      minimum: MONTHLY_MINIMUM,
+      metMinimum: monthCount >= MONTHLY_MINIMUM,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.listRegisteredCasesAdmin = async (req, res) => {
+  try {
+    if (!hasPortalAdminAccess(req) && !canReviewAll(req, await AdminUser.findById(req.user?.id).lean())) {
+      return res.status(403).json({ message: 'Admin access required.' });
+    }
+
+    const crew = String(req.query.crew || '').trim();
+    const filter = crew ? { crew } : {};
+    const rows = await SafetyRegisteredCase.find(filter).sort({ savedAt: -1 }).lean();
+    const grants = await SafetyGiftCardGrant.find().lean();
+    const grantMap = new Map(grants.map((g) => [`${g.empId}:${g.tierId}`, g]));
+
+    const byEmp = new Map();
+    for (const row of rows) {
+      if (!byEmp.has(row.empId)) {
+        byEmp.set(row.empId, {
+          userId: String(row.userId || ''),
+          empId: row.empId,
+          name: row.employeeName || row.empId,
+          crew: row.crew || '',
+          cases: [],
+          tierCounts: {},
+          grants: {},
+        });
+      }
+      const entry = byEmp.get(row.empId);
+      entry.cases.push(registeredCaseRow(row));
+    }
+
+    const users = await Promise.all(
+      Array.from(byEmp.values()).map(async (entry) => {
+        const tierCounts = {};
+        const tierGrants = {};
+        for (const tier of INCENTIVE_TIERS) {
+          tierCounts[tier.id] = await countRegisteredCasesInWindow(entry.empId, tier.periodDays);
+          const grant = grantMap.get(`${entry.empId}:${tier.id}`);
+          tierGrants[tier.id] = {
+            granted: Boolean(grant?.granted),
+            grantedAt: grant?.grantedAt || null,
+            grantedByName: grant?.grantedByName || '',
+            notes: grant?.notes || '',
+          };
+        }
+        return { ...entry, tierCounts, grants: tierGrants };
+      })
+    );
+
+    users.sort((a, b) => b.cases.length - a.cases.length);
+
+    res.json({ users, tiers: INCENTIVE_TIERS });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.patchGiftCardGrant = async (req, res) => {
+  try {
+    const actor = await AdminUser.findById(req.user?.id).select('name').lean();
+    if (!hasPortalAdminAccess(req) && !canReviewAll(req, actor)) {
+      return res.status(403).json({ message: 'Admin access required.' });
+    }
+
+    const empId = String(req.body?.empId || '').trim();
+    const tierId = String(req.body?.tierId || '').trim();
+    const granted = Boolean(req.body?.granted);
+    const notes = String(req.body?.notes || '').trim();
+
+    if (!empId) return res.status(400).json({ message: 'Employee ID is required.' });
+    const tier = INCENTIVE_TIERS.find((t) => t.id === tierId);
+    if (!tier) return res.status(400).json({ message: 'Invalid tier.' });
+
+    const targetUser = await AdminUser.findOne({ empId }).select('_id empId').lean();
+    if (!targetUser) return res.status(404).json({ message: 'Employee not found.' });
+
+    const doc = await SafetyGiftCardGrant.findOneAndUpdate(
+      { empId, tierId },
+      {
+        userId: targetUser._id,
+        empId,
+        tierId,
+        granted,
+        grantedAt: granted ? new Date() : null,
+        grantedBy: granted ? req.user?.id : null,
+        grantedByName: granted ? (actor?.name || '') : '',
+        notes,
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.json({
+      success: true,
+      grant: {
+        empId: doc.empId,
+        tierId: doc.tierId,
+        granted: doc.granted,
+        grantedAt: doc.grantedAt,
+        grantedByName: doc.grantedByName,
+        notes: doc.notes,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
